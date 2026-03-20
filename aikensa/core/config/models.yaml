@@ -1,0 +1,134 @@
+# Central model registry for InspectionThread.initialize_model()
+# All model paths are routed to aikensa/core/checkpoints.
+
+device: cuda:0
+
+models:
+  P828XXW0X0P_CLIP_Model:
+    loader: sahi
+    model_type: yolov8
+    path: ./aikensa/core/checkpoints/MMC/5A45/P828XXW0X0P_detect_flip.pt
+    conf: 0.4
+
+  P828XXW0X0P_KATABU_Model:
+    loader: yolo
+    path: ./aikensa/core/checkpoints/MMC/5A45/P828XXW0X0P_katabu.pt
+
+  P828XXW0X0P_HAND_DETECT:
+    loader: yolo
+    path: ./aikensa/core/checkpoints/MMC/5A45/P828XXW0X0P_hand.pt
+
+  P808387UA1A_CLIP_Model:
+    loader: sahi
+    model_type: yolov8
+    path: ./aikensa/core/checkpoints/NISSAN/JC2D/P808387UA1A_detect.pt
+    conf: 0.4
+
+  P808387UA1A_keypoint:
+    loader: yolo
+    path: ./aikensa/core/checkpoints/NISSAN/JC2D/P808387UA1A_keypoint.pt
+
+  P828447UA0A_CLIP_Model:
+    loader: sahi
+    model_type: yolov8
+    path: ./aikensa/core/checkpoints/NISSAN/JC2D/P828447UA0A_detect.pt
+    conf: 0.4
+
+  P828447UA0A_ANOMALY_CLASSIFICATION_Model:
+    loader: yolo
+    path: ./aikensa/core/checkpoints/NISSAN/JC2D/P828447UA0A_anomaly_classification.pt
+
+  P658217UA0A_CLIP_Model:
+    loader: sahi
+    model_type: yolov8
+    path: ./aikensa/core/checkpoints/P658217UA0A_CLIP.pt
+    conf: 0.4
+
+  # Current checkpoints do not include explicit UJ/UA0A variants for these two clip models.
+  # Keep them routed to checkpoints with nearest available equivalents.
+  P658207UA0A_CLIP_Model:
+    loader: sahi
+    model_type: yolov8
+    path: ./aikensa/core/checkpoints/P658207LE0A_CLIP.pt
+    conf: 0.4
+
+  P658217UJ0A_CLIP_Model:
+    loader: sahi
+    model_type: yolov8
+    path: ./aikensa/core/checkpoints/P658217UA0A_CLIP.pt
+    conf: 0.4
+
+  P658207UJ0A_CLIP_Model:
+    loader: sahi
+    model_type: yolov8
+    path: ./aikensa/core/checkpoints/P658207LE0A_CLIP.pt
+    conf: 0.4
+
+  P828387YA0A_CLIP_Model:
+    loader: sahi
+    model_type: yolov8
+    path: ./aikensa/core/checkpoints/NISSAN/J42U/P828387YA0A_detect.pt
+    conf: 0.4
+
+  P828387YA0A_SEGMENT_Model:
+    loader: yolo
+    path: ./aikensa/core/checkpoints/NISSAN/J42U/P828387YA0A_segment.pt
+
+  P808387UA0A_828387YA0A_detect_Model:
+    loader: sahi
+    model_type: yolov8
+    path: ./aikensa/core/checkpoints/NISSAN/J42U/P808387UA0A_828387YA0A_detect.pt
+    conf: 0.4
+
+  P808387UA0A_828387YA0A_keypoint_Model:
+    loader: yolo
+    path: ./aikensa/core/checkpoints/NISSAN/J42U/P808387UA0A_828387YA0A_keypoint.pt
+
+  P828387YA1A_CLIP_Model:
+    loader: sahi
+    model_type: yolov8
+    path: ./aikensa/core/checkpoints/NISSAN/J42U/P828387YA1A_detect.pt
+    conf: 0.4
+
+  P828387YA1A_END_KEYPOINT_Model:
+    loader: yolo
+    path: ./aikensa/core/checkpoints/NISSAN/J42U/P828387YA1A_keypoint.pt
+
+  P828387YA6A_CLIP_Model:
+    loader: sahi
+    model_type: yolov8
+    path: ./aikensa/core/checkpoints/NISSAN/J42U/P828387YA6A_detect.pt
+    conf: 0.50
+    image_size: 1980
+
+  P828387YA6A_END_KEYPOINT_Model:
+    loader: yolo
+    path: ./aikensa/core/checkpoints/NISSAN/J42U/P828387YA6A_keypoint.pt
+
+  P731957YA0A_CLIP_Model:
+    loader: sahi
+    model_type: yolov8
+    path: ./aikensa/core/checkpoints/NISSAN/J42U/P731957YA0A_detect.pt
+    conf: 0.4
+
+  P658107YA0A_CLIP_Model:
+    loader: sahi
+    model_type: yolov8
+    path: ./aikensa/core/checkpoints/NISSAN/J42U/P658107YA0A_detect.pt
+    conf: 0.4
+
+  P731957YA0A_SEGMENT_Model:
+    loader: yolo
+    path: ./aikensa/core/checkpoints/NISSAN/J42U/P731957YA0A_segment.pt
+
+  P731957YA0A_END_KEYPOINT_Model:
+    loader: yolo
+    path: ./aikensa/core/checkpoints/NISSAN/J42U/P731957YA0A_keypoint.pt
+
+  P658107YA0A_END_KEYPOINT_Model:
+    loader: yolo
+    path: ./aikensa/core/checkpoints/NISSAN/J42U/P658107YA0A_keypoint.pt
+
+  NICHIJOU_TENKEN_Model:
+    loader: yolo
+    path: ./aikensa/core/checkpoints/NICHIJOU_TENKEN/AIKENSA23GO_NICHIJOU_TENKEN.pt

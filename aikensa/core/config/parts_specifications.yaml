@@ -1,0 +1,363 @@
+# Universal Part Inspection Specifications
+# This YAML centralizes all part inspection configuration data
+
+parts:
+  # NISSAN Parts
+  P808387UA1A:
+    name: "Seal FRDoor Parting"
+    category: "NISSAN"
+    series: "M_JC2D"
+    type: "keypoint_based"  # keypoint_based or segmentation_based
+    
+    # Pitch specifications (distance between points in pixels)
+    pitchSpec: [15, 123, 122, 81, 81, 122, 123, 15, 682]
+    tolerance_pitch: [3.0, 1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 3.0, 10.0]
+    
+    # ID specifications
+    idSpec: [0, 0, 0, 0, 0, 0, 0]
+    
+    # Pixel multiplier for measurements
+    pixelMultiplier: 1.0
+    detected_cropped_size: 512
+    border_width: 10
+    
+    # Visual settings
+    color_ok: [0, 255, 0]
+    color_ng: [200, 30, 50]
+    linecolor: [20, 120, 120]
+    text_offset: 40
+    bbox_offset: 1
+    
+    # Segmentation settings
+    segmentation_pixel_start: 0
+    segmentation_pixel_finish: 512
+    
+    # Model references
+    model_yolo_clip: "yolov8_clip_detection"
+    model_keypoint: "yolov8_keypoint_detection"
+    model_hanire: "yolov8_hanire_detection"
+
+  P828447UA0A:
+    name: "Seal RRDoor Parting"
+    category: "NISSAN"
+    series: "M_JC2D"
+    type: "keypoint_based"
+    
+    pitchSpec: [10, 121.5, 121.5, 121.5, 121.5, 121.5, 10, 627.5]
+    tolerance_pitch: [3.0, 1.7, 1.7, 1.7, 1.7, 1.7, 3.0, 10.0]
+    idSpec: [0, 0, 0, 0, 0, 0]
+    
+    pixelMultiplier: 1.0
+    detected_cropped_size: 512
+    border_width: 10
+    
+    color_ok: [0, 255, 0]
+    color_ng: [200, 30, 50]
+    linecolor: [20, 120, 120]
+    text_offset: 40
+    bbox_offset: 1
+    
+    segmentation_pixel_start: 0
+    segmentation_pixel_finish: 512
+
+  # NISSAN M_J42U Parts
+  P808387YA0A:
+    name: "Seal FR Door Parting"
+    category: "NISSAN"
+    series: "M_J42U"
+    type: "keypoint_based"
+    
+    pitchSpec: [15, 114.5, 143.5, 142, 146, 146, 147.5, 144.5, 15, 1014]
+    tolerance_pitch: [3.0, 1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 3.0, 10.0]
+    idSpec: [1, 1, 1, 1, 1, 1, 1, 1]
+    
+    pixelMultiplier: 0.1609
+    detected_cropped_size: 512
+    border_width: 10
+    
+    color_ok: [0, 255, 0]
+    color_ng: [200, 30, 50]
+    linecolor: [20, 120, 120]
+    text_offset: 40
+    bbox_offset: 10
+    
+    segmentation_width: 1280
+
+  P828387YA0A:
+    name: "Seal RR Door Parting"
+    category: "NISSAN"
+    series: "M_J42U"
+    type: "keypoint_based"
+    
+    pitchSpec: [14.8, 139.5, 131.5, 130, 130, 130, 131.5, 109.5, 14.8, 931.6]
+    tolerance_pitch: [3.0, 1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 3.0, 10.0]
+    idSpec: [0, 0, 0, 0, 0, 0, 0, 0]
+    
+    pixelMultiplier: 0.1609
+    detected_cropped_size: 512
+    border_width: 10
+    
+    color_ok: [0, 255, 0]
+    color_ng: [200, 30, 50]
+    linecolor: [20, 120, 120]
+    text_offset: 40
+    bbox_offset: 10
+    
+    segmentation_width: 1280
+
+  P828387YA1A:
+    name: "Seal RR Door Parting Lock"
+    category: "NISSAN"
+    series: "M_J42U"
+    type: "keypoint_based"
+    
+    # This part has LH and RH variants with keypoint-based detection
+    # RH variant: ID marking 1 (left endpoint), LH variant: ID marking 2 (right endpoint)
+    pitchSpecRH: [15, 128, 95, 39, 120, 15, 412]
+    pitchSpecLH: [15, 120, 39, 95, 128, 15, 412]
+    tolerance_pitch: [3.0, 1.7, 1.7, 1.7, 1.7, 3.0, 10.0]
+    idSpecRH: [0, 1, 0, 0, 0, 0]  # RH uses color marking 1
+    idSpecLH: [0, 0, 0, 0, 2, 0]  # LH uses color marking 2
+    
+    pixelMultiplier: 0.1609
+    detected_cropped_size: 512
+    border_width: 10
+    
+    color_ok: [0, 255, 0]
+    color_ng: [200, 30, 50]
+    linecolor: [20, 120, 120]
+    text_offset: 40
+    bbox_offset: 10
+    
+    segmentation_width: 840
+
+  P828387YA6A:
+    name: "Seal RR Door Parting RR Step"
+    category: "NISSAN"
+    series: "M_J42U"
+    type: "keypoint_based"
+    
+    # This part has LH, RH, and Katabu variants
+    pitchSpecRH: [14, 130, 132, 132, 59, 61, 97, 83, 20, 708]
+    pitchSpecLH: [83, 97, 61, 59, 132, 132, 130, 14, 20, 708]
+    pitchSpecKatabu: [20]
+    
+    tolerance_pitchRH: [3.0, 1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 2.0, 10.0]
+    tolerance_pitchLH: [1.7, 1.7, 1.7, 3.0, 1.7, 1.7, 1.7, 1.7, 2.0, 10.0]
+    tolerance_pitchKatabu: [2.0]
+    
+    idSpec: [0, 0, 0, 0, 0]
+    
+    pixelMultiplier: 0.16413
+    pixelMultiplier_katabumarking: 0.16413
+    detected_cropped_size: 512
+    border_width: 10
+    
+    color_ok: [0, 255, 0]
+    color_ng: [200, 30, 50]
+    linecolor: [20, 120, 120]
+    text_offset: 40
+    bbox_offset: 10
+    
+    segmentation_width: 1640
+
+  P828387YA6A_KATABU_NASHI:
+    name: "Seal RR Door Parting RR Step (No Katabu)"
+    category: "NISSAN"
+    series: "M_J42U"
+    type: "keypoint_based"
+
+    # No-katabu dedicated spec (RH/LH) with different dimensions from base YA6A.
+    pitchSpecRH: [14, 132, 133, 133, 58.5, 61.5, 100.5, 85.5, 25, 743]
+    pitchSpecLH: [25, 85.5, 100.5, 61.5, 58.5, 133, 133, 132, 14, 743]
+    tolerance_pitchRH: [3.0, 1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 3.0, 10.0]
+    tolerance_pitchLH: [3.0, 1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 3.0, 10.0]
+    idSpecRH: [0, 0, 0, 0, 0, 0, 0, 0]  # RH clip class ID for no-katabu path
+    idSpecLH: [1, 1, 1, 1, 1, 1, 1, 1]  # LH clip class ID for no-katabu path
+
+    pixelMultiplier: 0.1613
+    detected_cropped_size: 1260
+    keypoint_crop_px: 1260
+    border_width: 10
+
+    color_ok: [0, 255, 0]
+    color_ng: [200, 30, 50]
+    linecolor: [20, 120, 120]
+    text_offset: 40
+    bbox_offset: 10
+
+  P731957YA0A:
+    name: "Seal Roof"
+    category: "NISSAN"
+    series: "M_J42U"
+    type: "keypoint_based"
+    
+    pitchSpec: [16, 71, 86, 56, 71, 71, 71, 71, 71, 71, 16, 671]
+    tolerance_pitch: [3.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 3.0, 10.0]
+    idSpec: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    
+    pixelMultiplier: 0.16030
+    detected_cropped_size: 512
+    border_width: 10
+    
+    color_ok: [0, 255, 0]
+    color_ng: [200, 30, 50]
+    linecolor: [20, 120, 120]
+    text_offset: 40
+    bbox_offset: 10
+    
+    segmentation_width: 840
+
+  P658107YA0A:
+    name: "Seal Assy Rad Core"
+    category: "NISSAN"
+    series: "M_J42U"
+    type: "keypoint_based"
+
+    pitchSpec: [20, 111, 124, 216, 95, 140, 20, 726]
+    tolerance_pitch: [3.2, 2.2, 2.2, 2.2, 2.2, 2.2, 3.2, 10.0]
+    idSpec: [0, 0, 0, 0, 0, 0]
+
+    pixelMultiplier: 0.1591
+    detected_cropped_size: 512
+    border_width: 10
+
+    color_ok: [0, 255, 0]
+    color_ng: [200, 30, 50]
+    linecolor: [20, 120, 120]
+    text_offset: 40
+    bbox_offset: 10
+
+    segmentation_width: 840
+
+  # MMC Parts
+  P828XXW0X0P:
+    name: "Controller Board"
+    category: "MMC"
+    series: "M_5A45"
+    type: "segmentation_based"
+    
+    pitchSpec: [14.8, 108, 128, 128, 128, 128, 128, 137, 14.8, 914.6]
+    tolerance_pitch: [1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 3.0, 10.0]
+    idSpec: [0, 0, 0, 0, 0, 0, 0, 0]
+    
+    pixelMultiplier: 0.1654
+    detected_cropped_size: 512
+    border_width: 10
+    
+    color_ok: [0, 255, 0]
+    color_ng: [200, 30, 50]
+    linecolor: [20, 120, 120]
+    text_offset: 40
+    bbox_offset: 10
+    
+    segmentation_width: 1280
+
+  P5902A509:
+    name: "Hood Panel"
+    category: "MMC"
+    series: "M_5A45"
+    type: "clip_detection"
+    
+    # This part has LH and RH variants plus daily inspection modes
+    pitchSpecLH: [15, 41, 54, 93, 94, 20]
+    pitchSpecRH: [20, 94, 93, 54, 41, 15]
+    pitchSpec_dailyTenken01: [20, 80, 80, 80, 80, 20]
+    pitchTolerance: [3.0, 2.0, 2.0, 2.0, 2.0, 3.0]
+    
+    idSpec_dailyTenken02: [1, 0, 1, 0]
+    idSpec_dailyTenken03: [0, 1, 0, 1]
+    
+    totalLengthSpec: 317
+    totalLengthTolerance: 10.0
+    
+    pixelMultiplier: 0.1592
+    detected_cropped_size: 512
+    border_width: 10
+    
+    color_ok: [0, 255, 0]
+    color_ng: [200, 30, 50]
+    linecolor: [20, 120, 120]
+    text_offset: 40
+    bbox_offset: 1
+
+  hoodFR_65820W030P:
+    name: "Hood FR"
+    category: "MMC"
+    series: "M_5A45"
+    type: "keypoint_based"
+    
+    pitchSpec: [26, 107, 75, 75, 75, 75, 75, 92, 75, 102, 100, 129, 103, 109, 103, 129, 100, 102, 75, 92, 75, 75, 75, 75, 75, 107, 26]
+    tolerance_pitch: [3.5, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.5]
+    idSpec: [0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    
+    pixelMultiplier: 0.204
+    detected_cropped_size: 512
+    border_width: 10
+    
+    color_ok: [0, 255, 0]
+    color_ng: [200, 30, 50]
+    linecolor: [20, 120, 120]
+    text_offset: 40
+    bbox_offset: 10
+
+  # SUZUKI Parts
+  P8462284S00:
+    name: "RR Door Dust"
+    category: "SUZUKI"
+    series: "M_YT3"
+    type: "keypoint_based"
+    
+    pitchSpec: [12, 128, 128, 128, 128, 128, 128, 12, 792]
+    tolerance_pitch: [3.0, 1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 3.0, 10.0]
+    idSpec: [0, 0, 0, 0, 0, 0, 0]
+    
+    pixelMultiplier: 0.16097859
+    detected_cropped_size: 512
+    border_width: 10
+    
+    color_ok: [0, 255, 0]
+    color_ng: [200, 30, 50]
+    linecolor: [20, 120, 120]
+    text_offset: 40
+    bbox_offset: 10
+    
+    segmentation_width: 1640
+
+  # More parts can be added following the same pattern
+  P658207LE0A:
+    name: "Seal Assembly Rad Core"
+    category: "General"
+    series: "Standard"
+    type: "clip_detection"
+    
+    pitchSpec: [13, 82, 82, 82, 13, 2, 2]
+    tolerance_pitch: [3.0, 1.5, 1.5, 1.5, 3.0, 0.8, 0.8]
+    idSpec: [0, 0, 0, 0]
+    
+    pixelMultiplier: 0.1592
+    detected_cropped_size: 512
+    border_width: 10
+    
+    color_ok: [0, 255, 0]
+    color_ng: [200, 30, 50]
+    linecolor: [20, 120, 120]
+    text_offset: 40
+    bbox_offset: 1
+
+# Global settings
+global:
+  # Font configuration
+  font_path: "aikensa/gui/resources/font/NotoSansJP-ExtraBold.ttf"
+  
+  # Sound files
+  sounds:
+    ok: "aikensa/core/config/sound/positive_interface.wav"
+    ng: "aikensa/core/config/sound/mixkit-classic-short-alarm-993.wav"
+    ok_v2: "aikensa/core/config/sound/mixkit-software-interface-remove-2576.wav"
+    ng_v2: "aikensa/core/config/sound/mixkit-system-beep-buzzer-fail-2964.wav"
+  
+  # UI settings
+  text_size_normal: 100.0
+  text_size_small: 50.0
+  text_size_large: 130.0

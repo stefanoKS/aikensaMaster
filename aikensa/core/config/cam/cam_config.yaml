@@ -1,0 +1,11 @@
+ic4_rotate_180: true
+
+0:
+  name: Camera_0
+  resolution: [1280, 960]
+  fps: 30
+
+1:
+  name: Camera_1
+  resolution: [1280, 960]
+  fps: 30

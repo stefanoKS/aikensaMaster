@@ -1,0 +1,518 @@
+# Part Registry Configuration
+# This file maps widgets to their inspection modules and configurations
+# Add new parts here to automatically register them in the system
+
+parts:
+  # NISSAN M_JC2D Parts
+  - widget_id: 17
+    part_number: "808387UA1A"
+    part_name: "Seal FR Door Parting"
+    module_path: "aikensa.core.config.parts.NISSAN.M_JC2D.P808387UA1A"
+    partcheck_function: "partcheck"
+    signal_name: "P808387UA1A_InspectionResult_PitchMeasured"
+    directory_name: "808387UA1A"
+    inspection_type: "keypoint"
+    has_katabu: false
+    narrow_height: true
+    supports_clip_picking: false
+    
+  - widget_id: 18
+    part_number: "828447UA0A"
+    part_name: "Seal RR Door Parting"
+    module_path: "aikensa.core.config.parts.NISSAN.M_JC2D.P828447UA0A"
+    partcheck_function: "partcheck"
+    signal_name: "P828447UA0A_InspectionResult_PitchMeasured"
+    directory_name: "828447UA0A"
+    inspection_type: "keypoint"
+    has_katabu: false
+    narrow_height: true
+    supports_clip_picking: false
+
+  # NISSAN M_J42U Parts
+  - widget_id: 5
+    part_number: "82833W050P"
+    part_name: "Seal Part A (M_J42U)"
+    module_path: "aikensa.core.config.parts.NISSAN.M_J42U.P808387YA0A_SEALFRDOORPARTING"
+    partcheck_function: "partcheck"
+    signal_name: "P82833W050P_InspectionResult_PitchMeasured"
+    directory_name: "82833W050P"
+    inspection_type: "keypoint"
+    has_katabu: true
+    katabu_side: "L"
+    narrow_height: false
+    supports_clip_picking: true
+    keypoint_crop_px: 16
+  - widget_id: 6
+    part_number: "82832W040P"
+    part_name: "Seal Part B (M_J42U)"
+    module_path: "aikensa.core.config.parts.NISSAN.M_J42U.P828387YA0A_SEALRRDOORPARTING"
+    partcheck_function: "partcheck"
+    signal_name: "P82832W040P_InspectionResult_PitchMeasured"
+    directory_name: "82832W040P"
+    inspection_type: "keypoint"
+    has_katabu: true
+    katabu_side: "R"
+    narrow_height: false
+    supports_clip_picking: true
+    keypoint_crop_px: 16
+  - widget_id: 7
+    part_number: "82833W090P"
+    part_name: "Seal Part C (M_J42U)"
+    module_path: "aikensa.core.config.parts.NISSAN.M_J42U.P828387YA1A_SEALRRDOORPARTINGLOCK"
+    partcheck_function: "partcheck"
+    signal_name: "P82833W090P_InspectionResult_PitchMeasured"
+    directory_name: "82833W090P"
+    inspection_type: "keypoint"
+    keypoint_crop_px: 840
+    has_katabu: true
+    katabu_side: "L"
+    narrow_height: false
+    supports_clip_picking: true
+    
+  - widget_id: 8
+    part_number: "82832W080P"
+    part_name: "Seal Part D (M_J42U)"
+    module_path: "aikensa.core.config.parts.NISSAN.M_J42U.P828387YA6A_SEALRRDOORPARTINGRRSTEP"
+    partcheck_function: "partcheck"
+    signal_name: "P82832W080P_InspectionResult_PitchMeasured"
+    directory_name: "82832W080P"
+    inspection_type: "keypoint"
+    has_katabu: true
+    katabu_side: "R"
+    narrow_height: false
+    supports_clip_picking: true
+
+  # KENGEN variants (widgets 9-12)
+  - widget_id: 9
+    part_number: "82833W050PKENGEN"
+    part_name: "Seal Part A KENGEN"
+    module_path: "aikensa.core.config.parts.NISSAN.M_J42U.P808387YA0A_SEALFRDOORPARTING"
+    partcheck_function: "partcheck"
+    signal_name: "P82833W050PKENGEN_InspectionResult_PitchMeasured"
+    directory_name: "82833W050PKENGEN"
+    inspection_type: "keypoint"
+    has_katabu: true
+    katabu_side: "L"
+    narrow_height: false
+    supports_clip_picking: false
+    
+  - widget_id: 10
+    part_number: "82832W040PKENGEN"
+    part_name: "Seal Part B KENGEN"
+    module_path: "aikensa.core.config.parts.NISSAN.M_J42U.P828387YA0A_SEALRRDOORPARTING"
+    partcheck_function: "partcheck"
+    signal_name: "P82832W040PKENGEN_InspectionResult_PitchMeasured"
+    directory_name: "82832W040PKENGEN"
+    inspection_type: "keypoint"
+    has_katabu: true
+    katabu_side: "R"
+    narrow_height: false
+    supports_clip_picking: false
+    
+  - widget_id: 11
+    part_number: "82833W090PKENGEN"
+    part_name: "Seal Part C KENGEN"
+    module_path: "aikensa.core.config.parts.NISSAN.M_J42U.P828387YA1A_SEALRRDOORPARTINGLOCK"
+    partcheck_function: "partcheck"
+    signal_name: "P82833W090PKENGEN_InspectionResult_PitchMeasured"
+    directory_name: "82833W090PKENGEN"
+    inspection_type: "keypoint"
+    has_katabu: true
+    katabu_side: "L"
+    narrow_height: false
+    supports_clip_picking: false
+    
+  - widget_id: 12
+    part_number: "82832W080PKENGEN"
+    part_name: "Seal Part D KENGEN"
+    module_path: "aikensa.core.config.parts.NISSAN.M_J42U.P828387YA6A_SEALRRDOORPARTINGRRSTEP"
+    partcheck_function: "partcheck"
+    signal_name: "P82832W080PKENGEN_InspectionResult_PitchMeasured"
+    directory_name: "82832W080PKENGEN"
+    inspection_type: "keypoint"
+    has_katabu: true
+    katabu_side: "R"
+    narrow_height: false
+    supports_clip_picking: false
+
+  # CLIPSOUNYUUKI variants (widgets 13-16)  
+  - widget_id: 13
+    part_number: "82833W050PCLIPSOUNYUUKI"
+    part_name: "Seal Part A Clip Insertion"
+    module_path: "aikensa.core.config.parts.NISSAN.M_J42U.P808387YA0A_SEALFRDOORPARTING"
+    partcheck_function: "partcheck"
+    signal_name: "P82833W050PCLIPSOUNYUUKI_InspectionResult_PitchMeasured"
+    directory_name: "82833W050PCLIPSOUNYUUKI"
+    inspection_type: "clip_insertion"
+    has_katabu: false
+    narrow_height: false
+    supports_clip_picking: false
+    
+  - widget_id: 14
+    part_number: "82832W040PCLIPSOUNYUUKI"
+    part_name: "Seal Part B Clip Insertion"
+    module_path: "aikensa.core.config.parts.NISSAN.M_J42U.P828387YA0A_SEALRRDOORPARTING"
+    partcheck_function: "partcheck"
+    signal_name: "P82832W040PCLIPSOUNYUUKI_InspectionResult_PitchMeasured"
+    directory_name: "82832W040PCLIPSOUNYUUKI"
+    inspection_type: "clip_insertion"
+    has_katabu: false
+    narrow_height: false
+    supports_clip_picking: false
+    
+  - widget_id: 15
+    part_number: "82833W090PCLIPSOUNYUUKI"
+    part_name: "Seal Part C Clip Insertion"
+    module_path: "aikensa.core.config.parts.NISSAN.M_J42U.P828387YA1A_SEALRRDOORPARTINGLOCK"
+    partcheck_function: "partcheck"
+    signal_name: "P82833W090PCLIPSOUNYUUKI_InspectionResult_PitchMeasured"
+    directory_name: "82833W090PCLIPSOUNYUUKI"
+    inspection_type: "clip_insertion"
+    has_katabu: false
+    narrow_height: false
+    supports_clip_picking: false
+    
+  - widget_id: 16
+    part_number: "82832W080PCLIPSOUNYUUKI"
+    part_name: "Seal Part D Clip Insertion"
+    module_path: "aikensa.core.config.parts.NISSAN.M_J42U.P828387YA6A_SEALRRDOORPARTINGRRSTEP"
+    partcheck_function: "partcheck"
+    signal_name: "P82832W080PCLIPSOUNYUUKI_InspectionResult_PitchMeasured"
+    directory_name: "82832W080PCLIPSOUNYUUKI"
+    inspection_type: "clip_insertion"
+    has_katabu: false
+    narrow_height: false
+    supports_clip_picking: false
+
+  # NISSAN General Parts (variants)
+  - widget_id: 31
+    part_number: "658217UA0A"
+    part_name: "Seal Assembly - Variant 01"
+    module_path: "aikensa.core.config.parts.dailyTenken.dailyTenken"
+    partcheck_function: "dailyTenken"
+    signal_name: "P658217UA0A_InspectionResult"
+    directory_name: "658217UA0A"
+    inspection_type: "general_inspection"
+    has_katabu: false
+    narrow_height: true
+    supports_clip_picking: false
+
+  - widget_id: 32
+    part_number: "658207UA0A"
+    part_name: "Seal Assembly - Variant 02"
+    module_path: "aikensa.core.config.parts.dailyTenken.dailyTenken"
+    partcheck_function: "dailyTenken"
+    signal_name: "P658207UA0A_InspectionResult"
+    directory_name: "658207UA0A"
+    inspection_type: "general_inspection"
+    has_katabu: false
+    narrow_height: true
+    supports_clip_picking: false
+
+  - widget_id: 33
+    part_number: "658217UJ0A"
+    part_name: "Seal Assembly - Variant 03"
+    module_path: "aikensa.core.config.parts.dailyTenken.dailyTenken"
+    partcheck_function: "dailyTenken"
+    signal_name: "P658217UJ0A_InspectionResult"
+    directory_name: "658217UJ0A"
+    inspection_type: "general_inspection"
+    has_katabu: false
+    narrow_height: true
+    supports_clip_picking: false
+
+  - widget_id: 34
+    part_number: "658207UJ0A"
+    part_name: "Seal Assembly - Variant 04"
+    module_path: "aikensa.core.config.parts.dailyTenken.dailyTenken"
+    partcheck_function: "dailyTenken"
+    signal_name: "P658207UJ0A_InspectionResult"
+    directory_name: "658207UJ0A"
+    inspection_type: "general_inspection"
+    has_katabu: false
+    narrow_height: true
+    supports_clip_picking: false
+
+  # Daily Tenken (Inspection Mode)
+  - widget_id: 21
+    part_number: "dailyTenken_01"
+    part_name: "Daily Inspection 01"
+    module_path: "aikensa.core.config.parts.dailyTenken.dailyTenken"
+    partcheck_function: "dailyTenken"
+    signal_name: "dailyTenken_01_InspectionResult"
+    directory_name: "dailyTenken_01"
+    inspection_type: "daily_inspection"
+    has_katabu: false
+    narrow_height: false
+    supports_clip_picking: false
+    
+  - widget_id: 22
+    part_number: "dailyTenken_02"
+    part_name: "Daily Inspection 02"
+    module_path: "aikensa.core.config.parts.dailyTenken.dailyTenken"
+    partcheck_function: "dailyTenken"
+    signal_name: "dailyTenken_02_InspectionResult"
+    directory_name: "dailyTenken_02"
+    inspection_type: "daily_inspection"
+    has_katabu: false
+    narrow_height: false
+    supports_clip_picking: false
+    
+  - widget_id: 23
+    part_number: "dailyTenken_03"
+    part_name: "Daily Inspection 03"
+    module_path: "aikensa.core.config.parts.dailyTenken.dailyTenken"
+    partcheck_function: "dailyTenken"
+    signal_name: "dailyTenken_03_InspectionResult"
+    directory_name: "dailyTenken_03"
+    inspection_type: "daily_inspection"
+    has_katabu: false
+    narrow_height: false
+    supports_clip_picking: false
+
+  # NISSAN M_P13C Parts
+  - widget_id: 35
+    part_number: "P658207LE0A"
+    part_name: "Seal Assembly P13C"
+    module_path: "aikensa.core.config.parts.P658207LE0A"
+    partcheck_function: "partcheck"
+    signal_name: "P658207LE0A_InspectionResult"
+    directory_name: "P658207LE0A"
+    inspection_type: "keypoint"
+    has_katabu: false
+    narrow_height: false
+    supports_clip_picking: false
+
+  - widget_id: 36
+    part_number: "731957YA0A"
+    part_name: "Seal Roof (M_J42U)"
+    module_path: "aikensa.core.config.parts.NISSAN.M_J42U.P731957YA0A_SEALROOF"
+    partcheck_function: "partcheck"
+    signal_name: "P731957YA0A_InspectionResult_PitchMeasured"
+    directory_name: "731957YA0A"
+    inspection_type: "keypoint"
+    keypoint_crop_px: 840
+    has_katabu: false
+    narrow_height: true
+    supports_clip_picking: false
+
+  - widget_id: 37
+    part_number: "808387YA0A"
+    part_name: "Seal FR Door Parting (M_J42U)"
+    module_path: "aikensa.core.config.parts.NISSAN.M_J42U.P808387YA0A_SEALFRDOORPARTING"
+    partcheck_function: "partcheck"
+    signal_name: "P808387YA0A_InspectionResult_PitchMeasured"
+    directory_name: "808387YA0A"
+    inspection_type: "keypoint"
+    has_katabu: false
+    narrow_height: false
+    supports_clip_picking: false
+
+  - widget_id: 38
+    part_number: "828387YA0A"
+    part_name: "Seal RR Door Parting (M_J42U)"
+    module_path: "aikensa.core.config.parts.NISSAN.M_J42U.P808387YA0A_SEALFRDOORPARTING"
+    partcheck_function: "partcheck"
+    signal_name: "P828387YA0A_InspectionResult_PitchMeasured"
+    directory_name: "828387YA0A"
+    inspection_type: "keypoint"
+    has_katabu: false
+    narrow_height: false
+    supports_clip_picking: false
+
+  - widget_id: 39
+    part_number: "828387YA1A"
+    part_name: "Seal RR Door Parting Lock (M_J42U)"
+    module_path: "aikensa.core.config.parts.NISSAN.M_J42U.P828387YA1A_SEALRRDOORPARTINGLOCK"
+    partcheck_function: "partcheck"
+    signal_name: "P828387YA1A_InspectionResult_PitchMeasured"
+    directory_name: "828387YA1A"
+    inspection_type: "keypoint"
+    keypoint_crop_px: 840
+    has_katabu: false
+    narrow_height: true
+    supports_clip_picking: false
+
+  - widget_id: 40
+    part_number: "828397YA1A"
+    part_name: "Seal RR Door Parting Lock (M_J42U)"
+    module_path: "aikensa.core.config.parts.NISSAN.M_J42U.P828387YA1A_SEALRRDOORPARTINGLOCK"
+    partcheck_function: "partcheck"
+    signal_name: "P828397YA1A_InspectionResult_PitchMeasured"
+    directory_name: "828397YA1A"
+    inspection_type: "keypoint"
+    keypoint_crop_px: 840
+    has_katabu: false
+    narrow_height: true
+    supports_clip_picking: false
+
+  - widget_id: 41
+    part_number: "828387YA6A"
+    part_name: "Seal RR Door Parting RR Step (M_J42U)"
+    module_path: "aikensa.core.config.parts.NISSAN.M_J42U.P828387YA6A_SEALRRDOORPARTINGRRSTEP"
+    partcheck_function: "partcheck"
+    signal_name: "P828387YA6A_InspectionResult_PitchMeasured"
+    directory_name: "828387YA6A"
+    inspection_type: "keypoint"
+    has_katabu: false
+    narrow_height: true
+    supports_clip_picking: false
+
+  - widget_id: 42
+    part_number: "828397YA6A"
+    part_name: "Seal RR Door Parting RR Step (M_J42U)"
+    module_path: "aikensa.core.config.parts.NISSAN.M_J42U.P828387YA6A_SEALRRDOORPARTINGRRSTEP"
+    partcheck_function: "partcheck"
+    signal_name: "P828397YA6A_InspectionResult_PitchMeasured"
+    directory_name: "828397YA6A"
+    inspection_type: "keypoint"
+    has_katabu: false
+    narrow_height: true
+    supports_clip_picking: false
+
+  - widget_id: 43
+    part_number: "658107YA0A"
+    part_name: "Seal Assy Rad Core (M_J42U)"
+    module_path: "aikensa.core.config.parts.NISSAN.M_J42U.P658107Y0A_SEALASSYRADCORE"
+    partcheck_function: "partcheck"
+    signal_name: "P658107YA0A_InspectionResult_PitchMeasured"
+    directory_name: "658107YA0A"
+    inspection_type: "keypoint"
+    has_katabu: false
+    narrow_height: true
+    supports_clip_picking: false
+
+  - widget_id: 48
+    part_number: "828387YA6A_KATABU_NASHI"
+    part_name: "Seal RR Door Parting RR Step RH (KATABU NASHI)"
+    module_path: "aikensa.core.config.parts.NISSAN.M_J42U.P828387YA6A_SEALRRDOORPARTINGRRSTEP_KATABU_NASHI"
+    partcheck_function: "partcheck"
+    signal_name: "P828387YA6A_KATABU_NASHI_InspectionResult_PitchMeasured"
+    directory_name: "828387YA6A_KATABU_NASHI"
+    inspection_type: "keypoint"
+    keypoint_crop_px: 1260
+    has_katabu: false
+    narrow_height: true
+    supports_clip_picking: false
+
+  - widget_id: 49
+    part_number: "828397YA6A_KATABU_NASHI"
+    part_name: "Seal RR Door Parting RR Step LH (KATABU NASHI)"
+    module_path: "aikensa.core.config.parts.NISSAN.M_J42U.P828387YA6A_SEALRRDOORPARTINGRRSTEP_KATABU_NASHI"
+    partcheck_function: "partcheck"
+    signal_name: "P828397YA6A_KATABU_NASHI_InspectionResult_PitchMeasured"
+    directory_name: "828397YA6A_KATABU_NASHI"
+    inspection_type: "keypoint"
+    keypoint_crop_px: 1260
+    has_katabu: false
+    narrow_height: true
+    supports_clip_picking: false
+
+  # PLACEHOLDER: Add more parts here following the same structure
+  # - widget_id: XX
+  #   part_number: "XXXXXXXXX"
+  #   part_name: "Description"
+  #   module_path: "aikensa.core.config.parts.CATEGORY.SERIES.FILENAME"
+  #   partcheck_function: "partcheck"
+  #   signal_name: "PXXXXXXXXX_InspectionResult_PitchMeasured"
+  #   directory_name: "XXXXXXXXX"
+  #   inspection_type: "keypoint|clip_detection|clip_insertion|daily_inspection"
+  #   has_katabu: true|false
+  #   katabu_side: "L|R"  # Only if has_katabu is true
+  #   narrow_height: true|false
+  #   supports_clip_picking: true|false
+
+# Special widget indices (used for UI routing)
+widget_groups:
+  inspection_widgets: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 22, 23, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 48, 49]
+  inspection_without_dailytenken: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 48, 49]
+  katabu_widgets: [5, 6, 7, 8, 9, 10, 11, 12]
+  katabu_L: [5, 7, 9, 11]
+  katabu_R: [6, 8, 10, 12]
+  narrow_height: [17, 18, 31, 32, 33, 34, 36, 39, 40, 41, 42, 43, 48, 49]
+  wide_height: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 21, 22, 23, 31, 32, 33, 34, 35, 37, 38]
+  clip_picking_supported: [5, 6, 7, 8]
+
+# Per-widget crop points for combined image (full-resolution coordinates).
+# Format: [x1, y1, x2, y2, x3, y3, x4, y4]
+# Default template below uses full wide region; tune each widget independently as needed.
+widget_crop_points:
+  5: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
+  6: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
+  7: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
+  8: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
+  9: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
+  10: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
+  11: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
+  12: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
+  13: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
+  14: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
+  15: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
+  16: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
+  17: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
+  18: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
+  21: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
+  22: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
+  23: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
+  30: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
+  31: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
+  32: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
+  33: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
+  34: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
+  35: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
+  36: [985, 1770, 5775, 1770, 5775, 2190, 5775, 1770]
+  37: [118, 1784, 6646, 1786, 6635, 2215, 6646, 1786]
+  38: [118, 1784, 6646, 1786, 6635, 2215, 6646, 1786]
+  39: [1497, 1770, 5263, 1770, 5263, 2190, 5263, 1770]
+  40: [1497, 1770, 5263, 1770, 5263, 2190, 5263, 1770]
+  41: [985, 1770, 5775, 1770, 5775, 2190, 5775, 1770]
+  42: [985, 1770, 5775, 1770, 5775, 2190, 5775, 1770]
+  43: [985, 1770, 5775, 1770, 5775, 2190, 5775, 1770]
+  44: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
+  45: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
+  46: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
+  47: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
+  48: [118, 1784, 6646, 1786, 6635, 2215, 6646, 1786]
+  49: [118, 1784, 6646, 1786, 6635, 2215, 6646, 1786]
+
+# Per-widget cam2 homography translation offsets [dx, dy].
+# These offsets are applied to H2 (cam2) only. Cam1 remains the anchor.
+# Units are full-resolution pixels; scaled preview uses dx/scale_factor, dy/scale_factor automatically.
+widget_h2_offsets_cam2:
+  5: [0.0, 0.0]
+  6: [0.0, 0.0]
+  7: [0.0, 0.0]
+  8: [0.0, 0.0]
+  9: [0.0, 0.0]
+  10: [0.0, 0.0]
+  11: [0.0, 0.0]
+  12: [0.0, 0.0]
+  13: [0.0, 0.0]
+  14: [0.0, 0.0]
+  15: [0.0, 0.0]
+  16: [0.0, 0.0]
+  17: [0.0, 0.0]
+  18: [0.0, 0.0]
+  21: [0.0, 0.0]
+  22: [0.0, 0.0]
+  23: [0.0, 0.0]
+  30: [0.0, 0.0]
+  31: [0.0, 0.0]
+  32: [0.0, 0.0]
+  33: [0.0, 0.0]
+  34: [0.0, 0.0]
+  35: [0.0, 0.0]
+  36: [7.0, -4.0]
+  37: [0.0, 0.0]
+  38: [0.0, 0.0]
+  39: [22.0, -7.0]
+  40: [22.0, -7.0]
+  41: [0.0, 0.0]
+  42: [0.0, 0.0]
+  43: [29.0, -4.0]
+  44: [0.0, 0.0]
+  45: [0.0, 0.0]
+  46: [0.0, 0.0]
+  47: [0.0, 0.0]
+  48: [16.0, -4.0]
+  49: [16.0, -4.0]
