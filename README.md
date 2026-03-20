@@ -58,4 +58,4 @@ pip install -U pip
 pip install pyqt5 numpy opencv-python pyyaml ultralytics
 # optional:
 # pip install pymodbus
-
+```
