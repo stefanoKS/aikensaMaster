@@ -1,4 +1,4 @@
-# AIKENSA (aikensa_dcam) — v0.1.0_2go3go
+# AIKENSA (aikensa_dcam) MASTER
 
 Internal inspection software built with **Qt (PyQt5)** for multi-camera visual inspection workflows.
 Designed for production-line use: camera capture → preprocessing → ML inference (detection / keypoints / segmentation / anomaly) → OK/NG decision → UI display + logging.
