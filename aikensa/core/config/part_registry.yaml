@@ -188,8 +188,8 @@ parts:
   - widget_id: 31
     part_number: "658217UA0A"
     part_name: "Seal Assembly - Variant 01"
-    module_path: "aikensa.core.config.parts.dailyTenken.dailyTenken"
-    partcheck_function: "dailyTenken"
+    module_path: "aikensa.core.config.parts.NICHIJOU_TENKEN"
+    partcheck_function: "partcheck"
     signal_name: "P658217UA0A_InspectionResult"
     directory_name: "658217UA0A"
     inspection_type: "general_inspection"
@@ -200,8 +200,8 @@ parts:
   - widget_id: 32
     part_number: "658207UA0A"
     part_name: "Seal Assembly - Variant 02"
-    module_path: "aikensa.core.config.parts.dailyTenken.dailyTenken"
-    partcheck_function: "dailyTenken"
+    module_path: "aikensa.core.config.parts.NICHIJOU_TENKEN"
+    partcheck_function: "partcheck"
     signal_name: "P658207UA0A_InspectionResult"
     directory_name: "658207UA0A"
     inspection_type: "general_inspection"
@@ -212,8 +212,8 @@ parts:
   - widget_id: 33
     part_number: "658217UJ0A"
     part_name: "Seal Assembly - Variant 03"
-    module_path: "aikensa.core.config.parts.dailyTenken.dailyTenken"
-    partcheck_function: "dailyTenken"
+    module_path: "aikensa.core.config.parts.NICHIJOU_TENKEN"
+    partcheck_function: "partcheck"
     signal_name: "P658217UJ0A_InspectionResult"
     directory_name: "658217UJ0A"
     inspection_type: "general_inspection"
@@ -224,8 +224,8 @@ parts:
   - widget_id: 34
     part_number: "658207UJ0A"
     part_name: "Seal Assembly - Variant 04"
-    module_path: "aikensa.core.config.parts.dailyTenken.dailyTenken"
-    partcheck_function: "dailyTenken"
+    module_path: "aikensa.core.config.parts.NICHIJOU_TENKEN"
+    partcheck_function: "partcheck"
     signal_name: "P658207UJ0A_InspectionResult"
     directory_name: "658207UJ0A"
     inspection_type: "general_inspection"
@@ -237,11 +237,13 @@ parts:
   - widget_id: 21
     part_number: "dailyTenken_01"
     part_name: "Daily Inspection 01"
-    module_path: "aikensa.core.config.parts.dailyTenken.dailyTenken"
-    partcheck_function: "dailyTenken"
+    module_path: "aikensa.core.config.parts.NICHIJOU_TENKEN"
+    partcheck_function: "partcheck"
     signal_name: "dailyTenken_01_InspectionResult"
     directory_name: "dailyTenken_01"
     inspection_type: "daily_inspection"
+    inference_crop: [0, 0, 1890, 1342]
+    keypoint_model_imgsz: 1980
     has_katabu: false
     narrow_height: false
     supports_clip_picking: false
@@ -249,11 +251,13 @@ parts:
   - widget_id: 22
     part_number: "dailyTenken_02"
     part_name: "Daily Inspection 02"
-    module_path: "aikensa.core.config.parts.dailyTenken.dailyTenken"
-    partcheck_function: "dailyTenken"
+    module_path: "aikensa.core.config.parts.NICHIJOU_TENKEN"
+    partcheck_function: "partcheck"
     signal_name: "dailyTenken_02_InspectionResult"
     directory_name: "dailyTenken_02"
     inspection_type: "daily_inspection"
+    inference_crop: [2100, 0, 1890, 1342]
+    keypoint_model_imgsz: 1980
     has_katabu: false
     narrow_height: false
     supports_clip_picking: false
@@ -261,11 +265,13 @@ parts:
   - widget_id: 23
     part_number: "dailyTenken_03"
     part_name: "Daily Inspection 03"
-    module_path: "aikensa.core.config.parts.dailyTenken.dailyTenken"
-    partcheck_function: "dailyTenken"
+    module_path: "aikensa.core.config.parts.NICHIJOU_TENKEN"
+    partcheck_function: "partcheck"
     signal_name: "dailyTenken_03_InspectionResult"
     directory_name: "dailyTenken_03"
     inspection_type: "daily_inspection"
+    inference_crop: [4200, 0, 1890, 1342]
+    keypoint_model_imgsz: 1980
     has_katabu: false
     narrow_height: false
     supports_clip_picking: false
@@ -279,6 +285,8 @@ parts:
     signal_name: "P658207LE0A_InspectionResult"
     directory_name: "P658207LE0A"
     inspection_type: "keypoint"
+    keypoint_crop_px: 2200
+    keypoint_model_imgsz: 1080
     has_katabu: false
     narrow_height: false
     supports_clip_picking: false
@@ -328,7 +336,7 @@ parts:
     signal_name: "P828387YA1A_InspectionResult_PitchMeasured"
     directory_name: "828387YA1A"
     inspection_type: "keypoint"
-    keypoint_crop_px: 840
+    keypoint_crop_px: 1080
     has_katabu: false
     narrow_height: true
     supports_clip_picking: false
@@ -341,7 +349,7 @@ parts:
     signal_name: "P828397YA1A_InspectionResult_PitchMeasured"
     directory_name: "828397YA1A"
     inspection_type: "keypoint"
-    keypoint_crop_px: 840
+    keypoint_crop_px: 1080
     has_katabu: false
     narrow_height: true
     supports_clip_picking: false
@@ -354,7 +362,10 @@ parts:
     signal_name: "P828387YA6A_InspectionResult_PitchMeasured"
     directory_name: "828387YA6A"
     inspection_type: "keypoint"
-    has_katabu: false
+    keypoint_crop_px: 1260
+    katabu_crop: [5350, 70, 480, 240, 480, 240]
+    has_katabu: true
+    katabu_side: "R"
     narrow_height: true
     supports_clip_picking: false
 
@@ -366,7 +377,10 @@ parts:
     signal_name: "P828397YA6A_InspectionResult_PitchMeasured"
     directory_name: "828397YA6A"
     inspection_type: "keypoint"
-    has_katabu: false
+    keypoint_crop_px: 1260
+    katabu_crop: [560, 70, 480, 240, 480, 240]
+    has_katabu: true
+    katabu_side: "L"
     narrow_height: true
     supports_clip_picking: false
 
@@ -417,6 +431,8 @@ parts:
   #   signal_name: "PXXXXXXXXX_InspectionResult_PitchMeasured"
   #   directory_name: "XXXXXXXXX"
   #   inspection_type: "keypoint|clip_detection|clip_insertion|daily_inspection"
+  #   keypoint_crop_px: 1260
+  #   katabu_crop: [x, y, w, h, wout, hout]  # Optional per-part katabu crop override
   #   has_katabu: true|false
   #   katabu_side: "L|R"  # Only if has_katabu is true
   #   narrow_height: true|false
@@ -426,9 +442,9 @@ parts:
 widget_groups:
   inspection_widgets: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 22, 23, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 48, 49]
   inspection_without_dailytenken: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 48, 49]
-  katabu_widgets: [5, 6, 7, 8, 9, 10, 11, 12]
-  katabu_L: [5, 7, 9, 11]
-  katabu_R: [6, 8, 10, 12]
+  katabu_widgets: [5, 6, 7, 8, 9, 10, 11, 12, 41, 42]
+  katabu_L: [5, 7, 9, 11, 41]
+  katabu_R: [6, 8, 10, 12, 42]
   narrow_height: [17, 18, 31, 32, 33, 34, 36, 39, 40, 41, 42, 43, 48, 49]
   wide_height: [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 21, 22, 23, 31, 32, 33, 34, 35, 37, 38]
   clip_picking_supported: [5, 6, 7, 8]
@@ -451,22 +467,22 @@ widget_crop_points:
   16: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
   17: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
   18: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
-  21: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
-  22: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
-  23: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
+  21: [118, 1784, 6646, 1786, 6635, 2215, 6646, 1786]
+  22: [118, 1784, 6646, 1786, 6635, 2215, 6646, 1786]
+  23: [118, 1784, 6646, 1786, 6635, 2215, 6646, 1786]
   30: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
   31: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
   32: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
   33: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
   34: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
-  35: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
+  35: [985, 1770, 5775, 1770, 5775, 2190, 5775, 1770]
   36: [985, 1770, 5775, 1770, 5775, 2190, 5775, 1770]
   37: [118, 1784, 6646, 1786, 6635, 2215, 6646, 1786]
   38: [118, 1784, 6646, 1786, 6635, 2215, 6646, 1786]
   39: [1497, 1770, 5263, 1770, 5263, 2190, 5263, 1770]
   40: [1497, 1770, 5263, 1770, 5263, 2190, 5263, 1770]
-  41: [985, 1770, 5775, 1770, 5775, 2190, 5775, 1770]
-  42: [985, 1770, 5775, 1770, 5775, 2190, 5775, 1770]
+  41: [118, 1784, 6646, 1786, 6635, 2215, 6646, 1786]
+  42: [118, 1784, 6646, 1786, 6635, 2215, 6646, 1786]
   43: [985, 1770, 5775, 1770, 5775, 2190, 5775, 1770]
   44: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
   45: [0, 0, 5672, 0, 5672, 1342, 0, 1342]
@@ -493,9 +509,9 @@ widget_h2_offsets_cam2:
   16: [0.0, 0.0]
   17: [0.0, 0.0]
   18: [0.0, 0.0]
-  21: [0.0, 0.0]
-  22: [0.0, 0.0]
-  23: [0.0, 0.0]
+  21: [13.0, 0.0]
+  22: [13.0, 0.0]
+  23: [13.0, 0.0]
   30: [0.0, 0.0]
   31: [0.0, 0.0]
   32: [0.0, 0.0]
@@ -503,12 +519,12 @@ widget_h2_offsets_cam2:
   34: [0.0, 0.0]
   35: [0.0, 0.0]
   36: [7.0, -4.0]
-  37: [0.0, 0.0]
-  38: [0.0, 0.0]
-  39: [22.0, -7.0]
-  40: [22.0, -7.0]
-  41: [0.0, 0.0]
-  42: [0.0, 0.0]
+  37: [05.0, 0.0]
+  38: [05.0, 0.0]
+  39: [27.0, -2.0]
+  40: [27.0, -2.0]
+  41: [24.0, 0.0]
+  42: [24.0, 0.0]
   43: [29.0, -4.0]
   44: [0.0, 0.0]
   45: [0.0, 0.0]

@@ -88,10 +88,55 @@ def _try_get_str(pm: ic4.PropertyMap, prop_ids: Iterable) -> Optional[str]:
     return None
 
 
+def _try_set_balance_ratio(pm: ic4.PropertyMap, selector: str, ratio: float) -> bool:
+    if PID_BALANCE_RATIO_SELECTOR is None or PID_BALANCE_RATIO is None:
+        return False
+    try:
+        pm.set_value(PID_BALANCE_RATIO_SELECTOR, selector)
+        pm.set_value(PID_BALANCE_RATIO, float(ratio))
+        return True
+    except ic4.IC4Exception:
+        return False
+
+
+def _apply_manual_wb_ratios(pm: ic4.PropertyMap,
+                            wb_ratio_r: float | None,
+                            wb_ratio_g: float | None,
+                            wb_ratio_b: float | None) -> bool:
+    applied = False
+
+    if wb_ratio_r is not None:
+        applied = _try_set_balance_ratio(pm, "Red", wb_ratio_r) or applied
+
+    if wb_ratio_g is not None:
+        for selector in ("Green", "GreenRed", "GreenBlue"):
+            applied = _try_set_balance_ratio(pm, selector, wb_ratio_g) or applied
+
+    if wb_ratio_b is not None:
+        applied = _try_set_balance_ratio(pm, "Blue", wb_ratio_b) or applied
+
+    return applied
+
+
+def _read_balance_ratio(pm: ic4.PropertyMap, selector_candidates: Iterable[str]) -> Optional[float]:
+    if PID_BALANCE_RATIO_SELECTOR is None or PID_BALANCE_RATIO is None:
+        return None
+    for selector in selector_candidates:
+        try:
+            pm.set_value(PID_BALANCE_RATIO_SELECTOR, selector)
+            return float(pm.get_value_float(PID_BALANCE_RATIO))
+        except ic4.IC4Exception:
+            continue
+    return None
+
+
 def _apply_manual_ae_gain_wb(pm: ic4.PropertyMap,
                              exposure_us: float | None,
                              gain_db: float | None,
-                             wb_temperature: int | None) -> None:
+                             wb_temperature: int | None,
+                             wb_ratio_r: float | None = 2.2,
+                             wb_ratio_g: float | None = 1.0,
+                             wb_ratio_b: float | None = 2.2) -> None:
     # Force all auto controls off before writing manual values.
     _try_set(pm, (PID_EXPOSURE_AUTO,), "Off")
     _try_set(pm, (PID_GAIN_AUTO,), "Off")
@@ -101,7 +146,7 @@ def _apply_manual_ae_gain_wb(pm: ic4.PropertyMap,
         _try_set(pm, (PID_EXPOSURE_TIME,), float(exposure_us))
     if gain_db is not None:
         _try_set(pm, (PID_GAIN,), float(gain_db))
-    if wb_temperature is not None:
+    if not _apply_manual_wb_ratios(pm, wb_ratio_r, wb_ratio_g, wb_ratio_b) and wb_temperature is not None:
         _try_set(pm, (PID_WB_TEMP,), int(wb_temperature))
 
 
@@ -125,6 +170,9 @@ def _readback_ae_gain_wb(pm: ic4.PropertyMap) -> dict:
         "exposure_us": _try_get_float(pm, (PID_EXPOSURE_TIME,)),
         "gain_db": _try_get_float(pm, (PID_GAIN,)),
         "wb_k": _try_get_int(pm, (PID_WB_TEMP,)),
+        "wb_ratio_r": _read_balance_ratio(pm, ("Red",)),
+        "wb_ratio_g": _read_balance_ratio(pm, ("Green", "GreenRed", "GreenBlue")),
+        "wb_ratio_b": _read_balance_ratio(pm, ("Blue",)),
     }
 
 # PropId aliases (be tolerant across models)
@@ -143,6 +191,8 @@ PID_GAIN_AUTO          = getattr(ic4.PropId, "GAIN_AUTO", None)
 PID_GAIN               = getattr(ic4.PropId, "GAIN", None)
 PID_WB_AUTO            = getattr(ic4.PropId, "BALANCE_WHITE_AUTO", None)
 PID_WB_TEMP            = getattr(ic4.PropId, "WHITEBALANCE_TEMPERATURE", None)
+PID_BALANCE_RATIO_SELECTOR = getattr(ic4.PropId, "BALANCE_RATIO_SELECTOR", None)
+PID_BALANCE_RATIO      = getattr(ic4.PropId, "BALANCE_RATIO", None)
 
 # Frame-rate names differ; try both, but it's optional for SnapSink.
 PID_FRAME_RATE         = getattr(ic4.PropId, "FRAME_RATE", None)
@@ -265,9 +315,12 @@ class IC4Capture:
                  cam: Union[int, str],
                  width: int = 3072, height: int = 2048, fps: float = 5.0,
                  color: bool = True,
-                 exposure_us: float | None = 15000,
+                 exposure_us: float | None = 10000,
                  gain_db: float | None = 10,
                  wb_temperature: int | None = 4500,
+                 wb_ratio_r: float | None = 2.2,
+                 wb_ratio_g: float | None = 1.0,
+                 wb_ratio_b: float | None = 2.2,
                  rotate_180: bool = False):
         _ensure_ic4_context()
 
@@ -300,7 +353,15 @@ class IC4Capture:
         self._rotate_180_fallback = rotate_180 and not (rx_ok and ry_ok)
 
         # Exposure / Gain / WB: keep deterministic startup order.
-        _apply_manual_ae_gain_wb(pm, exposure_us, gain_db, wb_temperature)
+        _apply_manual_ae_gain_wb(
+            pm,
+            exposure_us,
+            gain_db,
+            wb_temperature,
+            wb_ratio_r,
+            wb_ratio_g,
+            wb_ratio_b,
+        )
 
         # Frame rate (optional; if out-of-range it will just be ignored by the device)
         _try_set(pm, (PID_ACQ_FR_EN,), True)
@@ -408,9 +469,12 @@ def initialize_camera_ic4(cam_id_or_serial: Union[int, str],
                           height: int = 2048,
                           fps: float = 30.0,
                           color: bool = True,
-                          exposure_us: float | None = 15000,
+                          exposure_us: float | None = 10000,
                           gain_db: float | None = 10,
                           wb_temperature: int | None = 4500,
+                          wb_ratio_r: float | None = 2.2,
+                          wb_ratio_g: float | None = 1.0,
+                          wb_ratio_b: float | None = 2.2,
                           auto_exposure: bool = False,
                           auto_gain: bool = False,
                           auto_wb: bool = False,
@@ -421,12 +485,22 @@ def initialize_camera_ic4(cam_id_or_serial: Union[int, str],
     """
     try:
         cam = IC4Capture(cam_id_or_serial, width, height, fps, color,
-                         exposure_us, gain_db, wb_temperature, rotate_180=rotate_180)
+                         exposure_us, gain_db, wb_temperature,
+                         wb_ratio_r, wb_ratio_g, wb_ratio_b,
+                         rotate_180=rotate_180)
         pm = cam._grab.device_property_map
 
         # Guard against startup drift: always force manual mode on initialization.
         # Keep the auto_* params for backward compatibility, but ignore True requests here.
-        _apply_manual_ae_gain_wb(pm, exposure_us, gain_db, wb_temperature)
+        _apply_manual_ae_gain_wb(
+            pm,
+            exposure_us,
+            gain_db,
+            wb_temperature,
+            wb_ratio_r,
+            wb_ratio_g,
+            wb_ratio_b,
+        )
 
         if auto_exposure or auto_gain or auto_wb:
             print(
@@ -438,7 +512,8 @@ def initialize_camera_ic4(cam_id_or_serial: Union[int, str],
         print(
             f"[IC4 Init Readback] cam={cam_id_or_serial} "
             f"auto(exp/gain/wb)=({rb['exp_auto']}/{rb['gain_auto']}/{rb['wb_auto']}) "
-            f"exp_us={rb['exposure_us']} gain_db={rb['gain_db']} wb_k={rb['wb_k']}"
+            f"exp_us={rb['exposure_us']} gain_db={rb['gain_db']} wb_k={rb['wb_k']} "
+            f"wb_rgb=({rb['wb_ratio_r']}/{rb['wb_ratio_g']}/{rb['wb_ratio_b']})"
         )
 
         print(f"✓ Camera '{cam_id_or_serial}' initialized successfully")
@@ -457,8 +532,11 @@ def open_ic4_camera_or_placeholder(ic4id,
                                    rotate_180: bool = False,
                                    color: bool = True,
                                    exposure_us: float = 10000,
-                                   gain_db: float = 10,
-                                   wb_temperature: int = 4500,
+                                   gain_db: float = 15,
+                                   wb_temperature: int = 4000,
+                                   wb_ratio_r: float = 2.2,
+                                   wb_ratio_g: float = 1.0,
+                                   wb_ratio_b: float = 2.2,
                                    auto_exposure: bool = False,
                                    auto_gain: bool = False,
                                    auto_wb: bool = False) -> Union[IC4Capture, DummyCapture]:
@@ -472,6 +550,9 @@ def open_ic4_camera_or_placeholder(ic4id,
         exposure_us=exposure_us,
         gain_db=gain_db,
         wb_temperature=wb_temperature,
+        wb_ratio_r=wb_ratio_r,
+        wb_ratio_g=wb_ratio_g,
+        wb_ratio_b=wb_ratio_b,
         auto_exposure=auto_exposure,
         auto_gain=auto_gain,
         auto_wb=auto_wb,

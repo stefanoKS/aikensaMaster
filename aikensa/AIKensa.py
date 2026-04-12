@@ -14,7 +14,7 @@ from typing import List
 
 from PyQt5 import QtCore
 
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QStackedWidget, QLabel, QSlider, QMainWindow, QWidget, QCheckBox, QShortcut, QLineEdit, QComboBox, QMessageBox
+from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QStackedWidget, QLabel, QSlider, QMainWindow, QWidget, QCheckBox, QShortcut, QLineEdit, QComboBox, QMessageBox, QFrame
 from PyQt5.uic import loadUi
 from PyQt5.QtCore import QThread, pyqtSignal, Qt, QCoreApplication
 from PyQt5.QtGui import QImage, QPixmap, QKeySequence, QColor
@@ -88,27 +88,8 @@ class AIKensa(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
 
-        self.calibration_thread = CalibrationThread(CalibrationConfig())
-        self.inspection_thread = InspectionThread(InspectionConfig())   
-        self._setup_ui()
-
-        # Thread for SiO
-        HOST = '192.168.0.100'  # Use the IP address from SiO settings
-        PORT = 40001  # Use the port number from SiO settings
-
-        self.server_monitor_thread = ServerMonitorThread(
-            HOST, PORT, check_interval=0.05)
-        self.server_monitor_thread.server_status_signal.connect(self.handle_server_status)
-        self.server_monitor_thread.input_states_signal.connect(self.handle_input_states)
-        self.server_monitor_thread.start()
-
-        self.button0 = DebouncedButton(debounce_ms=40)
-
-        self.timeMonitorThread = TimeMonitorThread(check_interval=1)
-        self.timeMonitorThread.time_signal.connect(self.timeUpdate)
-        self.timeMonitorThread.start()
-
         self.initial_colors = {}#store initial colors of the labels
+        self.part_mode_ui_state = {}
 
         self.widget_dir_map = {
             5: "82833W050P",
@@ -150,14 +131,34 @@ class AIKensa(QMainWindow):
         }
 
         self.inspectionWidget_indices = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 22, 23, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49]
-        self.inspectionWidget_withKatabu  = [5, 6, 7, 8, 9, 10, 11, 12]
+        self.inspectionWidget_withKatabu  = [5, 6, 7, 8, 9, 10, 11, 12, 41, 42]
+        self.inspectionWidget_singleKatabuL = [42]
+        self.inspectionWidget_singleKatabuR = [41]
         self.inspectionWidget_withClip  = [5, 6, 7, 8]
 
         self.prevTriggerStates = 0
         self.TriggerWaitTime = 3.0
         self.currentTime = time.time()
 
+        self.calibration_thread = CalibrationThread(CalibrationConfig())
+        self.inspection_thread = InspectionThread(InspectionConfig())   
+        self._setup_ui()
 
+        # Thread for SiO
+        HOST = '192.168.0.100'  # Use the IP address from SiO settings
+        PORT = 40001  # Use the port number from SiO settings
+
+        self.server_monitor_thread = ServerMonitorThread(
+            HOST, PORT, check_interval=0.05)
+        self.server_monitor_thread.server_status_signal.connect(self.handle_server_status)
+        self.server_monitor_thread.input_states_signal.connect(self.handle_input_states)
+        self.server_monitor_thread.start()
+
+        self.button0 = DebouncedButton(debounce_ms=40)
+
+        self.timeMonitorThread = TimeMonitorThread(check_interval=1)
+        self.timeMonitorThread.time_signal.connect(self.timeUpdate)
+        self.timeMonitorThread.start()
 
     def timeUpdate(self, time):
         for label in self.timeLabel:
@@ -238,6 +239,8 @@ class AIKensa(QMainWindow):
         self.inspection_thread.P828387YA0A_InspectionResult_PitchMeasured.connect(self._outputMeasurementText_P828387YA0A)
         self.inspection_thread.P828387YA1A_InspectionResult_PitchMeasured.connect(self._outputMeasurementText_P828387YA1A)
         self.inspection_thread.P828397YA1A_InspectionResult_PitchMeasured.connect(self._outputMeasurementText_P828397YA1A)
+        self.inspection_thread.P828387YA6A_InspectionResult_PitchMeasured.connect(self._outputMeasurementText_P828387YA6A)
+        self.inspection_thread.P828397YA6A_InspectionResult_PitchMeasured.connect(self._outputMeasurementText_P828397YA6A)
         self.inspection_thread.P828387YA6A_KATABU_NASHI_InspectionResult_PitchMeasured.connect(self._outputMeasurementText_P828387YA6A_KATABU_NASHI)
         self.inspection_thread.P828397YA6A_KATABU_NASHI_InspectionResult_PitchMeasured.connect(self._outputMeasurementText_P828397YA6A_KATABU_NASHI)
         self.inspection_thread.P658107YA0A_InspectionResult_PitchMeasured.connect(self._outputMeasurementText_P658107YA0A)
@@ -382,9 +385,12 @@ class AIKensa(QMainWindow):
         dailytenken03_back_button.clicked.connect(lambda: self.stackedWidget.setCurrentIndex(22))
         dailytenken03_back_button.clicked.connect(lambda: self._set_inspection_params(self.inspection_thread, 'widget', 22))
 
-        self.widget_indices_list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 36, 37, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49]
-        self.inspection_widget_indices = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 22, 23, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49]
-        self.inspection_widget_indices_without_dailytenken = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49]
+        self.widget_indices_list = [0, 1, 2, 3, 4] + list(self.inspectionWidget_indices)
+        self.inspection_widget_indices = list(self.inspectionWidget_indices)
+        self.inspection_widget_indices_without_dailytenken = [
+            widget_index for widget_index in self.inspectionWidget_indices
+            if widget_index not in [21, 22, 23]
+        ]
 
 
         self.timeLabel = [self.stackedWidget.widget(i).findChild(QLabel, "timeLabel") for i in self.widget_indices_list]
@@ -414,6 +420,8 @@ class AIKensa(QMainWindow):
             #additional logic for ppms number
             if i in [13, 14, 15, 16, 17, 18]:
                 self.connect_line_edit_text_changed(widget_index=i, line_edit_name="ppms_number", inspection_param="ppmsnumber")
+
+        self._connect_part_nichijoutenken_checkbox(widget_index=36)
 
         
         for i in range(self.stackedWidget.count()):
@@ -476,7 +484,11 @@ class AIKensa(QMainWindow):
         widget = self.stackedWidget.widget(widget_index)
         button = widget.findChild(QPushButton, button_name)
         if button:
-            button.pressed.connect(lambda: self._set_inspection_params(self.inspection_thread, cam_param, value))
+            if cam_param == "counterReset":
+                button.clicked.connect(lambda _checked=False, idx=widget_index: self._request_counter_reset(self.inspection_thread, idx))
+            else:
+                button.clicked.connect(lambda _checked=False, param=cam_param, new_value=value: self._set_inspection_params(self.inspection_thread, param, new_value))
+                button.clicked.connect(lambda: self.inspection_thread.start() if not self.inspection_thread.isRunning() else None)
             # print(f"Button '{button_name}' connected to cam_param '{cam_param}' with value '{value}' in widget {widget_index}")
 
     def _close_app(self):
@@ -1441,7 +1453,14 @@ class AIKensa(QMainWindow):
         for i in self.inspectionWidget_withKatabu:
             widget = self.stackedWidget.widget(i)
             label = widget.findChild(QLabel, "frameKatabuL")
-            label.setPixmap(QPixmap.fromImage(image))
+            if label:
+                label.setPixmap(QPixmap.fromImage(image))
+
+        for i in self.inspectionWidget_singleKatabuL:
+            widget = self.stackedWidget.widget(i)
+            label = widget.findChild(QLabel, "frameKatabu")
+            if label:
+                label.setPixmap(QPixmap.fromImage(image))
 
     def _setClip1Frame(self, image):
         for i in self.inspectionWidget_withClip:
@@ -1465,7 +1484,14 @@ class AIKensa(QMainWindow):
         for i in self.inspectionWidget_withKatabu:
             widget = self.stackedWidget.widget(i)
             label = widget.findChild(QLabel, "frameKatabuR")
-            label.setPixmap(QPixmap.fromImage(image))
+            if label:
+                label.setPixmap(QPixmap.fromImage(image))
+
+        for i in self.inspectionWidget_singleKatabuR:
+            widget = self.stackedWidget.widget(i)
+            label = widget.findChild(QLabel, "frameKatabu")
+            if label:
+                label.setPixmap(QPixmap.fromImage(image))
 
     def _extract_color(self, stylesheet):
         # Extracts the color value from the stylesheet string
@@ -1487,6 +1513,65 @@ class AIKensa(QMainWindow):
 
     def _set_inspection_params(self, thread, key, value):
         setattr(thread.inspection_config, key, value)
+        if key == "doInspection" and value is True and hasattr(thread, "InspectionWaitTime"):
+            thread.InspectionTimeStart = time.time() - thread.InspectionWaitTime
+
+    def _connect_part_nichijoutenken_checkbox(self, widget_index):
+        widget = self.stackedWidget.widget(widget_index)
+        if not widget:
+            return
+
+        checkbox = widget.findChild(QCheckBox, "partnichijoutenken_checkbox")
+        if not checkbox:
+            return
+
+        checkbox.stateChanged.connect(
+            lambda state, idx=widget_index: self._set_part_nichijoutenken_mode(idx, state == Qt.Checked)
+        )
+        self._set_part_nichijoutenken_mode(widget_index, checkbox.isChecked())
+
+    def _set_part_nichijoutenken_mode(self, widget_index, enabled):
+        config = getattr(self.inspection_thread.inspection_config, "nichijoutenken_enabled", None)
+        if isinstance(config, list) and 0 <= widget_index < len(config):
+            config[widget_index] = bool(enabled)
+
+        self._apply_part_nichijoutenken_ui(widget_index, bool(enabled))
+
+    def _apply_part_nichijoutenken_ui(self, widget_index, enabled):
+        widget = self.stackedWidget.widget(widget_index)
+        if not widget:
+            return
+
+        seihin_label = widget.findChild(QLabel, "seihinLabel")
+        frame = widget.findChild(QFrame, "frame")
+
+        if widget_index not in self.part_mode_ui_state:
+            self.part_mode_ui_state[widget_index] = {
+                "seihin_text": seihin_label.text() if seihin_label else "",
+                "frame_style": frame.styleSheet() if frame else "",
+            }
+
+        original_state = self.part_mode_ui_state[widget_index]
+        if seihin_label:
+            base_text = original_state["seihin_text"]
+            seihin_label.setText(f"{base_text} 日常点検" if enabled else base_text)
+
+        if frame:
+            frame.setStyleSheet("background-color: rgb(252, 233, 79);" if enabled else original_state["frame_style"])
+
+    def _request_counter_reset(self, thread, widget_index):
+        if hasattr(thread, "setCounterFalse"):
+            thread.setCounterFalse()
+
+        thread.inspection_config.widget = widget_index
+        thread.inspection_config.counterReset = True
+
+        if 0 <= widget_index < len(thread.inspection_config.current_numofPart):
+            thread.inspection_config.current_numofPart[widget_index] = [0, 0]
+            thread.current_numofPart_signal.emit(thread.inspection_config.current_numofPart)
+
+        if not thread.isRunning():
+            thread.start()
 
     def _setEthernetStatus(self, input):
         self.server_monitor_thread.server_config.eth_flag_0_4 = input
@@ -1514,23 +1599,33 @@ class AIKensa(QMainWindow):
 
     def _outputMeasurementText_P658207LE0A(self, measurementValue, measurementResult):
         """Callback for P13C Part (P658207LE0A) inspection results"""
-        label_names_part = ["P1label", "P2label", "P3label", "P4label", "P5label", "P6label", "P7label"]
+        label_names_part = [
+            "P1label", "P2label", "P3label", "P4label", "P5label",
+            "P6label", "P7label", "P8label", "P9label", "P10label",
+        ]
         for widget_index in [35]:
             for label_index, label_name in enumerate(label_names_part):
                 label = self.stackedWidget.widget(widget_index).findChild(QLabel, label_name)
                 if label:
-                    if (measurementValue and isinstance(measurementValue, list) and len(measurementValue) > 0 
+                    if (measurementValue and isinstance(measurementValue, list) and len(measurementValue) > 0
                         and isinstance(measurementValue[0], list) and len(measurementValue[0]) > label_index):
                         value = measurementValue[0][label_index] if measurementValue[0][label_index] is not None else "None"
                     else:
-                        value = "None"
+                        value = "-"
                     label.setText(str(value))
-                    
-                    # Set color based on result
-                    if (measurementResult and isinstance(measurementResult, list) and len(measurementResult) > 0 
+
+                    if (measurementResult and isinstance(measurementResult, list) and len(measurementResult) > 0
                         and isinstance(measurementResult[0], list) and len(measurementResult[0]) > label_index):
                         result = measurementResult[0][label_index]
-                        label.setStyleSheet("color: green;" if result else "color: red;")
+                    else:
+                        result = None
+
+                    if result == 1:
+                        label.setStyleSheet("color: rgb(46, 52, 54); background-color: green;")
+                    elif result == 0:
+                        label.setStyleSheet("color: rgb(46, 52, 54); background-color: red;")
+                    else:
+                        label.setStyleSheet("color: rgb(46, 52, 54); background-color: rgb(211, 215, 207);")
         
 
 def main():

@@ -77,7 +77,7 @@ background-color: rgba(255, 255, 255, 0);</string>
     <property name="geometry">
      <rect>
       <x>60</x>
-      <y>231</y>
+      <y>160</y>
       <width>361</width>
       <height>31</height>
      </rect>
@@ -94,7 +94,7 @@ background-color: rgba(255, 255, 255, 0);</string>
      <string notr="true">color: rgb(238, 238, 236);</string>
     </property>
     <property name="text">
-     <string>キャリブレーシオン、点検な</string>
+     <string>キャリブレーシオン</string>
     </property>
     <property name="alignment">
      <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
@@ -321,7 +321,7 @@ background-color: rgba(255, 255, 255, 0);</string>
      <rect>
       <x>50</x>
       <y>361</y>
-      <width>231</width>
+      <width>501</width>
       <height>91</height>
      </rect>
     </property>
@@ -370,7 +370,7 @@ Daily Check</string>
     <property name="geometry">
      <rect>
       <x>50</x>
-      <y>271</y>
+      <y>200</y>
       <width>161</width>
       <height>61</height>
      </rect>
@@ -393,7 +393,7 @@ Camera①Calib.</string>
     <property name="geometry">
      <rect>
       <x>220</x>
-      <y>271</y>
+      <y>200</y>
       <width>161</width>
       <height>61</height>
      </rect>
@@ -416,7 +416,7 @@ Camera②Calib.</string>
     <property name="geometry">
      <rect>
       <x>390</x>
-      <y>271</y>
+      <y>200</y>
       <width>161</width>
       <height>61</height>
      </rect>
@@ -1157,7 +1157,7 @@ color: rgb(240, 240, 240);</string>
         <string>J42U
 82838 7YA1A
 SEAL-RR DOOR PARTING, RH
-(LOCK)</string>
+(LOCK) 桃色</string>
        </property>
        <property name="icon">
         <iconset>
@@ -1216,7 +1216,7 @@ color: rgb(240, 240, 240);</string>
         <string>J42U
 82839 7YA1A
 SEAL-RR DOOR PARTING, LH
-(LOCK)</string>
+(LOCK) 黄色</string>
        </property>
        <property name="icon">
         <iconset>
@@ -1564,6 +1564,33 @@ KATABU NASHI(RR STEP)</string>
      </item>
     </layout>
    </widget>
+   <widget class="QLabel" name="label_6">
+    <property name="geometry">
+     <rect>
+      <x>60</x>
+      <y>320</y>
+      <width>361</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>Ubuntu Mono</family>
+      <pointsize>15</pointsize>
+      <weight>75</weight>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">color: rgb(238, 238, 236);</string>
+    </property>
+    <property name="text">
+     <string>日常点検</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+    </property>
+   </widget>
    <zorder>label</zorder>
    <zorder>label_1</zorder>
    <zorder>label_2</zorder>
@@ -1598,6 +1625,7 @@ KATABU NASHI(RR STEP)</string>
    <zorder>gridLayoutWidget_6</zorder>
    <zorder>label_10</zorder>
    <zorder>gridLayoutWidget_7</zorder>
+   <zorder>label_6</zorder>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">

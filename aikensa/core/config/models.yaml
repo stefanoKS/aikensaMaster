@@ -49,8 +49,22 @@ models:
   P658207UA0A_CLIP_Model:
     loader: sahi
     model_type: yolov8
-    path: ./aikensa/core/checkpoints/P658207LE0A_CLIP.pt
+    path: ./aikensa/core/checkpoints/NISSAN/P13C/P658207LE0A_CLIP.pt
     conf: 0.4
+
+  P658207LE0A_CLIP_Model:
+    loader: sahi
+    model_type: yolov8
+    path: ./aikensa/core/checkpoints/NISSAN/P13C/P658207LE0A_CLIP.pt
+    conf: 0.4
+
+  P658207LE0A_END_KEYPOINT_Model:
+    loader: yolo
+    path: ./aikensa/core/checkpoints/NISSAN/P13C/P658207LE0A_KEYPOINT.pt
+
+  P658207LE0A_CLIPHEIGHT_Model:
+    loader: yolo
+    path: ./aikensa/core/checkpoints/NISSAN/P13C/P658207LE0A_CLIPHEIGHT.pt
 
   P658217UJ0A_CLIP_Model:
     loader: sahi
@@ -61,7 +75,7 @@ models:
   P658207UJ0A_CLIP_Model:
     loader: sahi
     model_type: yolov8
-    path: ./aikensa/core/checkpoints/P658207LE0A_CLIP.pt
+    path: ./aikensa/core/checkpoints/NISSAN/P13C/P658207LE0A_CLIP.pt
     conf: 0.4
 
   P828387YA0A_CLIP_Model:
@@ -88,7 +102,7 @@ models:
     loader: sahi
     model_type: yolov8
     path: ./aikensa/core/checkpoints/NISSAN/J42U/P828387YA1A_detect.pt
-    conf: 0.4
+    conf: 0.6
 
   P828387YA1A_END_KEYPOINT_Model:
     loader: yolo
@@ -104,6 +118,10 @@ models:
   P828387YA6A_END_KEYPOINT_Model:
     loader: yolo
     path: ./aikensa/core/checkpoints/NISSAN/J42U/P828387YA6A_keypoint.pt
+
+  P828387YA6A_KATABUMARKING_Model:
+    loader: yolo
+    path: ./aikensa/core/checkpoints/NISSAN/J42U/P828387YA6A_katabu.pt
 
   P731957YA0A_CLIP_Model:
     loader: sahi
@@ -131,4 +149,4 @@ models:
 
   NICHIJOU_TENKEN_Model:
     loader: yolo
-    path: ./aikensa/core/checkpoints/NICHIJOU_TENKEN/AIKENSA23GO_NICHIJOU_TENKEN.pt
+    path: ./aikensa/core/checkpoints/NICHIJOU_TENKEN/AIKENSA7GO_NICHIJOU_TENKEN.pt

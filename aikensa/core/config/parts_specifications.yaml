@@ -111,15 +111,17 @@ parts:
     series: "M_J42U"
     type: "keypoint_based"
     
-    # This part has LH and RH variants with keypoint-based detection
-    # RH variant: ID marking 1 (left endpoint), LH variant: ID marking 2 (right endpoint)
+    # This part has LH and RH variants with keypoint-based detection.
+    # Active mapping:
+    # - RH variant uses marker class 2 (pink)
+    # - LH variant uses marker class 1 (yellow)
     pitchSpecRH: [15, 128, 95, 39, 120, 15, 412]
     pitchSpecLH: [15, 120, 39, 95, 128, 15, 412]
     tolerance_pitch: [3.0, 1.7, 1.7, 1.7, 1.7, 3.0, 10.0]
-    idSpecRH: [0, 1, 0, 0, 0, 0]  # RH uses color marking 1
-    idSpecLH: [0, 0, 0, 0, 2, 0]  # LH uses color marking 2
+    idSpecRH: [0, 2, 0, 0, 0, 0]  # RH uses color marking 2 -> pink
+    idSpecLH: [0, 0, 0, 0, 1, 0]  # LH uses color marking 1 -> yellow
     
-    pixelMultiplier: 0.1609
+    pixelMultiplier: 0.1594
     detected_cropped_size: 512
     border_width: 10
     
@@ -129,7 +131,7 @@ parts:
     text_offset: 40
     bbox_offset: 10
     
-    segmentation_width: 840
+    segmentation_width: 1080
 
   P828387YA6A:
     name: "Seal RR Door Parting RR Step"
@@ -138,18 +140,20 @@ parts:
     type: "keypoint_based"
     
     # This part has LH, RH, and Katabu variants
-    pitchSpecRH: [14, 130, 132, 132, 59, 61, 97, 83, 20, 708]
-    pitchSpecLH: [83, 97, 61, 59, 132, 132, 130, 14, 20, 708]
+    pitchSpecRH: [14, 132, 133, 133, 58.5, 61.5, 100.5, 85.5, 20, 738]
+    pitchSpecLH: [85.5, 100.5, 61.5, 58.5, 133, 133, 132, 14, 20, 738]
     pitchSpecKatabu: [20]
     
-    tolerance_pitchRH: [3.0, 1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 2.0, 10.0]
-    tolerance_pitchLH: [1.7, 1.7, 1.7, 3.0, 1.7, 1.7, 1.7, 1.7, 2.0, 10.0]
+    tolerance_pitchRH: [3.0, 1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 5.0, 3.0, 20.0]
+    tolerance_pitchLH: [5.0, 1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 3.0, 3.0, 20.0]
     tolerance_pitchKatabu: [2.0]
     
-    idSpec: [0, 0, 0, 0, 0]
+    idSpecRH: [0, 0, 0, 0, 0, 0, 0, 0, 0]
+    idSpecLH: [1, 1, 1, 1, 1, 1, 1, 1, 1]
     
-    pixelMultiplier: 0.16413
-    pixelMultiplier_katabumarking: 0.16413
+    pixelMultiplier: 0.16030
+    pixelMultiplier_katabumarking: 0.16030
+    keypoint_crop_px: 1360
     detected_cropped_size: 512
     border_width: 10
     
@@ -158,8 +162,6 @@ parts:
     linecolor: [20, 120, 120]
     text_offset: 40
     bbox_offset: 10
-    
-    segmentation_width: 1640
 
   P828387YA6A_KATABU_NASHI:
     name: "Seal RR Door Parting RR Step (No Katabu)"
@@ -229,6 +231,21 @@ parts:
     bbox_offset: 10
 
     segmentation_width: 840
+
+  NICHIJOU_TENKEN:
+    name: "Nichijou Tenken"
+    category: "NISSAN"
+    series: "COMMON"
+    type: "keypoint_based"
+
+    pitchSpec: 100.0
+    pitchTolerance: 1.0
+    pixelMultiplier: 0.1604477
+    debug_mode: true
+    debug_save_images: true
+
+    color_ok: [10, 210, 60]
+    color_ng: [200, 30, 50]
 
   # MMC Parts
   P828XXW0X0P:
@@ -329,13 +346,18 @@ parts:
     name: "Seal Assembly Rad Core"
     category: "General"
     series: "Standard"
-    type: "clip_detection"
+    type: "keypoint_based"
     
-    pitchSpec: [13, 82, 82, 82, 13, 2, 2]
-    tolerance_pitch: [3.0, 1.5, 1.5, 1.5, 3.0, 0.8, 0.8]
+    pitchSpec: [13, 82, 82, 82, 13, 2, 0, 0, 2, 272]
+    tolerance_pitch: [3.0, 1.5, 1.5, 1.5, 3.0, 1.0, 1.0, 1.0, 1.0, 10.0]
     idSpec: [0, 0, 0, 0]
     
-    pixelMultiplier: 0.1592
+    pixelMultiplier: 0.16236
+    keypoint_crop_px: 2200
+    keypoint_model_imgsz: 1080
+    clip_height_padding_px: 84
+    clip_height_model_imgsz: 256
+    debug_save_images: true
     detected_cropped_size: 512
     border_width: 10
     

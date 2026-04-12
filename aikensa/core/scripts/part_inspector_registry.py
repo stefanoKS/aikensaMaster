@@ -48,6 +48,10 @@ class PartConfig:
     inspection_type: str
     has_katabu: bool = False
     katabu_side: Optional[str] = None
+    keypoint_crop_px: Optional[int] = None
+    keypoint_model_imgsz: Optional[int] = None
+    inference_crop: Optional[List[int]] = None
+    katabu_crop: Optional[List[int]] = None
     narrow_height: bool = False
     supports_clip_picking: bool = False
     
@@ -109,6 +113,10 @@ class PartInspectorRegistry:
                     inspection_type=part_data['inspection_type'],
                     has_katabu=part_data.get('has_katabu', False),
                     katabu_side=part_data.get('katabu_side'),
+                    keypoint_crop_px=part_data.get('keypoint_crop_px'),
+                    keypoint_model_imgsz=part_data.get('keypoint_model_imgsz'),
+                    inference_crop=part_data.get('inference_crop'),
+                    katabu_crop=part_data.get('katabu_crop'),
                     narrow_height=part_data.get('narrow_height', False),
                     supports_clip_picking=part_data.get('supports_clip_picking', False)
                 )

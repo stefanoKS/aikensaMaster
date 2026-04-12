@@ -68,9 +68,9 @@
      <property name="geometry">
       <rect>
        <x>11</x>
-       <y>10</y>
+       <y>80</y>
        <width>1791</width>
-       <height>428</height>
+       <height>137</height>
       </rect>
      </property>
      <property name="styleSheet">
@@ -81,166 +81,6 @@
      </property>
      <property name="alignment">
       <set>Qt::AlignCenter</set>
-     </property>
-    </widget>
-    <widget class="QPushButton" name="rekensaButton">
-     <property name="geometry">
-      <rect>
-       <x>300</x>
-       <y>310</y>
-       <width>91</width>
-       <height>71</height>
-      </rect>
-     </property>
-     <property name="font">
-      <font>
-       <family>Ubuntu Mono</family>
-       <pointsize>13</pointsize>
-       <weight>75</weight>
-       <italic>false</italic>
-       <bold>true</bold>
-       <stylestrategy>PreferAntialias</stylestrategy>
-      </font>
-     </property>
-     <property name="autoFillBackground">
-      <bool>false</bool>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">color: rgb(238, 238, 236);
-background-color: rgb(117, 80, 123);</string>
-     </property>
-     <property name="text">
-      <string>検査
-やり直し</string>
-     </property>
-     <property name="checkable">
-      <bool>false</bool>
-     </property>
-    </widget>
-    <widget class="QPushButton" name="delwarpbutton">
-     <property name="geometry">
-      <rect>
-       <x>810</x>
-       <y>320</y>
-       <width>181</width>
-       <height>51</height>
-      </rect>
-     </property>
-     <property name="font">
-      <font>
-       <family>Ubuntu Mono</family>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <italic>false</italic>
-       <bold>true</bold>
-       <stylestrategy>PreferAntialias</stylestrategy>
-      </font>
-     </property>
-     <property name="autoFillBackground">
-      <bool>false</bool>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-color: rgb(164, 0, 0);</string>
-     </property>
-     <property name="text">
-      <string>パースワープパラム削除 
-Del Warp Parm</string>
-     </property>
-     <property name="checkable">
-      <bool>false</bool>
-     </property>
-    </widget>
-    <widget class="QPushButton" name="savewarpbutton">
-     <property name="geometry">
-      <rect>
-       <x>620</x>
-       <y>320</y>
-       <width>181</width>
-       <height>51</height>
-      </rect>
-     </property>
-     <property name="font">
-      <font>
-       <family>Ubuntu Mono</family>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <italic>false</italic>
-       <bold>true</bold>
-       <stylestrategy>PreferAntialias</stylestrategy>
-      </font>
-     </property>
-     <property name="autoFillBackground">
-      <bool>false</bool>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">color: rgb(238, 238, 236);</string>
-     </property>
-     <property name="text">
-      <string>パースワープパラム保存 
-Save Warp Parm</string>
-     </property>
-     <property name="checkable">
-      <bool>false</bool>
-     </property>
-    </widget>
-    <widget class="QLabel" name="rtwarpcolor">
-     <property name="geometry">
-      <rect>
-       <x>480</x>
-       <y>300</y>
-       <width>121</width>
-       <height>20</height>
-      </rect>
-     </property>
-     <property name="font">
-      <font>
-       <family>Ubuntu Mono</family>
-       <pointsize>15</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">background-color: rgb(255, 0, 0);</string>
-     </property>
-     <property name="text">
-      <string/>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-    <widget class="QPushButton" name="rtwarpbutton">
-     <property name="geometry">
-      <rect>
-       <x>480</x>
-       <y>320</y>
-       <width>121</width>
-       <height>51</height>
-      </rect>
-     </property>
-     <property name="font">
-      <font>
-       <family>Ubuntu Mono</family>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <italic>false</italic>
-       <bold>true</bold>
-       <stylestrategy>PreferAntialias</stylestrategy>
-      </font>
-     </property>
-     <property name="autoFillBackground">
-      <bool>false</bool>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">color: rgb(238, 238, 236);</string>
-     </property>
-     <property name="text">
-      <string>継続ワープ 
-RT Pers.Warp</string>
-     </property>
-     <property name="checkable">
-      <bool>false</bool>
      </property>
     </widget>
     <widget class="QPushButton" name="quitbutton">
@@ -271,7 +111,7 @@ RT Pers.Warp</string>
        <x>770</x>
        <y>90</y>
        <width>281</width>
-       <height>20</height>
+       <height>10</height>
       </rect>
      </property>
      <property name="styleSheet">
@@ -286,7 +126,7 @@ RT Pers.Warp</string>
       <rect>
        <x>770</x>
        <y>90</y>
-       <width>21</width>
+       <width>10</width>
        <height>111</height>
       </rect>
      </property>
@@ -300,9 +140,9 @@ RT Pers.Warp</string>
     <widget class="QLabel" name="label_6">
      <property name="geometry">
       <rect>
-       <x>1030</x>
+       <x>1041</x>
        <y>90</y>
-       <width>21</width>
+       <width>10</width>
        <height>111</height>
       </rect>
      </property>
@@ -317,9 +157,9 @@ RT Pers.Warp</string>
      <property name="geometry">
       <rect>
        <x>770</x>
-       <y>190</y>
+       <y>191</y>
        <width>281</width>
-       <height>20</height>
+       <height>10</height>
       </rect>
      </property>
      <property name="styleSheet">
@@ -330,11 +170,6 @@ RT Pers.Warp</string>
      </property>
     </widget>
     <zorder>quitbutton</zorder>
-    <zorder>rtwarpbutton</zorder>
-    <zorder>delwarpbutton</zorder>
-    <zorder>rtwarpcolor</zorder>
-    <zorder>savewarpbutton</zorder>
-    <zorder>rekensaButton</zorder>
     <zorder>framePart</zorder>
     <zorder>label_9</zorder>
     <zorder>label_8</zorder>
