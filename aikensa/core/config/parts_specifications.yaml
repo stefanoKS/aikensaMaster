@@ -220,7 +220,7 @@ parts:
     tolerance_pitch: [3.2, 2.2, 2.2, 2.2, 2.2, 2.2, 3.2, 10.0]
     idSpec: [0, 0, 0, 0, 0, 0]
 
-    pixelMultiplier: 0.1591
+    pixelMultiplier: 0.1600
     detected_cropped_size: 512
     border_width: 10
 
