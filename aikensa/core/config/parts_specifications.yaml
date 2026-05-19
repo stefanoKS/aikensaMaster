@@ -121,7 +121,7 @@ parts:
     idSpecRH: [0, 2, 0, 0, 0, 0]  # RH uses color marking 2 -> pink
     idSpecLH: [0, 0, 0, 0, 1, 0]  # LH uses color marking 1 -> yellow
     
-    pixelMultiplier: 0.1594
+    pixelMultiplier: 0.1595
     detected_cropped_size: 512
     border_width: 10
     
