@@ -352,7 +352,7 @@ parts:
     tolerance_pitch: [3.0, 1.5, 1.5, 1.5, 3.0, 1.0, 1.0, 1.0, 1.0, 10.0]
     idSpec: [0, 0, 0, 0]
     
-    pixelMultiplier: 0.16236
+    pixelMultiplier: 0.1604038
     keypoint_crop_px: 2200
     keypoint_model_imgsz: 1080
     clip_height_padding_px: 84
