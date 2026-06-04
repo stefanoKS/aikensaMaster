@@ -1,0 +1,9 @@
+P808387UA1A:
+  pixelMultiplier: 1.0
+  detected_cropped_size: 512
+  border_width: 10
+
+P828447UA0A:
+  pixelMultiplier: 1.0
+  detected_cropped_size: 512
+  border_width: 10

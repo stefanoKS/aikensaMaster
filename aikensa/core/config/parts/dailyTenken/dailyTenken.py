@@ -1,0 +1,1 @@
+from aikensa.core.config.parts.NICHIJOU_TENKEN import *
