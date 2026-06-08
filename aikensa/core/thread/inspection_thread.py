@@ -220,7 +220,7 @@ class InspectionThread(QThread):
         Initialize both cameras. Now uses DummyCapture for missing cameras.
         """
         self.cap_cam_ic4_1 = open_ic4_camera_or_placeholder(
-            "21520069", width=3072, height=2048, fps=15,
+            "11620526", width=3072, height=2048, fps=15,
             wb_temperature=4500,
             auto_exposure=False,
             auto_gain=False,
@@ -228,7 +228,7 @@ class InspectionThread(QThread):
             rotate_180=self.ic4_rotate_180
         )
         self.cap_cam_ic4_2 = open_ic4_camera_or_placeholder(
-            "20520997", width=3072, height=2048, fps=15,
+            "11620167", width=3072, height=2048, fps=15,
             wb_temperature=4500,
             auto_exposure=False,
             auto_gain=False,
