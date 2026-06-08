@@ -194,10 +194,9 @@ aikensa/param/*
 aikensa/camscripts/cam_config.yaml
 aikensa/mysql/id.yaml
 aikensa/parts_config/partsSettingsMultiplier.yaml
-aikensa/core/param/camera/*
+aikensa/core/param/camera/
 combinedImagev2.png
 resultmergeframe1.png
 resultmergeframe2.png
 scaled_combined_image.png
-aikensa/core/tools/*
-aikensa/core/param/camera/*
+aikensa/core/tools/**
