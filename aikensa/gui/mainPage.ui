@@ -36,7 +36,7 @@
     <property name="geometry">
      <rect>
       <x>0</x>
-      <y>460</y>
+      <y>410</y>
       <width>571</width>
       <height>21</height>
      </rect>
@@ -76,7 +76,7 @@ background-color: rgba(255, 255, 255, 0);</string>
    <widget class="QLabel" name="label_2">
     <property name="geometry">
      <rect>
-      <x>60</x>
+      <x>50</x>
       <y>160</y>
       <width>361</width>
       <height>31</height>
@@ -320,7 +320,7 @@ background-color: rgba(255, 255, 255, 0);</string>
     <property name="geometry">
      <rect>
       <x>50</x>
-      <y>361</y>
+      <y>310</y>
       <width>501</width>
       <height>91</height>
      </rect>
@@ -342,9 +342,9 @@ Daily Check</string>
    <widget class="QLabel" name="label_7">
     <property name="geometry">
      <rect>
-      <x>130</x>
-      <y>510</y>
-      <width>211</width>
+      <x>50</x>
+      <y>470</y>
+      <width>461</width>
       <height>31</height>
      </rect>
     </property>
@@ -363,7 +363,7 @@ Daily Check</string>
      <string>三菱自動車</string>
     </property>
     <property name="alignment">
-     <set>Qt::AlignCenter</set>
+     <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
     </property>
    </widget>
    <widget class="QPushButton" name="camcalibrationbutton1">
@@ -535,7 +535,7 @@ W/STRIP-RR DOOR, LH</string>
     <property name="geometry">
      <rect>
       <x>50</x>
-      <y>830</y>
+      <y>790</y>
       <width>391</width>
       <height>31</height>
      </rect>
@@ -555,7 +555,7 @@ W/STRIP-RR DOOR, LH</string>
      <string>三菱自動車 - クリップ挿入機</string>
     </property>
     <property name="alignment">
-     <set>Qt::AlignCenter</set>
+     <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
     </property>
    </widget>
    <widget class="QLabel" name="label">
@@ -577,9 +577,9 @@ W/STRIP-RR DOOR, LH</string>
    <widget class="QLabel" name="label_8">
     <property name="geometry">
      <rect>
-      <x>720</x>
+      <x>640</x>
       <y>310</y>
-      <width>211</width>
+      <width>471</width>
       <height>31</height>
      </rect>
     </property>
@@ -598,7 +598,7 @@ W/STRIP-RR DOOR, LH</string>
      <string>日産自動車</string>
     </property>
     <property name="alignment">
-     <set>Qt::AlignCenter</set>
+     <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
     </property>
    </widget>
    <widget class="Line" name="line">
@@ -607,7 +607,7 @@ W/STRIP-RR DOOR, LH</string>
       <x>560</x>
       <y>150</y>
       <width>20</width>
-      <height>321</height>
+      <height>271</height>
      </rect>
     </property>
     <property name="orientation">
@@ -618,68 +618,12 @@ W/STRIP-RR DOOR, LH</string>
     <property name="geometry">
      <rect>
       <x>50</x>
-      <y>870</y>
-      <width>431</width>
-      <height>124</height>
+      <y>820</y>
+      <width>471</width>
+      <height>161</height>
      </rect>
     </property>
     <layout class="QGridLayout" name="gridLayout">
-     <item row="0" column="1">
-      <widget class="QPushButton" name="P82832W040PCLIPSOUNYUUKI_button">
-       <property name="font">
-        <font>
-         <family>Ubuntu Mono</family>
-         <pointsize>10</pointsize>
-        </font>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">background-color: rgb(181, 136, 104);</string>
-       </property>
-       <property name="text">
-        <string>5A45
-82832W040P
- W/STRIP-RR DOOR, RH</string>
-       </property>
-       <property name="icon">
-        <iconset>
-         <normaloff>resources/icon/82833W.png</normaloff>resources/icon/82833W.png</iconset>
-       </property>
-       <property name="iconSize">
-        <size>
-         <width>50</width>
-         <height>50</height>
-        </size>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="0">
-      <widget class="QPushButton" name="P82833W050PCLIPSOUNYUUKI_button">
-       <property name="font">
-        <font>
-         <family>Ubuntu Mono</family>
-         <pointsize>10</pointsize>
-        </font>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">background-color: rgb(211, 215, 207);</string>
-       </property>
-       <property name="text">
-        <string>5A45
-82833W050P
-W/STRIP-RR DOOR, LH</string>
-       </property>
-       <property name="icon">
-        <iconset>
-         <normaloff>resources/icon/82833W.png</normaloff>resources/icon/82833W.png</iconset>
-       </property>
-       <property name="iconSize">
-        <size>
-         <width>50</width>
-         <height>50</height>
-        </size>
-       </property>
-      </widget>
-     </item>
      <item row="1" column="0">
       <widget class="QPushButton" name="P82833W090PCLIPSOUNYUUKI_button">
        <property name="font">
@@ -736,20 +680,8 @@ W/STRIP-RR DOOR, LH</string>
        </property>
       </widget>
      </item>
-    </layout>
-   </widget>
-   <widget class="QWidget" name="gridLayoutWidget_2">
-    <property name="geometry">
-     <rect>
-      <x>50</x>
-      <y>550</y>
-      <width>474</width>
-      <height>252</height>
-     </rect>
-    </property>
-    <layout class="QGridLayout" name="gridLayout_2">
-     <item row="1" column="0">
-      <widget class="QPushButton" name="P82833W090PKENGEN_button">
+     <item row="0" column="0">
+      <widget class="QPushButton" name="P82833W050PCLIPSOUNYUUKI_button">
        <property name="font">
         <font>
          <family>Ubuntu Mono</family>
@@ -761,7 +693,7 @@ W/STRIP-RR DOOR, LH</string>
        </property>
        <property name="text">
         <string>5A45
-82833W090P
+82833W050P
 W/STRIP-RR DOOR, LH</string>
        </property>
        <property name="icon">
@@ -776,8 +708,8 @@ W/STRIP-RR DOOR, LH</string>
        </property>
       </widget>
      </item>
-     <item row="2" column="1">
-      <widget class="QPushButton" name="P5902A510_button">
+     <item row="0" column="1">
+      <widget class="QPushButton" name="P82832W040PCLIPSOUNYUUKI_button">
        <property name="font">
         <font>
          <family>Ubuntu Mono</family>
@@ -789,12 +721,52 @@ W/STRIP-RR DOOR, LH</string>
        </property>
        <property name="text">
         <string>5A45
-5902A510
-W/STRIP, HOODRR SIDE RH</string>
+82832W040P
+ W/STRIP-RR DOOR, RH</string>
        </property>
        <property name="icon">
         <iconset>
-         <normaloff>resources/icon/5902A509_10.png</normaloff>resources/icon/5902A509_10.png</iconset>
+         <normaloff>resources/icon/82833W.png</normaloff>resources/icon/82833W.png</iconset>
+       </property>
+       <property name="iconSize">
+        <size>
+         <width>50</width>
+         <height>50</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+   <widget class="QWidget" name="gridLayoutWidget_2">
+    <property name="geometry">
+     <rect>
+      <x>50</x>
+      <y>510</y>
+      <width>474</width>
+      <height>231</height>
+     </rect>
+    </property>
+    <layout class="QGridLayout" name="gridLayout_2">
+     <item row="3" column="0">
+      <widget class="QPushButton" name="P5819A107_button">
+       <property name="font">
+        <font>
+         <family>Ubuntu Mono</family>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(211, 215, 207);</string>
+       </property>
+       <property name="text">
+        <string>5A45
+5819A107
+W/STRIP, T/GATE UPR</string>
+       </property>
+       <property name="icon">
+        <iconset>
+         <normaloff>resources/icon/5819A107.png</normaloff>resources/icon/5819A107.png</iconset>
        </property>
        <property name="iconSize">
         <size>
@@ -832,6 +804,34 @@ W/STRIP, HOOD RRSIDE LH</string>
        </property>
       </widget>
      </item>
+     <item row="1" column="0">
+      <widget class="QPushButton" name="P82833W090PKENGEN_button">
+       <property name="font">
+        <font>
+         <family>Ubuntu Mono</family>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(211, 215, 207);</string>
+       </property>
+       <property name="text">
+        <string>5A45
+82833W090P
+W/STRIP-RR DOOR, LH</string>
+       </property>
+       <property name="icon">
+        <iconset>
+         <normaloff>resources/icon/82833W.png</normaloff>resources/icon/82833W.png</iconset>
+       </property>
+       <property name="iconSize">
+        <size>
+         <width>50</width>
+         <height>50</height>
+        </size>
+       </property>
+      </widget>
+     </item>
      <item row="0" column="0">
       <widget class="QPushButton" name="P82833W050PKENGEN_button">
        <property name="font">
@@ -851,6 +851,34 @@ W/STRIP-RR DOOR, LH</string>
        <property name="icon">
         <iconset>
          <normaloff>resources/icon/82833W.png</normaloff>resources/icon/82833W.png</iconset>
+       </property>
+       <property name="iconSize">
+        <size>
+         <width>50</width>
+         <height>50</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QPushButton" name="P5902A510_button">
+       <property name="font">
+        <font>
+         <family>Ubuntu Mono</family>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(181, 136, 104);</string>
+       </property>
+       <property name="text">
+        <string>5A45
+5902A510
+W/STRIP, HOODRR SIDE RH</string>
+       </property>
+       <property name="icon">
+        <iconset>
+         <normaloff>resources/icon/5902A509_10.png</normaloff>resources/icon/5902A509_10.png</iconset>
        </property>
        <property name="iconSize">
         <size>
@@ -916,8 +944,80 @@ W/STRIP-RR DOOR, RH</string>
        </property>
       </widget>
      </item>
-     <item row="3" column="0">
-      <widget class="QPushButton" name="P5819A107_button">
+    </layout>
+   </widget>
+   <widget class="QWidget" name="gridLayoutWidget_4">
+    <property name="geometry">
+     <rect>
+      <x>640</x>
+      <y>350</y>
+      <width>1181</width>
+      <height>631</height>
+     </rect>
+    </property>
+    <layout class="QGridLayout" name="gridLayout_4">
+     <item row="4" column="0">
+      <widget class="QPushButton" name="P828397YA1A_button">
+       <property name="font">
+        <font>
+         <family>Ubuntu Mono</family>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(40, 40,40);
+color: rgb(240, 240, 240);</string>
+       </property>
+       <property name="text">
+        <string>J42U
+82839 7YA1A
+SEAL-RR DOOR PARTING, LH
+(LOCK) 黄色</string>
+       </property>
+       <property name="icon">
+        <iconset>
+         <normaloff>resources/icon/82838.png</normaloff>resources/icon/82838.png</iconset>
+       </property>
+       <property name="iconSize">
+        <size>
+         <width>50</width>
+         <height>50</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="1">
+      <widget class="QPushButton" name="P828387YA1A_button">
+       <property name="font">
+        <font>
+         <family>Ubuntu Mono</family>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(40, 40,40);
+color: rgb(240, 240, 240);</string>
+       </property>
+       <property name="text">
+        <string>J42U
+82838 7YA1A
+SEAL-RR DOOR PARTING, RH
+(LOCK) 桃色</string>
+       </property>
+       <property name="icon">
+        <iconset>
+         <normaloff>resources/icon/82838.png</normaloff>resources/icon/82838.png</iconset>
+       </property>
+       <property name="iconSize">
+        <size>
+         <width>50</width>
+         <height>50</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="1">
+      <widget class="QPushButton" name="P828387YA6A_button">
        <property name="font">
         <font>
          <family>Ubuntu Mono</family>
@@ -928,13 +1028,14 @@ W/STRIP-RR DOOR, RH</string>
         <string notr="true">background-color: rgb(211, 215, 207);</string>
        </property>
        <property name="text">
-        <string>5A45
-5819A107
-W/STRIP, T/GATE UPR</string>
+        <string>J42U
+82838 7YA6A
+SEAL-RR DOOR PARTING, RH
+(RR STEP)</string>
        </property>
        <property name="icon">
         <iconset>
-         <normaloff>resources/icon/5819A107.png</normaloff>resources/icon/5819A107.png</iconset>
+         <normaloff>resources/icon/82838.png</normaloff>resources/icon/82838.png</iconset>
        </property>
        <property name="iconSize">
         <size>
@@ -944,18 +1045,64 @@ W/STRIP, T/GATE UPR</string>
        </property>
       </widget>
      </item>
-    </layout>
-   </widget>
-   <widget class="QWidget" name="gridLayoutWidget_3">
-    <property name="geometry">
-     <rect>
-      <x>610</x>
-      <y>350</y>
-      <width>471</width>
-      <height>230</height>
-     </rect>
-    </property>
-    <layout class="QGridLayout" name="gridLayout_3">
+     <item row="2" column="1">
+      <widget class="QPushButton" name="P828447UA0A_button">
+       <property name="font">
+        <font>
+         <family>Ubuntu Mono</family>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(211, 215, 207);</string>
+       </property>
+       <property name="text">
+        <string>JC2D
+82844 7UA0A
+SEAL-RR DOOR PARTING 
+LWR</string>
+       </property>
+       <property name="icon">
+        <iconset>
+         <normaloff>resources/icon/828447UA0A.png</normaloff>resources/icon/828447UA0A.png</iconset>
+       </property>
+       <property name="iconSize">
+        <size>
+         <width>50</width>
+         <height>50</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="0">
+      <widget class="QPushButton" name="P658217UA0A_button">
+       <property name="font">
+        <font>
+         <family>Ubuntu Mono</family>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(245, 121, 0);</string>
+       </property>
+       <property name="text">
+        <string>JC2D
+65821 7UA0A
+SEAL ASSY-HOOD, FR LH
+CCM1</string>
+       </property>
+       <property name="icon">
+        <iconset>
+         <normaloff>resources/icon/658207UA0A.png</normaloff>resources/icon/658207UA0A.png</iconset>
+       </property>
+       <property name="iconSize">
+        <size>
+         <width>50</width>
+         <height>50</height>
+        </size>
+       </property>
+      </widget>
+     </item>
      <item row="2" column="0">
       <widget class="QPushButton" name="P808387UA1A_button">
        <property name="font">
@@ -1013,8 +1160,8 @@ CCM2</string>
        </property>
       </widget>
      </item>
-     <item row="0" column="0">
-      <widget class="QPushButton" name="P658217UA0A_button">
+     <item row="5" column="2">
+      <widget class="QPushButton" name="P828397YA6A_KATABU_NASHI_button">
        <property name="font">
         <font>
          <family>Ubuntu Mono</family>
@@ -1022,21 +1169,50 @@ CCM2</string>
         </font>
        </property>
        <property name="styleSheet">
-        <string notr="true">background-color: rgb(245, 121, 0);</string>
+        <string notr="true">background-color: rgb(181, 136, 104);</string>
        </property>
        <property name="text">
-        <string>JC2D
-65821 7UA0A
-SEAL ASSY-HOOD, FR LH
-CCM1</string>
+        <string>J42U
+82839 7YA6A
+SEAL-RR DOOR PARTING, LH
+KATABU NASHI(RR STEP)</string>
        </property>
        <property name="icon">
         <iconset>
-         <normaloff>resources/icon/658207UA0A.png</normaloff>resources/icon/658207UA0A.png</iconset>
+         <normaloff>resources/icon/82838.png</normaloff>resources/icon/82838.png</iconset>
        </property>
        <property name="iconSize">
         <size>
          <width>50</width>
+         <height>50</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+     <item row="7" column="0">
+      <widget class="QPushButton" name="P658207LE0A_button">
+       <property name="font">
+        <font>
+         <family>Ubuntu Mono</family>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(40, 40,40);
+color: rgb(240, 240, 240);</string>
+       </property>
+       <property name="text">
+        <string>P13C
+65820 7LE0A
+SEAL ASSY-HOOD FR</string>
+       </property>
+       <property name="icon">
+        <iconset>
+         <normaloff>resources/icon/658207LEA0A.png</normaloff>resources/icon/658207LEA0A.png</iconset>
+       </property>
+       <property name="iconSize">
+        <size>
+         <width>69</width>
          <height>50</height>
         </size>
        </property>
@@ -1071,194 +1247,7 @@ CCM2</string>
        </property>
       </widget>
      </item>
-     <item row="2" column="1">
-      <widget class="QPushButton" name="P828447UA0A_button">
-       <property name="font">
-        <font>
-         <family>Ubuntu Mono</family>
-         <pointsize>10</pointsize>
-        </font>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">background-color: rgb(211, 215, 207);</string>
-       </property>
-       <property name="text">
-        <string>JC2D
-82844 7UA0A
-SEAL-RR DOOR PARTING 
-LWR</string>
-       </property>
-       <property name="icon">
-        <iconset>
-         <normaloff>resources/icon/828447UA0A.png</normaloff>resources/icon/828447UA0A.png</iconset>
-       </property>
-       <property name="iconSize">
-        <size>
-         <width>50</width>
-         <height>50</height>
-        </size>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="1">
-      <widget class="QPushButton" name="P658207UA0A_button">
-       <property name="font">
-        <font>
-         <family>Ubuntu Mono</family>
-         <pointsize>10</pointsize>
-        </font>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">background-color: rgb(211, 215, 207);</string>
-       </property>
-       <property name="text">
-        <string>JC2D
-65820 7UA0A
-SEAL ASSY-HOOD, FR RH
-CCM1</string>
-       </property>
-       <property name="icon">
-        <iconset>
-         <normaloff>resources/icon/658207UA0A.png</normaloff>resources/icon/658207UA0A.png</iconset>
-       </property>
-       <property name="iconSize">
-        <size>
-         <width>50</width>
-         <height>50</height>
-        </size>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </widget>
-   <widget class="QWidget" name="gridLayoutWidget_4">
-    <property name="geometry">
-     <rect>
-      <x>610</x>
-      <y>610</y>
-      <width>497</width>
-      <height>280</height>
-     </rect>
-    </property>
-    <layout class="QGridLayout" name="gridLayout_4">
-     <item row="1" column="1">
-      <widget class="QPushButton" name="P828387YA1A_button">
-       <property name="font">
-        <font>
-         <family>Ubuntu Mono</family>
-         <pointsize>10</pointsize>
-        </font>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">background-color: rgb(40, 40,40);
-color: rgb(240, 240, 240);</string>
-       </property>
-       <property name="text">
-        <string>J42U
-82838 7YA1A
-SEAL-RR DOOR PARTING, RH
-(LOCK) 桃色</string>
-       </property>
-       <property name="icon">
-        <iconset>
-         <normaloff>resources/icon/82838.png</normaloff>resources/icon/82838.png</iconset>
-       </property>
-       <property name="iconSize">
-        <size>
-         <width>50</width>
-         <height>50</height>
-        </size>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="1">
-      <widget class="QPushButton" name="P828387YA6A_button">
-       <property name="font">
-        <font>
-         <family>Ubuntu Mono</family>
-         <pointsize>10</pointsize>
-        </font>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">background-color: rgb(211, 215, 207);</string>
-       </property>
-       <property name="text">
-        <string>J42U
-82838 7YA6A
-SEAL-RR DOOR PARTING, RH
-(RR STEP)</string>
-       </property>
-       <property name="icon">
-        <iconset>
-         <normaloff>resources/icon/82838.png</normaloff>resources/icon/82838.png</iconset>
-       </property>
-       <property name="iconSize">
-        <size>
-         <width>50</width>
-         <height>50</height>
-        </size>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="0">
-      <widget class="QPushButton" name="P828397YA1A_button">
-       <property name="font">
-        <font>
-         <family>Ubuntu Mono</family>
-         <pointsize>10</pointsize>
-        </font>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">background-color: rgb(40, 40,40);
-color: rgb(240, 240, 240);</string>
-       </property>
-       <property name="text">
-        <string>J42U
-82839 7YA1A
-SEAL-RR DOOR PARTING, LH
-(LOCK) 黄色</string>
-       </property>
-       <property name="icon">
-        <iconset>
-         <normaloff>resources/icon/82838.png</normaloff>resources/icon/82838.png</iconset>
-       </property>
-       <property name="iconSize">
-        <size>
-         <width>50</width>
-         <height>50</height>
-        </size>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="0">
-      <widget class="QPushButton" name="P808387YA0A_button">
-       <property name="font">
-        <font>
-         <family>Ubuntu Mono</family>
-         <pointsize>10</pointsize>
-        </font>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">background-color: rgb(211, 215, 207);</string>
-       </property>
-       <property name="text">
-        <string>J42U
-80838 7YA0A
-SEAL-FR DOOR PARTING, RH</string>
-       </property>
-       <property name="icon">
-        <iconset>
-         <normaloff>resources/icon/808387YA0A.png</normaloff>resources/icon/808387YA0A.png</iconset>
-       </property>
-       <property name="iconSize">
-        <size>
-         <width>50</width>
-         <height>50</height>
-        </size>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="0">
+     <item row="5" column="0">
       <widget class="QPushButton" name="P828397YA6A_button">
        <property name="font">
         <font>
@@ -1287,7 +1276,7 @@ SEAL-RR DOOR PARTING, LH
        </property>
       </widget>
      </item>
-     <item row="3" column="0">
+     <item row="6" column="0">
       <widget class="QPushButton" name="P658107YA0A_button">
        <property name="font">
         <font>
@@ -1315,7 +1304,7 @@ SEAL ASSY-RAD CORE</string>
        </property>
       </widget>
      </item>
-     <item row="3" column="1">
+     <item row="6" column="1">
       <widget class="QPushButton" name="P731957YA0A_button">
        <property name="font">
         <font>
@@ -1356,47 +1345,7 @@ SEAL-ROOF</string>
        </property>
       </widget>
      </item>
-     <item row="0" column="1">
-      <widget class="QPushButton" name="P828387YA0A_button">
-       <property name="font">
-        <font>
-         <family>Ubuntu Mono</family>
-         <pointsize>10</pointsize>
-        </font>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">background-color: rgb(181, 136, 104);</string>
-       </property>
-       <property name="text">
-        <string>J42U
-82838 7YA0A
-SEAL-RR DOOR PARTING, RH</string>
-       </property>
-       <property name="icon">
-        <iconset>
-         <normaloff>resources/icon/808387YA0A.png</normaloff>resources/icon/808387YA0A.png</iconset>
-       </property>
-       <property name="iconSize">
-        <size>
-         <width>50</width>
-         <height>50</height>
-        </size>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </widget>
-   <widget class="QWidget" name="gridLayoutWidget_5">
-    <property name="geometry">
-     <rect>
-      <x>1140</x>
-      <y>350</y>
-      <width>231</width>
-      <height>61</height>
-     </rect>
-    </property>
-    <layout class="QGridLayout" name="gridLayout_5">
-     <item row="0" column="0">
+     <item row="0" column="4">
       <widget class="QPushButton" name="P8462284S00_button">
        <property name="font">
         <font>
@@ -1405,7 +1354,7 @@ SEAL-RR DOOR PARTING, RH</string>
         </font>
        </property>
        <property name="styleSheet">
-        <string notr="true">background-color: rgb(20, 20, 209);</string>
+        <string notr="true">background-color: rgb(138, 146, 255);</string>
        </property>
        <property name="text">
         <string>YT3
@@ -1424,20 +1373,8 @@ WS, RR DOOR DUST</string>
        </property>
       </widget>
      </item>
-    </layout>
-   </widget>
-   <widget class="QWidget" name="gridLayoutWidget_6">
-    <property name="geometry">
-     <rect>
-      <x>610</x>
-      <y>900</y>
-      <width>231</width>
-      <height>71</height>
-     </rect>
-    </property>
-    <layout class="QGridLayout" name="gridLayout_6">
-     <item row="0" column="0">
-      <widget class="QPushButton" name="P658207LE0A_button">
+     <item row="3" column="0">
+      <widget class="QPushButton" name="P808387YA0A_button">
        <property name="font">
         <font>
          <family>Ubuntu Mono</family>
@@ -1445,85 +1382,16 @@ WS, RR DOOR DUST</string>
         </font>
        </property>
        <property name="styleSheet">
-        <string notr="true">background-color: rgb(40, 40,40);
-color: rgb(240, 240, 240);</string>
-       </property>
-       <property name="text">
-        <string>P13C
-65820 7LE0A
-SEAL ASSY-HOOD FR</string>
-       </property>
-       <property name="icon">
-        <iconset>
-         <normaloff>resources/icon/658207LEA0A.png</normaloff>resources/icon/658207LEA0A.png</iconset>
-       </property>
-       <property name="iconSize">
-        <size>
-         <width>69</width>
-         <height>50</height>
-        </size>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </widget>
-   <widget class="QLabel" name="label_10">
-    <property name="geometry">
-     <rect>
-      <x>1150</x>
-      <y>310</y>
-      <width>211</width>
-      <height>31</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <family>Ubuntu Mono</family>
-      <pointsize>22</pointsize>
-      <weight>75</weight>
-      <bold>true</bold>
-     </font>
-    </property>
-    <property name="styleSheet">
-     <string notr="true">color: rgb(238, 238, 236);</string>
-    </property>
-    <property name="text">
-     <string>スズキ自動車</string>
-    </property>
-    <property name="alignment">
-     <set>Qt::AlignCenter</set>
-    </property>
-   </widget>
-   <widget class="QWidget" name="gridLayoutWidget_7">
-    <property name="geometry">
-     <rect>
-      <x>1130</x>
-      <y>750</y>
-      <width>496</width>
-      <height>80</height>
-     </rect>
-    </property>
-    <layout class="QGridLayout" name="gridLayout_7">
-     <item row="0" column="0">
-      <widget class="QPushButton" name="P828397YA6A_KATABU_NASHI_button">
-       <property name="font">
-        <font>
-         <family>Ubuntu Mono</family>
-         <pointsize>10</pointsize>
-        </font>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">background-color: rgb(181, 136, 104);</string>
+        <string notr="true">background-color: rgb(211, 215, 207);</string>
        </property>
        <property name="text">
         <string>J42U
-82839 7YA6A
-SEAL-RR DOOR PARTING, LH
-KATABU NASHI(RR STEP)</string>
+80838 7YA0A
+SEAL-FR DOOR PARTING, RH</string>
        </property>
        <property name="icon">
         <iconset>
-         <normaloff>resources/icon/82838.png</normaloff>resources/icon/82838.png</iconset>
+         <normaloff>resources/icon/808387YA0A.png</normaloff>resources/icon/808387YA0A.png</iconset>
        </property>
        <property name="iconSize">
         <size>
@@ -1533,7 +1401,7 @@ KATABU NASHI(RR STEP)</string>
        </property>
       </widget>
      </item>
-     <item row="0" column="1">
+     <item row="5" column="3">
       <widget class="QPushButton" name="P828387YA6A_KATABUNASHI_button">
        <property name="font">
         <font>
@@ -1562,13 +1430,104 @@ KATABU NASHI(RR STEP)</string>
        </property>
       </widget>
      </item>
+     <item row="6" column="4">
+      <widget class="QLabel" name="label_11">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <widget class="QPushButton" name="P828387YA0A_button">
+       <property name="font">
+        <font>
+         <family>Ubuntu Mono</family>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(181, 136, 104);</string>
+       </property>
+       <property name="text">
+        <string>J42U
+82838 7YA0A
+SEAL-RR DOOR PARTING, RH</string>
+       </property>
+       <property name="icon">
+        <iconset>
+         <normaloff>resources/icon/808387YA0A.png</normaloff>resources/icon/808387YA0A.png</iconset>
+       </property>
+       <property name="iconSize">
+        <size>
+         <width>50</width>
+         <height>50</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QPushButton" name="P658207UA0A_button">
+       <property name="font">
+        <font>
+         <family>Ubuntu Mono</family>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(211, 215, 207);</string>
+       </property>
+       <property name="text">
+        <string>JC2D
+65820 7UA0A
+SEAL ASSY-HOOD, FR RH
+CCM1</string>
+       </property>
+       <property name="icon">
+        <iconset>
+         <normaloff>resources/icon/658207UA0A.png</normaloff>resources/icon/658207UA0A.png</iconset>
+       </property>
+       <property name="iconSize">
+        <size>
+         <width>50</width>
+         <height>50</height>
+        </size>
+       </property>
+      </widget>
+     </item>
     </layout>
+   </widget>
+   <widget class="QLabel" name="label_10">
+    <property name="geometry">
+     <rect>
+      <x>1580</x>
+      <y>310</y>
+      <width>241</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>Ubuntu Mono</family>
+      <pointsize>22</pointsize>
+      <weight>75</weight>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">color: rgb(238, 238, 236);</string>
+    </property>
+    <property name="text">
+     <string>スズキ自動車</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+    </property>
    </widget>
    <widget class="QLabel" name="label_6">
     <property name="geometry">
      <rect>
-      <x>60</x>
-      <y>320</y>
+      <x>50</x>
+      <y>280</y>
       <width>361</width>
       <height>31</height>
      </rect>
@@ -1591,10 +1550,22 @@ KATABU NASHI(RR STEP)</string>
      <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
     </property>
    </widget>
+   <widget class="QLabel" name="label_12">
+    <property name="geometry">
+     <rect>
+      <x>770</x>
+      <y>1030</y>
+      <width>239</width>
+      <height>58</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+   </widget>
    <zorder>label</zorder>
    <zorder>label_1</zorder>
    <zorder>label_2</zorder>
-   <zorder>quitbutton</zorder>
    <zorder>line_3</zorder>
    <zorder>line_4</zorder>
    <zorder>line_5</zorder>
@@ -1619,13 +1590,11 @@ KATABU NASHI(RR STEP)</string>
    <zorder>line_2</zorder>
    <zorder>gridLayoutWidget</zorder>
    <zorder>gridLayoutWidget_2</zorder>
-   <zorder>gridLayoutWidget_3</zorder>
    <zorder>gridLayoutWidget_4</zorder>
-   <zorder>gridLayoutWidget_5</zorder>
-   <zorder>gridLayoutWidget_6</zorder>
    <zorder>label_10</zorder>
-   <zorder>gridLayoutWidget_7</zorder>
    <zorder>label_6</zorder>
+   <zorder>label_12</zorder>
+   <zorder>quitbutton</zorder>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">

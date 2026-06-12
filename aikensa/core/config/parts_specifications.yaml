@@ -71,7 +71,7 @@ parts:
     tolerance_pitch: [3.0, 1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 3.0, 10.0]
     idSpec: [1, 1, 1, 1, 1, 1, 1, 1]
     
-    pixelMultiplier: 0.1609
+    pixelMultiplier: 0.1597
     detected_cropped_size: 512
     border_width: 10
     
@@ -93,7 +93,7 @@ parts:
     tolerance_pitch: [3.0, 1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 3.0, 10.0]
     idSpec: [0, 0, 0, 0, 0, 0, 0, 0]
     
-    pixelMultiplier: 0.1609
+    pixelMultiplier: 0.1597
     detected_cropped_size: 512
     border_width: 10
     

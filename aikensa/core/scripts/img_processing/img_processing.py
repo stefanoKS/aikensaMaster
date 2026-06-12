@@ -115,7 +115,7 @@ def draw_status_text_PIL(image, status, print_status, size = "normal"):
         color = (10, 210, 60)
 
     elif status == "NG":
-        color = (200, 30, 50)
+        color = (20, 30, 200)
     
     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     img_pil = Image.fromarray(image_rgb)

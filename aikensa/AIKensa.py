@@ -37,10 +37,10 @@ UI_FILES = [
     'aikensa/gui/pages/CALIBRATION/calibration_cam2.ui', #index 2         
     'aikensa/gui/pages/CALIBRATION/camera_merge.ui',     #index 3
     "aikensa/gui/pages/empty.ui",            #empty 4
-    "aikensa/gui/pages/MMC/M_5A45/P82833W050P.ui",      #index 5
+    "aikensa/gui/pages/MMC/M_5A45/P82833W050P.ui",     #index 5
     "aikensa/gui/pages/MMC/M_5A45/P82832W040P.ui",      #index 6
     "aikensa/gui/pages/MMC/M_5A45/P82833W090P.ui",      #index 7
-    "aikensa/gui/pages/MMC/M_5A45/P82832W080P.ui",      #index 8
+    "aikensa/gui/pages/MMC/M_5A45/P82832W080P.ui",     #index 8
     "aikensa/gui/pages/MMC/M_5A45/P82833W050PKENGEN.ui",      #index 9
     "aikensa/gui/pages/MMC/M_5A45/P82832W040PKENGEN.ui",      #index 10
     "aikensa/gui/pages/MMC/M_5A45/P82833W090PKENGEN.ui",      #index 11
@@ -92,10 +92,6 @@ class AIKensa(QMainWindow):
         self.part_mode_ui_state = {}
 
         self.widget_dir_map = {
-            5: "82833W050P",
-            6: "82832W040P",
-            7: "82833W090P",
-            8: "82832W080P",
             9: "82833W050PKENGEN",
             10: "82832W040PKENGEN",
             11: "82833W090PKENGEN",
@@ -203,10 +199,6 @@ class AIKensa(QMainWindow):
         self.inspection_thread.partCam.connect(self._setPartFrame)
         self.inspection_thread.partKatabuL.connect(self._setFrameKatabuL)
         self.inspection_thread.partKatabuR.connect(self._setFrameKatabuR)
-
-        self.inspection_thread.clip1Signal.connect(self._setClip1Frame)
-        self.inspection_thread.clip2Signal.connect(self._setClip2Frame)
-        self.inspection_thread.clip3Signal.connect(self._setClip3Frame)
 
         self.inspection_thread.ethernetStatus.connect(self._setEthernetStatus)
 
@@ -335,7 +327,7 @@ class AIKensa(QMainWindow):
                "P82832W080PCLIPSOUNYUUKI_button": {"widget_index": 16, "inspection_param": 16},
             "P808387UA1A_button": {"widget_index": 17, "inspection_param": 17},
             "P828447UA0A_button": {"widget_index": 18, "inspection_param": 18},
-            "P658217UA0A_button": {"widget_index": 30, "inspection_param": 30},  # Widget 30 (same part as 31)
+            "P658217UA0A_button": {"widget_index": 31, "inspection_param": 31},
             "P658217UA0A_31_button": {"widget_index": 31, "inspection_param": 31},
             "P658207UA0A_button": {"widget_index": 32, "inspection_param": 32},
             "P658217UJ0A_button": {"widget_index": 33, "inspection_param": 33},

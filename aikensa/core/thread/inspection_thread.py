@@ -17,9 +17,7 @@ from PyQt5.QtCore import QThread, pyqtSignal, Qt, QTimer
 from PyQt5.QtGui import QImage, QPixmap
 
 from aikensa.core.scripts.cam_init.cam_init_ic4 import open_ic4_camera_or_placeholder, DummyCapture
-from aikensa.core.scripts.cam_init.cam_hole_init import initialize_hole_camera
-from aikensa.core.scripts.img_processing.cameracalibrate import detectCharucoBoard , calculatecameramatrix, warpTwoImages, calculateHomography_template, warpTwoImages_template
-from aikensa.core.scripts.img_processing.arucoplanarize import planarize, planarize_image
+from aikensa.core.scripts.img_processing.cameracalibrate import warpTwoImages_template
 from dataclasses import dataclass, field
 from typing import List
 
@@ -37,8 +35,8 @@ from aikensa.core.config.parts.NISSAN.M_JC2D.P828447UA0A import partcheck as P82
 from aikensa.core.config.parts.NISSAN.M_J42U.P731957YA0A_SEALROOF import partcheck as P731957YA0A_check
 from aikensa.core.config.parts.NISSAN.M_J42U.P808387YA0A_SEALFRDOORPARTING import partcheck as P808387YA0A_check
 from aikensa.core.config.parts.NISSAN.M_J42U.P808387YA0A_P828387YA0A_KEYPOINT import partcheck as P808387YA0A_P828387YA0A_keypoint_check
-from aikensa.core.config.parts.NISSAN.M_J42U.P828387YA1A_SEALRRDOORPARTINGLOCK import partcheck as P828387YA1A_check
 from aikensa.core.config.parts.NISSAN.M_J42U.P828387YA6A_SEALRRDOORPARTINGRRSTEP import partcheck as P828387YA6A_check
+from aikensa.core.config.parts.NISSAN.M_J42U.P828387YA1A_SEALRRDOORPARTINGLOCK import partcheck as P828387YA1A_check
 from aikensa.core.config.parts.NISSAN.M_J42U.P828387YA6A_SEALRRDOORPARTINGRRSTEP_KATABU_NASHI import partcheck as P828387YA6A_KATABU_NASHI_check
 from aikensa.core.config.parts.NISSAN.M_J42U.P658107Y0A_SEALASSYRADCORE import partcheck as P658107YA0A_check
 from aikensa.core.config.parts.NICHIJOU_TENKEN import debug_images_enabled as NICHIJOU_TENKEN_debug_images_enabled
@@ -85,10 +83,6 @@ class InspectionThread(QThread):
     partCam = pyqtSignal(QImage)
     partKatabuL = pyqtSignal(QImage)
     partKatabuR = pyqtSignal(QImage)
-
-    clip1Signal = pyqtSignal(QImage)
-    clip2Signal = pyqtSignal(QImage)
-    clip3Signal = pyqtSignal(QImage)
 
     modelErrorSignal = pyqtSignal(str)  # Signal for model error messages
 
@@ -359,13 +353,6 @@ class InspectionThread(QThread):
                 self.H2 = np.array(self.homography_matrix2)
                 print(f"Loaded homography matrix for camera 2")
 
-        #for H2 high
-        if os.path.exists("./aikensa/core/param/camera/homography_param_cam2_high.yaml"):
-            with open("./aikensa/core/param/camera/homography_param_cam2_high.yaml") as file:
-                self.homography_matrix2 = yaml.load(file, Loader=yaml.FullLoader)
-                self.H2_high = np.array(self.homography_matrix2)
-                print(f"Loaded homography matrix for camera 2")
-
         if os.path.exists("./aikensa/core/param/camera/homography_param_cam1_scaled.yaml"):
             with open("./aikensa/core/param/camera/homography_param_cam1_scaled.yaml") as file:
                 self.homography_matrix1_scaled = yaml.load(file, Loader=yaml.FullLoader)
@@ -378,13 +365,7 @@ class InspectionThread(QThread):
                 self.H2_scaled = np.array(self.homography_matrix2_scaled)
                 print(f"Loaded scaled homography matrix for camera 2")
 
-        #for H2 high scaled
-        if os.path.exists("./aikensa/core/param/camera/homography_param_cam2_high_scaled.yaml"):
-            with open("./aikensa/core/param/camera/homography_param_cam2_high_scaled.yaml") as file:
-                self.homography_matrix2_scaled = yaml.load(file, Loader=yaml.FullLoader)
-                self.H2_high_scaled = np.array(self.homography_matrix2_scaled)
-                print(f"Loaded scaled homography matrix for camera 2 high")
-        
+
         if os.path.exists("./aikensa/core/param/camera/planarizeTransform_wide.yaml"):
             with open("./aikensa/core/param/camera/planarizeTransform_wide.yaml") as file:
                 transform_list = yaml.load(file, Loader=yaml.FullLoader)
@@ -509,161 +490,9 @@ class InspectionThread(QThread):
                             self.partKatabuL.emit(self.katabuImageL_scaled)
                             self.partKatabuR.emit(self.katabuImageR_scaled)
 
-                            if self.inspection_config.widget in [5, 6, 7, 8]: # also emit clip
-                                self.clipImage1 = self.frameCrop(self.mergeframe1, self.clipImage1_Crop[0], self.clipImage1_Crop[1], self.clipImage1_Crop[2], self.clipImage1_Crop[3], self.clipImage1_Crop[4], self.clipImage1_Crop[5])
-                                self.clipImage2 = self.frameCrop(self.mergeframe1, self.clipImage2_Crop[0], self.clipImage2_Crop[1], self.clipImage2_Crop[2], self.clipImage2_Crop[3], self.clipImage2_Crop[4], self.clipImage2_Crop[5])
-                                self.clipImage3 = self.frameCrop(self.mergeframe2, self.clipImage3_Crop[0], self.clipImage3_Crop[1], self.clipImage3_Crop[2], self.clipImage3_Crop[3], self.clipImage3_Crop[4], self.clipImage3_Crop[5])
-                                
-                                if not self.ic4_rotate_180:
-                                    self.clipImage1 = cv2.rotate(self.clipImage1, cv2.ROTATE_180)
-                                    self.clipImage2 = cv2.rotate(self.clipImage2, cv2.ROTATE_180)
-                                    self.clipImage3 = cv2.rotate(self.clipImage3, cv2.ROTATE_180)
-
-                                # Check if HAND_DETECT model is available
-                                if not self._check_model_available('P828XXW0X0P_HAND_DETECT'):
-                                    self.HandinFrame1 = None
-                                    self.HandinFrame2 = None
-                                    self.HandinFrame3 = None
-                                else:
-                                    try:
-                                        self.HandinFrame1 = self.P828XXW0X0P_HAND_DETECT(cv2.cvtColor(self.clipImage1, cv2.COLOR_BGR2RGB), stream=True, verbose=False)
-                                        self.HandinFrame2 = self.P828XXW0X0P_HAND_DETECT(cv2.cvtColor(self.clipImage2, cv2.COLOR_BGR2RGB), stream=True, verbose=False)
-                                        self.HandinFrame3 = self.P828XXW0X0P_HAND_DETECT(cv2.cvtColor(self.clipImage3, cv2.COLOR_BGR2RGB), stream=True, verbose=False)
-                                        
-                                        self.HandinFrame1 = list(self.HandinFrame1)[0].probs.data.argmax().item()
-                                        self.HandinFrame2 = list(self.HandinFrame2)[0].probs.data.argmax().item()
-                                        self.HandinFrame3 = list(self.HandinFrame3)[0].probs.data.argmax().item()
-                                    except Exception as e:
-                                        print(f"[Inference Error] P828XXW0X0P_HAND_DETECT: {e}")
-                                        self.modelErrorSignal.emit("no ai model found in the image")
-                                        self.HandinFrame1 = None
-                                        self.HandinFrame2 = None
-                                        self.HandinFrame3 = None
-                                
-                                # 0 for hand in frame, 1 for hand not in frame. It's flipped, I know
-                                if self.HandinFrame1 is not None and self.HandinFrame2 is not None and self.HandinFrame3 is not None:
-                                    print(f"HandFrame1,2,and 3: {self.HandinFrame1}, {self.HandinFrame2}, {self.HandinFrame3}")
-
-                                if self.inspection_config.widget in [7, 8]:
-                                    if (time.time() - self.pickingTimerStart) > self.pickingWaitTime:
-                                        # print("Picking Timer Reset")
-
-                                        if self.clipPickingOrder[self.inspection_config.widget][:6] == [1, 1, 1, 1, 1, 1]:
-                                            if self.HandinFrame1 == 0 or self.HandinFrame2 == 0 or self.HandinFrame3 == 0:
-                                                play_alarm_sound()
-
-                                        if self.clipPickingOrder[self.inspection_config.widget][:6] == [1, 1, 1, 1, 1, 0]:
-                                            if self.HandinFrame3 == 0:
-                                                self.clipPickingOrder[self.inspection_config.widget][5] = 1
-                                                self.pickingTimerStart = time.time()
-                                                play_ok_sound()
-                                            if self.HandinFrame1 == 0 or self.HandinFrame2 == 0:
-                                                play_alarm_sound()
-
-                                        if self.clipPickingOrder[self.inspection_config.widget][:6] == [1, 1, 1, 1, 0, 0]:
-                                            if self.HandinFrame2 == 0:
-                                                self.clipPickingOrder[self.inspection_config.widget][4] = 1
-                                                self.pickingTimerStart = time.time()
-                                                play_ok_sound()
-                                            if self.HandinFrame1 == 0 or self.HandinFrame3 == 0:
-                                                play_alarm_sound()
-
-                                        if self.clipPickingOrder[self.inspection_config.widget][:6] == [1, 1, 1, 0, 0, 0]:
-                                            if self.HandinFrame2 == 0:
-                                                self.clipPickingOrder[self.inspection_config.widget][3] = 1
-                                                self.pickingTimerStart = time.time()
-                                                play_ok_sound()
-                                            if self.HandinFrame1 == 0 or self.HandinFrame3 == 0:
-                                                play_alarm_sound()
-
-                                        if self.clipPickingOrder[self.inspection_config.widget][:6] == [1, 1, 0, 0, 0, 0]:
-                                            if self.HandinFrame2 == 0:
-                                                self.clipPickingOrder[self.inspection_config.widget][2] = 1
-                                                self.pickingTimerStart = time.time()
-                                                play_ok_sound()
-                                            if self.HandinFrame1 == 0 or self.HandinFrame3 == 0:
-                                                play_alarm_sound()
-
-                                        if self.clipPickingOrder[self.inspection_config.widget][:6] == [1, 0, 0, 0, 0, 0]:
-                                            if self.HandinFrame1 == 0:
-                                                self.clipPickingOrder[self.inspection_config.widget][1] = 1
-                                                self.pickingTimerStart = time.time()
-                                                play_ok_sound()
-                                            if self.HandinFrame2 == 0 or self.HandinFrame3 == 0:
-                                                play_alarm_sound()
-                                                
-                                        if self.clipPickingOrder[self.inspection_config.widget][:6] == [0, 0, 0, 0, 0, 0]:
-                                            if self.HandinFrame1 == 0:
-                                                self.clipPickingOrder[self.inspection_config.widget][0] = 1
-                                                self.pickingTimerStart = time.time()
-                                                play_ok_sound()
-                                            if self.HandinFrame2 == 0 or self.HandinFrame3 == 0:
-                                                play_alarm_sound()
-
-                                if self.inspection_config.widget in [5, 6]:
-                                    if (time.time() - self.pickingTimerStart) > self.pickingWaitTime:
-                                        # print("Picking Timer Reset")
-
-                                        if self.clipPickingOrder[self.inspection_config.widget][:5] == [1, 1, 1, 1, 1]:
-                                            if self.HandinFrame1 == 0 or self.HandinFrame2 == 0 or self.HandinFrame3 == 0:
-                                                play_alarm_sound()
-
-                                        if self.clipPickingOrder[self.inspection_config.widget][:5] == [1, 1, 1, 1, 0]:
-                                            if self.HandinFrame3 == 0:
-                                                self.clipPickingOrder[self.inspection_config.widget][4] = 1
-                                                self.pickingTimerStart = time.time()
-                                                play_ok_sound()
-                                            if self.HandinFrame1 == 0 or self.HandinFrame2 == 0:
-                                                play_alarm_sound()
-
-                                        if self.clipPickingOrder[self.inspection_config.widget][:5] == [1, 1, 1, 0, 0]:
-                                            if self.HandinFrame2 == 0:
-                                                self.clipPickingOrder[self.inspection_config.widget][3] = 1
-                                                self.pickingTimerStart = time.time()
-                                                play_ok_sound()
-                                            if self.HandinFrame1 == 0 or self.HandinFrame3 == 0:
-                                                play_alarm_sound()
-
-                                        if self.clipPickingOrder[self.inspection_config.widget][:5] == [1, 1, 0, 0, 0]:
-                                            if self.HandinFrame2 == 0:
-                                                self.clipPickingOrder[self.inspection_config.widget][2] = 1
-                                                self.pickingTimerStart = time.time()
-                                                play_ok_sound()
-                                            if self.HandinFrame1 == 0 or self.HandinFrame3 == 0:
-                                                play_alarm_sound()
-
-                                        if self.clipPickingOrder[self.inspection_config.widget][:5] == [1, 0, 0, 0, 0]:
-                                            if self.HandinFrame1 == 0:
-                                                self.clipPickingOrder[self.inspection_config.widget][1] = 1
-                                                self.pickingTimerStart = time.time()
-                                                play_ok_sound()
-                                            if self.HandinFrame2 == 0 or self.HandinFrame3 == 0:
-                                                play_alarm_sound()
-                                                
-                                        if self.clipPickingOrder[self.inspection_config.widget][:5] == [0, 0, 0, 0, 0]:
-                                            if self.HandinFrame1 == 0:
-                                                self.clipPickingOrder[self.inspection_config.widget][0] = 1
-                                                self.pickingTimerStart = time.time()
-                                                play_ok_sound()
-                                            if self.HandinFrame2 == 0 or self.HandinFrame3 == 0:
-                                                play_alarm_sound()
-
-                                self.pickingOrderSignal.emit(self.clipPickingOrder)
-
-                                self.clipImage1 = self.convertQImage(self.clipImage1)
-                                self.clipImage2 = self.convertQImage(self.clipImage2)
-                                self.clipImage3 = self.convertQImage(self.clipImage3)
-
-                                self.clip1Signal.emit(self.clipImage1)
-                                self.clip2Signal.emit(self.clipImage2)
-                                self.clip3Signal.emit(self.clipImage3)
-
                     self.InspectionResult_PitchMeasured = [None]*50
                     self.InspectionResult_PitchResult = [None]*50
                     self.InspectionResult_DeltaPitch = [None]*50
-
-                    cv2.imwrite("scaled_combined_image.png", self.combinedImage_scaled)
-
 
                     if self.combinedImage_scaled is not None:
                         preview_width, preview_height = self._get_partcam_preview_size()
@@ -698,7 +527,6 @@ class InspectionThread(QThread):
                     self.P658217UJ0A_InspectionResult_PitchMeasured.emit(self.InspectionResult_PitchMeasured, self.InspectionResult_PitchResult)
                     self.P658207UJ0A_InspectionResult_PitchMeasured.emit(self.InspectionResult_PitchMeasured, self.InspectionResult_PitchResult)
 
-
                     self.P808387YA0A_InspectionResult_PitchMeasured.emit(self.InspectionResult_PitchMeasured, self.InspectionResult_PitchResult)
                     self.P828387YA0A_InspectionResult_PitchMeasured.emit(self.InspectionResult_PitchMeasured, self.InspectionResult_PitchResult)
                     self.P828387YA1A_InspectionResult_PitchMeasured.emit(self.InspectionResult_PitchMeasured, self.InspectionResult_PitchResult)
@@ -707,160 +535,7 @@ class InspectionThread(QThread):
                     self.P828397YA6A_InspectionResult_PitchMeasured.emit(self.InspectionResult_PitchMeasured, self.InspectionResult_PitchResult)
                     self.P828387YA6A_KATABU_NASHI_InspectionResult_PitchMeasured.emit(self.InspectionResult_PitchMeasured, self.InspectionResult_PitchResult)
                     self.P828397YA6A_KATABU_NASHI_InspectionResult_PitchMeasured.emit(self.InspectionResult_PitchMeasured, self.InspectionResult_PitchResult)
-            #for normal inspection
-            if self.inspection_config.widget in [5, 6, 7, 8]:
-                self._handle_manual_adjustment_and_reset(widget=self.inspection_config.widget, use_ppms=True)
 
-                if self._begin_inspection_cycle(print_start=True):
-
-                    if self.inspection_config.widget in [5, 6]:
-                        if self.clipPickingOrder[self.inspection_config.widget][:5] != [1, 1, 1, 1, 1]:
-                            # play_alarm_sound()
-                            continue
-
-                    if self.inspection_config.widget in [7, 8]:
-                        if self.clipPickingOrder[self.inspection_config.widget][:6] != [1, 1, 1, 1, 1, 1]:
-                            # play_alarm_sound()
-                            continue
-                
-                    if self.InspectionTimeStart is not None:
-                        self.clipPickingOrder[self.inspection_config.widget][:6] = [0, 0, 0, 0, 0, 0]
-
-                        if time.time() - self.InspectionTimeStart > self.InspectionWaitTime:
-                            print("Inspection Time is over")
-                            self.InspectionTimeStart = time.time()
-                            self._prepare_wide_inspection_images(status_text="検査中", x_offset=-200, y_offset=-100)
-
-                            if self.inspection_config.widget in [5, 6, 7, 8, 9, 10, 11, 12]: # emit katabu
-                                if self.inspection_config.widget in [5, 7, 9, 11]:
-                                    #katabu L is blank
-                                    #katabu R is cropped image
-                                    self.katabuImageL = self.createBlackImage(width=256, height=128)
-                                    self.katabuImageR = self.frameCrop(self.combinedImage, self.katabuImageR_Crop[0], self.katabuImageR_Crop[1], self.katabuImageR_Crop[2], self.katabuImageR_Crop[3], self.katabuImageR_Crop[4], self.katabuImageR_Crop[5])
-                                    self.katabuImage = self.katabuImageR.copy()
-                                    self.katabuImage_init = self.katabuImageR.copy()
-                                if self.inspection_config.widget in [6, 8, 10, 12]: 
-                                    #katabu L is cropped image
-                                    #katabu R is blank
-                                    self.katabuImageL = self.frameCrop(self.combinedImage, self.katabuImageL_Crop[0], self.katabuImageL_Crop[1], self.katabuImageL_Crop[2], self.katabuImageL_Crop[3], self.katabuImageL_Crop[4], self.katabuImageL_Crop[5])
-                                    self.katabuImageR = self.createBlackImage(width=256, height=128)
-                                    self.katabuImage = self.katabuImageL.copy()
-                                    self.katabuImage_init = self.katabuImageL.copy()
-
-                                self.partKatabuL.emit(self.convertQImage(self.katabuImageL))
-                                self.partKatabuR.emit(self.convertQImage(self.katabuImageR))
-
-                            for i in range(len(self.InspectionImages)):
-                                # Check if CLIP model is available
-                                if not self._check_model_available('P828XXW0X0P_CLIP_Model'):
-                                    self.inspection_config.doInspection = False
-                                    break
-                                
-                                try:
-                                    self.InspectionResult_ClipDetection[i] = get_sliced_prediction(
-                                                self.InspectionImages_bgr[i], 
-                                                self.P828XXW0X0P_CLIP_Model, 
-                                                slice_height=1280, slice_width=1980, 
-                                                overlap_height_ratio=0.0, overlap_width_ratio=0.2,
-                                                postprocess_match_metric="IOS",
-                                                postprocess_match_threshold=0.005,
-                                                postprocess_class_agnostic=False,
-                                                postprocess_type="GREEDYNMM",
-                                                verbose=0,
-                                                perform_standard_pred=True
-                                            )
-                                except Exception as e:
-                                    print(f"[Inference Error] P828XXW0X0P_CLIP_Model: {e}")
-                                    self.modelErrorSignal.emit("no ai model found in the image")
-                                    self.inspection_config.doInspection = False
-                                    break
-                                
-                                if self.inspection_config.widget in [5, 7, 9, 11]:
-                                    # Check if KATABU model is available
-                                    if not self._check_model_available('P828XXW0X0P_KATABU_Model'):
-                                        self.inspection_config.doInspection = False
-                                        break
-                                    
-                                    try:
-                                        self.InspectionResult_KatabuDetection = self.P828XXW0X0P_KATABU_Model(cv2.cvtColor(self.katabuImage, cv2.COLOR_BGR2RGB),
-                                                                                                            stream=True,
-                                                                                                            verbose=False,
-                                                                                                            conf=0.1,
-                                                                                                            iou=0.5)
-                                    except Exception as e:
-                                        print(f"[Inference Error] P828XXW0X0P_KATABU_Model: {e}")
-                                        self.modelErrorSignal.emit("no ai model found in the image")
-                                        self.inspection_config.doInspection = False
-                                        break
-
-                                if self.inspection_config.widget in [6, 8, 10, 12]:
-                                    # Check if KATABU model is available
-                                    if not self._check_model_available('P828XXW0X0P_KATABU_Model'):
-                                        self.inspection_config.doInspection = False
-                                        break
-                                    
-                                    try:
-                                        self.InspectionResult_KatabuDetection = self.P828XXW0X0P_KATABU_Model(cv2.cvtColor(self.katabuImage, cv2.COLOR_BGR2RGB),
-                                                                                                            stream=True,
-                                                                                                            verbose=False,
-                                                                                                            conf=0.1,
-                                                                                                            iou=0.5)
-                                    except Exception as e:
-                                        print(f"[Inference Error] P828XXW0X0P_KATABU_Model: {e}")
-                                        self.modelErrorSignal.emit("no ai model found in the image")
-                                        self.inspection_config.doInspection = False
-                                        break
-                                    
-                                self.InspectionImages[i], self.InspectionImagesKatabu[i], self.InspectionResult_PitchMeasured[i], self.InspectionResult_PitchResult[i], self.InspectionResult_DetectionID[i], self.InspectionResult_Status[i], self.InspectionResult_NGReason[i] = P828XXW0X0P_check(self.InspectionImages[i], self.katabuImage,
-                                                                                                                                                                                                                self.InspectionResult_ClipDetection[i].object_prediction_list,
-                                                                                                                                                                                                                self.InspectionResult_KatabuDetection,
-                                                                                                                                                                                                                self.widget_name_map[self.inspection_config.widget])
-
-                                for i in range(len(self.InspectionResult_Status)):
-                                    if self.InspectionResult_Status[i] == "OK": 
-                                        # Increment the 'OK' count at the appropriate index (1)
-                                        self.inspection_config.current_numofPart[self.inspection_config.widget][0] += 1
-                                        self.inspection_config.today_numofPart[self.inspection_config.widget][0] += 1
-                                        play_ok_sound()
-
-                                    elif self.InspectionResult_Status[i] == "NG": 
-                                        # Increment the 'NG' count at the appropriate index (0)
-                                        self.inspection_config.current_numofPart[self.inspection_config.widget][1] += 1
-                                        self.inspection_config.today_numofPart[self.inspection_config.widget][1] += 1
-                                        play_ng_sound()
-
-                            # self.save_image_result(self.combinedImage, self.InspectionImages[0], self.InspectionResult_Status[0])
-                            self.save_image_result_withKatabu(self.combinedImage, self.InspectionImages[0], self.katabuImage_init, self.InspectionImagesKatabu[0], self.InspectionResult_Status[0])
-
-                            self.save_result_database(partname = self.widget_dir_map[self.inspection_config.widget],
-                                    numofPart = self.inspection_config.today_numofPart[self.inspection_config.widget], 
-                                    currentnumofPart = self.inspection_config.current_numofPart[self.inspection_config.widget],
-                                    deltaTime = 0.0,
-                                    kensainName = self.inspection_config.kensainNumber, 
-                                    detected_pitch_str = self.InspectionResult_PitchMeasured[0], 
-                                    delta_pitch_str = self.InspectionResult_DeltaPitch[0], 
-                                    total_length=0,
-                                    resultPitch = self.InspectionResult_PitchResult[0], 
-                                    status = self.InspectionResult_Status[0], 
-                                    NGreason = self.InspectionResult_NGReason[0])
-
-                            self.today_numofPart_signal.emit(self.inspection_config.today_numofPart)
-                            self.current_numofPart_signal.emit(self.inspection_config.current_numofPart)
-                            self.InspectionImages[0] = self.downSampling(self.InspectionImages[0], width=1791, height=428)
-
-                            self.P82833W050P_InspectionResult_PitchMeasured.emit(self.InspectionResult_PitchMeasured, self.InspectionResult_PitchResult)
-                            self.P82832W040P_InspectionResult_PitchMeasured.emit(self.InspectionResult_PitchMeasured, self.InspectionResult_PitchResult)
-                            self.P82833W090P_InspectionResult_PitchMeasured.emit(self.InspectionResult_PitchMeasured, self.InspectionResult_PitchResult)
-                            self.P82832W080P_InspectionResult_PitchMeasured.emit(self.InspectionResult_PitchMeasured, self.InspectionResult_PitchResult)
-
-                            self.partCam.emit(self.convertQImage(self.InspectionImages[0]))
-
-                            if self.inspection_config.widget in [5, 7, 9, 11]:
-                                self.partKatabuR.emit(self.convertQImage(self.InspectionImagesKatabu[0]))
-                            if self.inspection_config.widget in [6, 8, 10, 12]: 
-                                self.partKatabuL.emit(self.convertQImage(self.InspectionImagesKatabu[0]))
-                            time.sleep(1.5)
-     
             #for the kengen
             if self.inspection_config.widget in [9, 10, 11, 12]:    
                 self._handle_manual_adjustment_and_reset(widget=self.inspection_config.widget, use_ppms=True)
@@ -1763,7 +1438,7 @@ class InspectionThread(QThread):
                             )
                             time.sleep(1.5)
 
-            #for daily inspection
+            #P808387YA0A / P828387YA0A
             if self.inspection_config.widget in [37, 38]:
 
                 self._handle_manual_adjustment_and_reset(widget=self.inspection_config.widget, use_ppms=True)
@@ -1806,7 +1481,7 @@ class InspectionThread(QThread):
                                     continue
 
                                 self.InspectionResult_ClipDetection[i] = get_sliced_prediction(
-                                    self.InspectionImages_bgr[i],
+                                    self.InspectionImages[i],
                                     self.P808387UA0A_828387YA0A_detect_Model,
                                     slice_height=497,
                                     slice_width=1960,
@@ -1821,6 +1496,9 @@ class InspectionThread(QThread):
                                 )
 
                                 if not self._check_model_available('P808387UA0A_828387YA0A_keypoint_Model'):
+                                    continue
+
+                                if not self._check_model_available('P808387UA0A_828387YA0A_hanire_clip_Model'):
                                     continue
 
                                 self.InspectionImages_keypoint_Left[i] = self.InspectionImages[i][:, :840, :]
@@ -1845,6 +1523,7 @@ class InspectionThread(QThread):
                                     self.InspectionResult_ClipDetection[i].object_prediction_list,
                                     self.InspectionResult_keypoint_Left[i],
                                     self.InspectionResult_keypoint_Right[i],
+                                    self.P808387UA0A_828387YA0A_hanire_clip_Model,
                                     part_id=part_id,
                                     keypoint_crop_px=840,
                                 )
@@ -2050,6 +1729,7 @@ class InspectionThread(QThread):
                             )
                             time.sleep(1.5)
 
+            # P13C PP658207LE0A (widget 35) keypoint-based inspection
             if self.inspection_config.widget == 35:
 
                 keypoint_crop_px = 2200
@@ -2500,15 +2180,6 @@ class InspectionThread(QThread):
 
         # self.msleep(5)
         time.sleep(0.02)
-
-
-
-
-
-
-
-
-
 
 
     # =========================
@@ -3274,13 +2945,9 @@ class InspectionThread(QThread):
 
         self.H1 = None
         self.H2 = None
-        self.H1_high = None
-        self.H2_high = None
 
         self.H1_scaled = None
         self.H2_scaled = None
-        self.H1_high_scaled = None
-        self.H2_high_scaled = None
 
         self.homography_size = None
         self.homography_size_scaled = None
@@ -3405,9 +3072,31 @@ class InspectionThread(QThread):
                     self.inspection_widget_indices_without_dailytenken = list(self.inspection_widget_indices_without_dailytenken) + [30]
                     self.narrow_height_widget = list(self.narrow_height_widget) + [30]
 
+                # Keep preview-only legacy pages active even if the registry has not
+                # been updated yet. Widget 47 depends on this to receive partCam.
+                legacy_preview_widgets = {
+                    44: "5902A510",
+                    45: "5902A509",
+                    46: "5819A107",
+                    47: "8462284S00",
+                }
+                for widget_id, directory_name in legacy_preview_widgets.items():
+                    if widget_id not in self.widget_dir_map:
+                        self.widget_dir_map[widget_id] = directory_name
+                    if widget_id not in self.widget_name_map:
+                        self.widget_name_map[widget_id] = "P{}".format(directory_name)
+                    if widget_id not in self.inspection_widget_indices:
+                        self.inspection_widget_indices = list(self.inspection_widget_indices) + [widget_id]
+                    if widget_id not in self.inspection_widget_indices_without_dailytenken:
+                        self.inspection_widget_indices_without_dailytenken = list(self.inspection_widget_indices_without_dailytenken) + [widget_id]
+                    if widget_id not in self.wide_height_widget:
+                        self.wide_height_widget = list(self.wide_height_widget) + [widget_id]
+
                 self.widget_group_jc2d = [w for w in [17, 18] if w in self.widget_dir_map]
                 self.widget_group_j42u = [w for w in [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 30, 31, 32, 33, 34, 36, 37, 38, 39, 40, 41, 42, 43, 48, 49] if w in self.widget_dir_map]
                 self.widget_group_p13c = [w for w, v in self.widget_dir_map.items() if "LE0A" in v]
+                self.widget_group_5a45 = [w for w in [44, 45, 46] if w in self.widget_dir_map]
+                self.widget_group_yt3 = [w for w in [47] if w in self.widget_dir_map]
                 
                 logging.info("Widget maps loaded from registry")
                 return  # Success - skip legacy code

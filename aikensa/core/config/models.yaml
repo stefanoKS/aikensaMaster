@@ -98,6 +98,10 @@ models:
     loader: yolo
     path: ./aikensa/core/checkpoints/NISSAN/J42U/P808387UA0A_828387YA0A_keypoint.pt
 
+  P808387UA0A_828387YA0A_hanire_clip_Model:
+    loader: yolo
+    path: ./aikensa/core/checkpoints/NISSAN/J42U/P808387UA0A_828387YA0A_hanire_clip.pt
+
   P828387YA1A_CLIP_Model:
     loader: sahi
     model_type: yolov8
