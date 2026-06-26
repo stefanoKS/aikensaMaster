@@ -112,6 +112,10 @@ models:
     loader: yolo
     path: ./aikensa/core/checkpoints/NISSAN/J42U/P828387YA1A_keypoint.pt
 
+  P828387YA1A_hanire_clip_Model:
+    loader: yolo
+    path: ./aikensa/core/checkpoints/NISSAN/J42U/P828387YA1A_detect_hanire_clip.pt
+
   P828387YA6A_CLIP_Model:
     loader: sahi
     model_type: yolov8
@@ -126,6 +130,14 @@ models:
   P828387YA6A_KATABUMARKING_Model:
     loader: yolo
     path: ./aikensa/core/checkpoints/NISSAN/J42U/P828387YA6A_katabu.pt
+
+  P828387YA6A_KATABU_CLIP_FLIP_Model:
+    loader: yolo
+    path: ./aikensa/core/checkpoints/NISSAN/J42U/P828387YA6A_katabu_flip_clip.pt  
+
+  P828387YA6A_WS_CLIP_HANIRE_Model:
+    loader: yolo
+    path: ./aikensa/core/checkpoints/NISSAN/J42U/P828387YA6A_ws_hanire_clip.pt
 
   P731957YA0A_CLIP_Model:
     loader: sahi

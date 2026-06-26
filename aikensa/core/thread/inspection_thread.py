@@ -1605,6 +1605,10 @@ class InspectionThread(QThread):
                                 if not self._check_model_available('P828387YA1A_END_KEYPOINT_Model'):
                                     continue
 
+                                if not self._check_model_available('P828387YA1A_hanire_clip_Model'):
+                                    continue
+                                
+
                                 self.InspectionImages_endKeypoint_Left[i] = self.InspectionImages[i][:, :keypoint_crop_px, :]
                                 self.InspectionImages_endKeypoint_Right[i] = self.InspectionImages[i][:, -keypoint_crop_px:, :]
 
@@ -1622,13 +1626,23 @@ class InspectionThread(QThread):
                                 )
 
                                 expected_side = "RH" if self.inspection_config.widget == 39 else "LH"
+
                                 self.InspectionImages[i], self.InspectionResult_PitchMeasured[i], self.InspectionResult_PitchResult[i], self.InspectionResult_DetectionID[i], self.InspectionResult_Status[i], self.InspectionResult_NGReason[i] = P828387YA1A_check(
                                     self.InspectionImages[i],
                                     self.InspectionResult_ClipDetection[i].object_prediction_list,
                                     self.InspectionResult_EndKeypoint_Left[i],
                                     self.InspectionResult_EndKeypoint_Right[i],
                                     expected_side=expected_side,
+                                    ws_clip_hanire_model=self.P828387YA1A_hanire_clip_Model,
+
+                                    clip_classifier_crop_px=128,
+                                    clip_classifier_imgsz=128,
+                                    classifier_convert_bgr_to_rgb=True,
+
+                                    debug_save_crops=False,
+                                    debug_crop_dir=r"C:\Users\AIKENSA8GOU\Documents\aikensaMaster\debug_crops\P828387YA1A",
                                 )
+
 
                             self._update_ok_ng_counts_single(self.inspection_config.widget, idx=0, status=self.InspectionResult_Status[0])
                             self._maybe_play_widget_39_40_count_sound(self.inspection_config.widget)
@@ -1995,6 +2009,12 @@ class InspectionThread(QThread):
                             for i in range(len(self.InspectionImages)):
                                 if not self._check_model_available('P828387YA6A_CLIP_Model'):
                                     continue
+                                
+                                if not self._check_model_available('P828387YA6A_KATABU_CLIP_FLIP_Model'):
+                                    continue
+
+                                if not self._check_model_available('P828387YA6A_WS_CLIP_HANIRE_Model'):
+                                    continue
 
                                 self.InspectionResult_ClipDetection[i] = get_sliced_prediction(
                                     self.InspectionImages[i],
@@ -2076,7 +2096,20 @@ class InspectionThread(QThread):
                                     side=side,
                                     keypoint_crop_px=keypoint_crop_px,
                                     katabu_crop_width=int(katabu_crop[2]),
+
+                                    katabu_clip_flip_model=self.P828387YA6A_KATABU_CLIP_FLIP_Model,
+                                    ws_clip_hanire_model=self.P828387YA6A_WS_CLIP_HANIRE_Model,
+
+                                    clip_classifier_crop_px=128,
+                                    clip_classifier_imgsz=128,
+
+                                    # Use True if this matches the behavior you already confirmed.
+                                    classifier_convert_bgr_to_rgb=False,
+
+                                    debug_save_crops=True,
+                                    debug_crop_dir="./debug_crops/P828387YA6A",
                                 )
+
 
                                 self.InspectionImagesKatabu[i] = self._render_katabu_result_image(
                                     katabu_image,

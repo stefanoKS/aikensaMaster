@@ -130,6 +130,14 @@ parts:
     linecolor: [20, 120, 120]
     text_offset: 40
     bbox_offset: 10
+
+    clipClassifierCropPx: 128
+    clipClassifierImgSz: 128
+    classifierConvertBgrToRgb: true
+    hanireNgClassName: NG
+
+    debugSaveCrops: false
+    debugCropDir: C:\Users\AIKENSA8GOU\Documents\aikensaMaster\debug_crops\P828387YA1A
     
     segmentation_width: 1080
 
@@ -148,8 +156,8 @@ parts:
     tolerance_pitchLH: [5.0, 1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 3.0, 3.0, 20.0]
     tolerance_pitchKatabu: [2.0]
     
-    idSpecRH: [0, 0, 0, 0, 0, 0, 0, 0, 0]
-    idSpecLH: [1, 1, 1, 1, 1, 1, 1, 1, 1]
+    idSpecLH: [0, 0, 0, 0, 0, 0, 0, 0, 0]
+    idSpecRH: [1, 1, 1, 1, 1, 1, 1, 1, 1]
     
     pixelMultiplier: 0.16030
     pixelMultiplier_katabumarking: 0.16030
@@ -162,6 +170,12 @@ parts:
     linecolor: [20, 120, 120]
     text_offset: 40
     bbox_offset: 10
+
+    clipClassifierCropPx: 128
+    clipClassifierImgSz: 128
+    classifierConvertBgrToRgb: true
+    katabuFlipNgClassName: NG
+    hanireNgClassName: NG
 
   P828387YA6A_KATABU_NASHI:
     name: "Seal RR Door Parting RR Step (No Katabu)"
