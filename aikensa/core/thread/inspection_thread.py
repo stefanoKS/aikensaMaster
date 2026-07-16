@@ -793,7 +793,7 @@ class InspectionThread(QThread):
                                                                                     planarize_transform=self.planarizeTransform_wide,
                                                                                     planarize_size=self.wide_planarize,
                                                                                     h1=self.H1,
-                                                                                    h2=self.H2_high,
+                                                                                    h2=self.H2,
                                                                                     blank_canvas=self.homography_blank_canvas
                                                                                 )
 
@@ -871,7 +871,7 @@ class InspectionThread(QThread):
                                                                                     planarize_transform=self.planarizeTransform_wide,
                                                                                     planarize_size=self.wide_planarize,
                                                                                     h1=self.H1,
-                                                                                    h2=self.H2_high,
+                                                                                    h2=self.H2,
                                                                                     blank_canvas=self.homography_blank_canvas
                                                                                 )
 
@@ -907,8 +907,8 @@ class InspectionThread(QThread):
                                     self.InspectionResult_keypoint_Right[i] = None
                                 else:
                                     try:
-                                        self.InspectionResult_keypoint_Left[i] = self.P808387UA1A_keypoint(source=self.InspectionImages_keypoint_Left[i], conf=0.6, imgsz=512, verbose=False)
-                                        self.InspectionResult_keypoint_Right[i] = self.P808387UA1A_keypoint(source=self.InspectionImages_keypoint_Right[i], conf=0.6, imgsz=512, verbose=False)
+                                        self.InspectionResult_keypoint_Left[i] = self.P808387UA1A_keypoint(source=self.InspectionImages_keypoint_Left[i], conf=0.6, imgsz=648, verbose=False)
+                                        self.InspectionResult_keypoint_Right[i] = self.P808387UA1A_keypoint(source=self.InspectionImages_keypoint_Right[i], conf=0.6, imgsz=648, verbose=False)
                                     except Exception as e:
                                         print(f"[Inference Error] P808387UA1A_keypoint: {e}")
                                         self.modelErrorSignal.emit("no ai model found in the image")

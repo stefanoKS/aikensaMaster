@@ -63,7 +63,7 @@ def draw_pitch_line(image, xy_pairs, pitchresult, thickness=2):
                 if pitchresult[i] == 1:
                     lineColor = (0, 255, 0)
                 else:
-                    lineColor = (0, 0, 255)
+                    lineColor = (255, 0, 0)
 
                 cv2.line(image, xy_pairs[i], xy_pairs[i+1], lineColor, thickness)
     return None

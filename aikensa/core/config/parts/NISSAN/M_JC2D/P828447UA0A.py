@@ -31,7 +31,7 @@ endoffset_y = 0
 bbox_offset = part_spec.get("bbox_offset", 1)
 
 pixelMultiplier = float(part_spec.get("pixelMultiplier", 1.0))
-detected_cropped_size = int(part_spec.get("detected_cropped_size", 512))
+detected_cropped_size = int(part_spec.get("detected_cropped_size", 648))
 border_width = int(part_spec.get("border_width", 10))
 
 segmentation_pixel_start = int(part_spec.get("segmentation_pixel_start", 0))

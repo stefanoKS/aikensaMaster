@@ -143,7 +143,7 @@ def partcheck(image, sahi_predictionList, keypointLeft, keypointRight, YoloHanir
             measuredPitch.append(length)
         prev_center = center
 
-    # print("Detected IDs: ", detectedid)
+    print("Detected IDs: ", detectedid)
 
 
     if len(detectedposX) > 0:

@@ -17,7 +17,7 @@ parts:
     idSpec: [0, 0, 0, 0, 0, 0, 0]
     
     # Pixel multiplier for measurements
-    pixelMultiplier: 1.0
+    pixelMultiplier: 0.161358
     detected_cropped_size: 512
     border_width: 10
     
@@ -47,8 +47,8 @@ parts:
     tolerance_pitch: [3.0, 1.7, 1.7, 1.7, 1.7, 1.7, 3.0, 10.0]
     idSpec: [0, 0, 0, 0, 0, 0]
     
-    pixelMultiplier: 1.0
-    detected_cropped_size: 512
+    pixelMultiplier: 0.161358
+    detected_cropped_size: 648
     border_width: 10
     
     color_ok: [0, 255, 0]
