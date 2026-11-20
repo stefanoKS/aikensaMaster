@@ -2141,7 +2141,7 @@ class InspectionThread(QThread):
                         if time.time() - self.InspectionTimeStart > self.InspectionWaitTime:
                             print("Inspection Time is over")
                             self.InspectionTimeStart = time.time()
-                            self._prepare_wide_inspection_images(status_text="校正確認中", x_offset=-280, y_offset=-100, h2=self.H2_high)
+                            self._prepare_wide_inspection_images(status_text="校正確認中", x_offset=-280, y_offset=-100, h2=self.H2)
 
                             keypoint_model_imgsz = 1980
                             if self.part_registry:
