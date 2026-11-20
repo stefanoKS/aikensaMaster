@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Callable, List, Optional
 
-from PyQt5.QtWidgets import QWidget
+from PyQt5.QtWidgets import QFrame, QScrollArea, QSizePolicy, QWidget
 
 from aikensa.core.settings.migration import backup_machine_files
 from aikensa.core.settings.service import SettingsService
@@ -85,8 +85,21 @@ class SettingsController(QWidget):
             self.model_page,
             self.history_page,
         ):
-            stack.addWidget(page)
+            scroll = QScrollArea()
+            scroll.setFrameShape(QFrame.NoFrame)
+            scroll.setWidgetResizable(True)
+            scroll.setWidget(page)
+            stack.addWidget(scroll)
             self._pages.append(page)
+
+        for label in (
+            self.camera_page.camera0PreviewLabel,
+            self.camera_page.camera1PreviewLabel,
+            self.fine_page.finePreviewLabel,
+            self.widget_page.widgetFullPreviewLabel,
+            self.widget_page.widgetCropPreviewLabel,
+        ):
+            label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
 
     # ------------------------------------------------------------------
     def _select_page(self, row: int) -> None:

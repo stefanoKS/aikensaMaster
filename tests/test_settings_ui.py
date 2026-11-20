@@ -173,6 +173,181 @@ def test_settings_controller_navigation(qapp, settings):
     assert stack.currentIndex() == 0
 
 
+@pytest.mark.parametrize("size", [(1920, 1080), (1280, 720)])
+def test_settings_scroll_without_expanding_window(qapp, settings, size):
+    from PyQt5.QtCore import QSize
+    from PyQt5.QtWidgets import QMainWindow, QStackedWidget
+    from aikensa.gui.settings_pages import SettingsController
+
+    window = QMainWindow()
+    stack = QStackedWidget()
+    controller = SettingsController(settings=settings)
+    stack.addWidget(controller)
+    window.setCentralWidget(stack)
+    window.resize(*size)
+    window.show()
+    qapp.processEvents()
+
+    assert controller.minimumSizeHint().height() < 720
+    for index in range(7):
+        controller.settingsNavList.setCurrentRow(index)
+        qapp.processEvents()
+        assert window.size() == QSize(*size)
+        assert stack.size() == window.size()
+        assert controller.settingsContentStack.widget(index).widget() is controller._pages[index]
+    window.close()
+
+
+@pytest.mark.parametrize("size", [(1920, 1080), (1280, 720)])
+def test_legacy_pages_scroll_to_controls(qapp, size):
+    from PyQt5.QtCore import QSize
+    from PyQt5.QtWidgets import QMainWindow, QPushButton, QStackedWidget
+    from PyQt5.uic import loadUi
+    from aikensa.gui.page_viewport import legacy_page_viewport
+
+    paths = _ui_files_list()
+    window = QMainWindow()
+    stack = QStackedWidget()
+    for index in (0, 1, 6, 17):
+        page = QMainWindow()
+        loadUi(str(REPO_ROOT / paths[index]), page)
+        stack.addWidget(legacy_page_viewport(page))
+    window.setCentralWidget(stack)
+    window.resize(*size)
+    window.show()
+    for index, name in enumerate(
+        ("P82832W080Pbutton", "calibCam", "mainmenubutton", "InspectButton")
+    ):
+        stack.setCurrentIndex(index)
+        qapp.processEvents()
+        scroll = stack.currentWidget()
+        button = scroll.findChild(QPushButton, name)
+        assert button is not None
+        scroll.ensureWidgetVisible(button, 0, 0)
+        qapp.processEvents()
+        position = button.mapTo(scroll.viewport(), button.rect().topLeft())
+        assert scroll.viewport().rect().contains(position)
+        assert scroll.viewport().rect().contains(position + button.rect().bottomRight())
+        assert window.size() == QSize(*size)
+    window.close()
+
+
+def test_main_menu_four_buttons_are_distinct_and_scrollable(qapp):
+    from PyQt5.QtWidgets import QMainWindow, QPushButton
+    from PyQt5.uic import loadUi
+    from aikensa.gui.page_viewport import legacy_page_viewport
+
+    page = QMainWindow()
+    loadUi(str(REPO_ROOT / "aikensa/gui/mainPage.ui"), page)
+    scroll = legacy_page_viewport(page)
+    scroll.resize(1280, 720)
+    scroll.show()
+    qapp.processEvents()
+    buttons = [
+        page.findChild(QPushButton, name)
+        for name in (
+            "P82833W050Pbutton", "P82833W090Pbutton",
+            "P82832W040Pbutton", "P82832W080Pbutton",
+        )
+    ]
+    for index, button in enumerate(buttons):
+        assert button is not None
+        assert not any(button.geometry().intersects(other.geometry()) for other in buttons[:index])
+        scroll.ensureWidgetVisible(button, 0, 0)
+        qapp.processEvents()
+        position = button.mapTo(scroll.viewport(), button.rect().topLeft())
+        assert scroll.viewport().rect().contains(position)
+        assert scroll.viewport().rect().contains(position + button.rect().bottomRight())
+    scroll.close()
+
+
+def test_fullscreen_fits_actual_offscreen_geometry(qapp, settings):
+    from PyQt5.QtWidgets import QMainWindow, QStackedWidget
+    from aikensa.gui.settings_pages import SettingsController
+
+    window = QMainWindow()
+    stack = QStackedWidget()
+    stack.addWidget(SettingsController(settings=settings))
+    window.setCentralWidget(stack)
+    window.showFullScreen()
+    qapp.processEvents()
+    assert window.isFullScreen()
+    assert window.geometry() == window.screen().geometry()
+    assert stack.size() == window.size()
+    window.close()
+
+
+def test_application_window_switches_pages_without_hardware(qapp, settings, monkeypatch):
+    from unittest.mock import MagicMock
+    from PyQt5.QtWidgets import QPushButton
+    import aikensa.AIKensa as app_module
+
+    monkeypatch.setattr(app_module, "SettingsService", lambda: settings)
+    for name in ("CalibrationThread", "InspectionThread", "ServerMonitorThread", "TimeMonitorThread"):
+        monkeypatch.setattr(app_module, name, MagicMock())
+
+    window = app_module.AIKensa()
+    window.showFullScreen()
+    qapp.processEvents()
+    assert window.isFullScreen()
+    assert window.geometry() == window.screen().geometry()
+    main = window.stackedWidget.widget(0)
+    main.findChild(QPushButton, "P82832W040Pbutton").click()
+    assert window.stackedWidget.currentIndex() == 6
+    assert window.inspection_thread.inspection_config.widget == 6
+    window.stackedWidget.setCurrentIndex(0)
+    main.findChild(QPushButton, "camcalibrationbutton1").click()
+    assert window.stackedWidget.currentIndex() == 1
+    assert window.calibration_thread.calib_config.widget == 1
+    window.stackedWidget.setCurrentIndex(0)
+    main.findChild(QPushButton, "settingsButton").click()
+    assert window.stackedWidget.currentIndex() == window.settings_widget_index
+    for index in (0, 1, 6, 17, 49, window.settings_widget_index):
+        window.stackedWidget.setCurrentIndex(index)
+        qapp.processEvents()
+        assert window.geometry() == window.screen().geometry()
+        assert window.stackedWidget.size() == window.size()
+    window.close()
+
+
+def test_legacy_preview_scales_without_changing_image(qapp):
+    from PyQt5.QtGui import QImage
+    from PyQt5.QtWidgets import QLabel
+    from aikensa.gui.page_viewport import display_image
+
+    label = QLabel()
+    label.resize(200, 200)
+    image = QImage(800, 400, QImage.Format_RGB32)
+    image.fill(0xFF123456)
+    display_image(label, image)
+    assert label.pixmap().size().width() == 200
+    assert label.pixmap().size().height() == 100
+    assert image.width() == 800 and image.height() == 400
+    assert image.pixel(0, 0) == 0xFF123456
+
+
+def test_settings_preview_does_not_expand_layout(qapp, settings):
+    from PyQt5.QtGui import QImage
+    from PyQt5.QtWidgets import QMainWindow
+    from aikensa.gui.settings_pages import SettingsController
+
+    window = QMainWindow()
+    controller = SettingsController(settings=settings)
+    window.setCentralWidget(controller)
+    window.resize(1280, 720)
+    window.show()
+    controller.settingsNavList.setCurrentRow(2)
+    qapp.processEvents()
+    image = QImage(1600, 800, QImage.Format_RGB32)
+    image.fill(0)
+    controller.fine_page.set_reference_qimage(image)
+    qapp.processEvents()
+    pixmap = controller.fine_page.finePreviewLabel.pixmap()
+    assert pixmap.width() == 2 * pixmap.height()
+    assert window.width() == 1280 and window.height() == 720
+    window.close()
+
+
 def test_camera_page_saves_machine_yaml(qapp, settings):
     from aikensa.gui.settings_pages.camera_settings_page import CameraSettingsPage
 

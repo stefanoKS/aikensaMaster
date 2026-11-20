@@ -17,7 +17,7 @@ from PyQt5 import QtCore
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QStackedWidget, QLabel, QSlider, QMainWindow, QWidget, QCheckBox, QShortcut, QLineEdit, QComboBox, QMessageBox, QFrame
 from PyQt5.uic import loadUi
 from PyQt5.QtCore import QThread, pyqtSignal, Qt, QCoreApplication
-from PyQt5.QtGui import QImage, QPixmap, QKeySequence, QColor
+from PyQt5.QtGui import QImage, QKeySequence, QColor
 from aikensa.core.scripts.img_processing.cannydetect import canny_edge_detection
 from aikensa.core.scripts.img_processing.detectaruco import detectAruco
 from aikensa.core.scripts.img_processing.cameracalibrate import detectCharucoBoard, calculatecameramatrix
@@ -30,6 +30,7 @@ from aikensa.core.thread.time_thread import TimeMonitorThread
 from aikensa.core.scripts.scripts_classes import DebouncedButton
 from aikensa.core.settings.service import SettingsService
 from aikensa.gui.settings_pages import SettingsController
+from aikensa.gui.page_viewport import display_image, legacy_page_viewport
 
 
 # List of UI files to be loaded
@@ -251,7 +252,7 @@ class AIKensa(QMainWindow):
 
         for ui in UI_FILES:
             widget = self._load_ui(ui)
-            self.stackedWidget.addWidget(widget)
+            self.stackedWidget.addWidget(legacy_page_viewport(widget))
 
         self.stackedWidget.setCurrentIndex(0)
 
@@ -436,7 +437,6 @@ class AIKensa(QMainWindow):
         self.settings_service.subscribe(self._on_machine_settings_changed)
 
         self.setCentralWidget(self.stackedWidget)
-        self.showFullScreen()
 
     # ------------------------------------------------------------------
     # Machine settings (設備設定)
@@ -559,13 +559,13 @@ class AIKensa(QMainWindow):
         for i in [1, 2]:
             widget = self.stackedWidget.widget(i)
             label = widget.findChild(QLabel, "cameraFrame")
-            label.setPixmap(QPixmap.fromImage(image))
+            display_image(label, image)
 
     def _set_frame_inference(self, image):
         for i in [3, 4]:
             widget = self.stackedWidget.widget(i)
             label = widget.findChild(QLabel, "cameraFrame")
-            label.setPixmap(QPixmap.fromImage(image))
+            display_image(label, image)
 
     def _set_cam_params(self, thread, key, value):
         setattr(thread.cam_config, key, value)
@@ -1477,22 +1477,22 @@ class AIKensa(QMainWindow):
         for i in [1, 2 ]:
             widget = self.stackedWidget.widget(i)
             label = widget.findChild(QLabel, "camFrame")
-            label.setPixmap(QPixmap.fromImage(image))
+            display_image(label, image)
 
     def _setMergeFrame1(self, image):
         widget = self.stackedWidget.widget(3)
         label = widget.findChild(QLabel, "camMerge1")
-        label.setPixmap(QPixmap.fromImage(image))
+        display_image(label, image)
 
     def _setMergeFrame2(self, image):
         widget = self.stackedWidget.widget(3)
         label = widget.findChild(QLabel, "camMerge2")
-        label.setPixmap(QPixmap.fromImage(image))
+        display_image(label, image)
 
     def _setMergeFrameAll(self, image):
         widget = self.stackedWidget.widget(3)
         label = widget.findChild(QLabel, "camMergeAll")
-        label.setPixmap(QPixmap.fromImage(image))
+        display_image(label, image)
         # Live preview for 全体微調整 / 品番別設定 (no-op while the page is hidden).
         controller = getattr(self, "settings_controller", None)
         if controller is not None:
@@ -1502,51 +1502,51 @@ class AIKensa(QMainWindow):
         for i in self.inspectionWidget_indices:
             widget = self.stackedWidget.widget(i)
             label = widget.findChild(QLabel, "framePart")
-            label.setPixmap(QPixmap.fromImage(image))
+            display_image(label, image)
 
     def _setFrameKatabuL(self, image):
         for i in self.inspectionWidget_withKatabu:
             widget = self.stackedWidget.widget(i)
             label = widget.findChild(QLabel, "frameKatabuL")
             if label:
-                label.setPixmap(QPixmap.fromImage(image))
+                display_image(label, image)
 
         for i in self.inspectionWidget_singleKatabuL:
             widget = self.stackedWidget.widget(i)
             label = widget.findChild(QLabel, "frameKatabu")
             if label:
-                label.setPixmap(QPixmap.fromImage(image))
+                display_image(label, image)
 
     def _setClip1Frame(self, image):
         for i in self.inspectionWidget_withClip:
             widget = self.stackedWidget.widget(i)
             label = widget.findChild(QLabel, "clip1Frame")
-            label.setPixmap(QPixmap.fromImage(image))
+            display_image(label, image)
 
     def _setClip2Frame(self, image):
         for i in self.inspectionWidget_withClip:
             widget = self.stackedWidget.widget(i)
             label = widget.findChild(QLabel, "clip2Frame")
-            label.setPixmap(QPixmap.fromImage(image))
+            display_image(label, image)
 
     def _setClip3Frame(self, image):
         for i in self.inspectionWidget_withClip:
             widget = self.stackedWidget.widget(i)
             label = widget.findChild(QLabel, "clip3Frame")
-            label.setPixmap(QPixmap.fromImage(image))
+            display_image(label, image)
     
     def _setFrameKatabuR(self, image):
         for i in self.inspectionWidget_withKatabu:
             widget = self.stackedWidget.widget(i)
             label = widget.findChild(QLabel, "frameKatabuR")
             if label:
-                label.setPixmap(QPixmap.fromImage(image))
+                display_image(label, image)
 
         for i in self.inspectionWidget_singleKatabuR:
             widget = self.stackedWidget.widget(i)
             label = widget.findChild(QLabel, "frameKatabu")
             if label:
-                label.setPixmap(QPixmap.fromImage(image))
+                display_image(label, image)
 
     def _extract_color(self, stylesheet):
         # Extracts the color value from the stylesheet string
@@ -1722,7 +1722,14 @@ def main():
 
     app = QApplication(sys.argv)
     aikensa = AIKensa()
-    aikensa.show()
+    aikensa.showFullScreen()
+    screen = aikensa.screen()
+    if screen is not None:
+        geometry = screen.geometry()
+        QtCore.qInfo(
+            f"Display {screen.name()}: {geometry.width()}x{geometry.height()} "
+            f"at ({geometry.x()}, {geometry.y()}), device pixel ratio {screen.devicePixelRatio()}"
+        )
     sys.exit(app.exec_())
 
 if __name__ == '__main__':

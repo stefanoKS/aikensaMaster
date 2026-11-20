@@ -10,7 +10,7 @@
     <x>0</x>
     <y>0</y>
     <width>1920</width>
-    <height>1093</height>
+    <height>1190</height>
    </rect>
   </property>
   <property name="font">
@@ -462,8 +462,8 @@ Camera Merge</string>
    <widget class="QPushButton" name="P82833W050Pbutton">
     <property name="geometry">
      <rect>
-      <x>370</x>
-      <y>1090</y>
+      <x>40</x>
+      <y>1100</y>
       <width>220</width>
       <height>70</height>
      </rect>
@@ -486,7 +486,7 @@ W/STRIP-RR DOOR, LH</string>
    <widget class="QPushButton" name="P82833W090Pbutton">
     <property name="geometry">
      <rect>
-      <x>380</x>
+      <x>270</x>
       <y>1100</y>
       <width>220</width>
       <height>70</height>
@@ -510,8 +510,8 @@ W/STRIP-RR DOOR, LH</string>
    <widget class="QPushButton" name="P82832W040Pbutton">
     <property name="geometry">
      <rect>
-      <x>390</x>
-      <y>1110</y>
+      <x>500</x>
+      <y>1100</y>
       <width>220</width>
       <height>70</height>
      </rect>
@@ -534,8 +534,8 @@ W/STRIP-RR DOOR, LH</string>
    <widget class="QPushButton" name="P82832W080Pbutton">
     <property name="geometry">
      <rect>
-      <x>400</x>
-      <y>1120</y>
+      <x>730</x>
+      <y>1100</y>
       <width>220</width>
       <height>70</height>
      </rect>
