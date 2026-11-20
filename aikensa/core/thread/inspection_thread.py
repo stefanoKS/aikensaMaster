@@ -17,7 +17,11 @@ from PyQt5.QtCore import QThread, pyqtSignal, Qt, QTimer
 from PyQt5.QtGui import QImage, QPixmap
 
 from aikensa.core.scripts.cam_init.cam_init_ic4 import open_ic4_camera_or_placeholder, DummyCapture
+from aikensa.core.camera.camera_service import CameraRole, CameraUnavailableError, CameraBusyError
+from aikensa.core.camera.registry import get_camera_service
+from aikensa.core.settings.service import SettingsService
 from aikensa.core.scripts.img_processing.cameracalibrate import warpTwoImages_template
+from aikensa.core.geometry.transforms import compose_into_base, rotation_about_pivot, translation_matrix
 from dataclasses import dataclass, field
 from typing import List
 
@@ -125,6 +129,9 @@ class InspectionThread(QThread):
 
     ethernetStatus = pyqtSignal(list)
 
+    # Emitted when the configured cameras cannot provide a production image source.
+    cameraErrorSignal = pyqtSignal(str)
+
     pickingOrderSignal = pyqtSignal(list)
 
     def __init__(self, inspection_config: InspectionConfig = None):
@@ -141,6 +148,15 @@ class InspectionThread(QThread):
         except Exception as e:
             logging.warning(f"Failed to load part registry: {e}. Using legacy mode.")
             self.part_registry = None
+
+        # ---- Machine settings / shared camera ownership ----
+        # Created early: widget offsets and calibration data are resolved through it.
+        self.settings = SettingsService()
+        self.camera_service = get_camera_service(self.settings)
+        self.camera_error = {0: None, 1: None}
+        self.camera_ready = False
+        self._last_camera_attempt_ts = 0.0
+        self.global_alignment = None
 
         # ---- Simple constants / defaults ----
         self.kanjiFontPath = "aikensa/gui/resources/font/NotoSansJP-ExtraBold.ttf"
@@ -196,47 +212,65 @@ class InspectionThread(QThread):
         self.cam_config_file = "aikensa/core/config/cam/cam_config.yaml"
         self._load_cam_map()
 
+
         # ---- MySQL credentials YAML ----
         self._load_mysql_credentials()
 
 
 
     def release_all_camera(self):
-        if self.cap_cam_ic4_1 is not None:
-            self.cap_cam_ic4_1.release()
-            print(f"Camera 1 released.")
-        if self.cap_cam_ic4_2 is not None:
-            self.cap_cam_ic4_2.release()
-            print(f"Camera 2 released.")
+        self.camera_service.release_all(CameraRole.INSPECTION)
+        self.cap_cam_ic4_1 = None
+        self.cap_cam_ic4_2 = None
+        self.camera_ready = False
 
     def initialize_all_camera(self):
+        """Open both cameras through the shared camera service.
+
+        The serial numbers come exclusively from the machine-specific
+        ``cam_id.yaml``; there is no hardcoded fallback.
         """
-        Initialize both cameras. Now uses DummyCapture for missing cameras.
-        """
-        self.cap_cam_ic4_1 = open_ic4_camera_or_placeholder(
-            "11620526", width=3072, height=2048, fps=15,
-            wb_temperature=4500,
-            auto_exposure=False,
-            auto_gain=False,
-            auto_wb=False,
-            rotate_180=self.ic4_rotate_180
-        )
-        self.cap_cam_ic4_2 = open_ic4_camera_or_placeholder(
-            "11620167", width=3072, height=2048, fps=15,
-            wb_temperature=4500,
-            auto_exposure=False,
-            auto_gain=False,
-            auto_wb=False,
-            rotate_180=self.ic4_rotate_180
+
+        self.cap_cam_ic4_1 = None
+        self.cap_cam_ic4_2 = None
+        self.camera_ready = False
+
+        for camera_index in (0, 1):
+            try:
+                handle = self.camera_service.acquire(camera_index, CameraRole.INSPECTION)
+            except (CameraUnavailableError, CameraBusyError) as exc:
+                self.camera_error[camera_index] = exc.reason_ja
+                print(f"[Inspection] camera {camera_index}: {exc.reason_ja}")
+                continue
+            self.camera_error[camera_index] = None
+            capture = handle.capture
+            if camera_index == 0:
+                self.cap_cam_ic4_1 = capture
+            else:
+                self.cap_cam_ic4_2 = capture
+
+        self.camera_ready = (
+            self.cap_cam_ic4_1 is not None
+            and self.cap_cam_ic4_2 is not None
+            and self.camera_service.is_production_source(0)
+            and self.camera_service.is_production_source(1)
         )
 
-        # Cameras are always valid (either real or dummy), so just report status
-        cam1_type = "Real" if not isinstance(self.cap_cam_ic4_1, DummyCapture) else "Placeholder"
-        cam2_type = "Real" if not isinstance(self.cap_cam_ic4_2, DummyCapture) else "Placeholder"
-        
+        if not self.camera_ready:
+            reasons = [msg for msg in self.camera_error.values() if msg]
+            message = " / ".join(reasons) if reasons else "カメラを初期化できませんでした。"
+            print(f"[Inspection] production inspection disabled: {message}")
+            self.cameraErrorSignal.emit(message)
+
+        cam1_type = "Real" if not isinstance(self.cap_cam_ic4_1, DummyCapture) and self.cap_cam_ic4_1 is not None else "Placeholder"
+        cam2_type = "Real" if not isinstance(self.cap_cam_ic4_2, DummyCapture) and self.cap_cam_ic4_2 is not None else "Placeholder"
         print(f"Camera 1: {cam1_type}")
         print(f"Camera 2: {cam2_type}")
 
+    def read_camera_frame(self, camera_index: int):
+        """Read one frame while the camera lock is held by the service."""
+
+        return self.camera_service.read_frame(camera_index, CameraRole.INSPECTION)
 
     def run(self):
         #initialize the database
@@ -341,40 +375,7 @@ class InspectionThread(QThread):
             self.inspection_config.current_numofPart[key] = self.get_last_entry_currentnumofPart(value)
             self.inspection_config.today_numofPart[key] = self.get_last_entry_total_numofPart(value)
 
-        if os.path.exists("./aikensa/core/param/camera/homography_param_cam1.yaml"):
-            with open("./aikensa/core/param/camera/homography_param_cam1.yaml") as file:
-                self.homography_matrix1 = yaml.load(file, Loader=yaml.FullLoader)
-                self.H1 = np.array(self.homography_matrix1)
-                print(f"Loaded homography matrix for camera 1")
-
-        if os.path.exists("./aikensa/core/param/camera/homography_param_cam2.yaml"):
-            with open("./aikensa/core/param/camera/homography_param_cam2.yaml") as file:
-                self.homography_matrix2 = yaml.load(file, Loader=yaml.FullLoader)
-                self.H2 = np.array(self.homography_matrix2)
-                print(f"Loaded homography matrix for camera 2")
-
-        if os.path.exists("./aikensa/core/param/camera/homography_param_cam1_scaled.yaml"):
-            with open("./aikensa/core/param/camera/homography_param_cam1_scaled.yaml") as file:
-                self.homography_matrix1_scaled = yaml.load(file, Loader=yaml.FullLoader)
-                self.H1_scaled = np.array(self.homography_matrix1_scaled)
-                print(f"Loaded scaled homography matrix for camera 1")
-
-        if os.path.exists("./aikensa/core/param/camera/homography_param_cam2_scaled.yaml"):
-            with open("./aikensa/core/param/camera/homography_param_cam2_scaled.yaml") as file:
-                self.homography_matrix2_scaled = yaml.load(file, Loader=yaml.FullLoader)
-                self.H2_scaled = np.array(self.homography_matrix2_scaled)
-                print(f"Loaded scaled homography matrix for camera 2")
-
-
-        if os.path.exists("./aikensa/core/param/camera/planarizeTransform_wide.yaml"):
-            with open("./aikensa/core/param/camera/planarizeTransform_wide.yaml") as file:
-                transform_list = yaml.load(file, Loader=yaml.FullLoader)
-                self.planarizeTransform_wide = np.array(transform_list)
-
-        if os.path.exists("./aikensa/core/param/camera/planarizeTransform_wide_scaled.yaml"):
-            with open("./aikensa/core/param/camera/planarizeTransform_wide_scaled.yaml") as file:
-                transform_list = yaml.load(file, Loader=yaml.FullLoader)
-                self.planarizeTransform_wide_scaled = np.array(transform_list)
+        self._load_geometry_from_settings()
 
         while self.running:
 
@@ -390,8 +391,18 @@ class InspectionThread(QThread):
                     self.initialize_all_camera()
                     # print("initialize all camera")    
 
-                ret1, frame1 = self.cap_cam_ic4_1.read()
-                ret2, frame2 = self.cap_cam_ic4_2.read()
+                if not self.camera_ready:
+                    # A placeholder image must never be treated as a production
+                    # source: without real cameras no inspection result is produced.
+                    now_ready_check = time.time()
+                    if now_ready_check - self._last_camera_attempt_ts >= 2.0:
+                        self._last_camera_attempt_ts = now_ready_check
+                        self.initialize_all_camera()
+                    self.msleep(100)
+                    continue
+
+                ret1, frame1 = self.read_camera_frame(0)
+                ret2, frame2 = self.read_camera_frame(1)
 
                 self.mergeframe1 = frame1 if ret1 and isinstance(frame1, np.ndarray) else self._placeholder_cam1.copy()
                 self.mergeframe2 = frame2 if ret2 and isinstance(frame2, np.ndarray) else self._placeholder_cam2.copy()
@@ -459,6 +470,14 @@ class InspectionThread(QThread):
                         )
 
                     if self.inspection_config.widget in self.inspection_widget_indices: # no need to emit katabu
+                        if self.H1_scaled is None or self.H2_scaled is None:
+                            # Uncalibrated machine: report it instead of warping with
+                            # placeholder geometry (which used to crash in OpenCV).
+                            self.cameraErrorSignal.emit(
+                                "ホモグラフィが未計算です。校正を実行してください。"
+                            )
+                            self.msleep(100)
+                            continue
                         h2_scaled_for_widget = self._get_cam2_homography_with_widget_offset(
                             self.H2_scaled,
                             widget_id=self.inspection_config.widget,
@@ -3366,6 +3385,46 @@ class InspectionThread(QThread):
 
         return self.katabuImageR_Crop if side == "R" else self.katabuImageL_Crop
 
+    def _load_geometry_from_settings(self):
+        """Load homography / planarisation via the null-aware settings repository.
+
+        ``null`` (not yet calibrated) stays ``None`` so the pipeline can report
+        "not calibrated" instead of warping with an invented matrix.
+        """
+
+        try:
+            self.settings.bootstrap()
+        except Exception as e:  # pragma: no cover - defensive
+            print(f"[Inspection] settings bootstrap failed: {e}")
+
+        repository = self.settings.repository
+        for camera_index, suffix in ((0, "1"), (1, "2")):
+            full = repository.load_homography(camera_index)
+            scaled = repository.load_homography(camera_index, scaled=True)
+            setattr(self, f"homography_matrix{suffix}", None if full.matrix is None else full.matrix.tolist())
+            setattr(self, f"H{suffix}", None if full.matrix is None else full.matrix)
+            setattr(self, f"homography_matrix{suffix}_scaled", None if scaled.matrix is None else scaled.matrix.tolist())
+            setattr(self, f"H{suffix}_scaled", None if scaled.matrix is None else scaled.matrix)
+            if full.state.is_usable:
+                print(f"Loaded homography matrix for camera {camera_index + 1}")
+            else:
+                print(f"Homography for camera {camera_index + 1}: {full.state.label_ja}")
+
+        for name, attr in (
+            ("wide", "planarizeTransform_wide"),
+            ("wide_scaled", "planarizeTransform_wide_scaled"),
+        ):
+            matrix, _state = repository.load_planarize_transform(name)
+            setattr(self, attr, matrix)
+
+        self.global_alignment = repository.load_global_alignment()
+
+    def reload_adjustments(self):
+        """Re-read machine-local fine adjustments after the settings UI saved them."""
+
+        self.global_alignment = self.settings.repository.load_global_alignment()
+        self._load_widget_h2_offsets()
+
     def _load_cam_map(self):
         self.cam_map = {}
         self.ic4_rotate_180 = False
@@ -3474,8 +3533,26 @@ class InspectionThread(QThread):
             print("Failed to load widget cam2 homography offsets:", e)
             self.widget_h2_offsets = {}
 
+        # Machine-specific overrides win over the shared registry defaults.
+        try:
+            overrides = self.settings.repository.load_widget_adjustments()
+        except Exception as e:
+            print("Failed to load machine widget overrides:", e)
+            overrides = {}
+        for wid, alignment in overrides.items():
+            if alignment.cam2_offset_x_px or alignment.cam2_offset_y_px:
+                self.widget_h2_offsets[wid] = (
+                    float(alignment.cam2_offset_x_px),
+                    float(alignment.cam2_offset_y_px),
+                )
+
     def _get_cam2_homography_with_widget_offset(self, h2_matrix, widget_id=None, scaled=False):
-        """Return a cam2 homography matrix with per-widget XY translation offset applied."""
+        """Return a cam2 homography with the global and per-widget fine adjustment.
+
+        The correction is composed as ``T_adjustment @ H_base`` (destination-space
+        translation) rather than by editing ``H[0, 2]`` / ``H[1, 2]`` directly,
+        which is only equivalent for purely affine transforms.
+        """
         if h2_matrix is None:
             return None
 
@@ -3488,21 +3565,34 @@ class InspectionThread(QThread):
             return h2_matrix
 
         dx, dy = self.widget_h2_offsets.get(wid, (0.0, 0.0))
-        if dx == 0.0 and dy == 0.0:
+        rotation_deg = 0.0
+
+        global_alignment = getattr(self, "global_alignment", None)
+        if global_alignment is not None:
+            dx += float(global_alignment.cam2_x_px)
+            dy += float(global_alignment.cam2_y_px)
+            rotation_deg += float(global_alignment.cam2_rotation_deg)
+
+        if dx == 0.0 and dy == 0.0 and rotation_deg == 0.0:
             return h2_matrix
 
-        adjusted = np.array(h2_matrix, dtype=np.float64, copy=True)
-
+        sf = 1.0
         if scaled:
             sf = float(self.scale_factor) if getattr(self, "scale_factor", 0) else 1.0
             if sf <= 0.0:
                 sf = 1.0
-            dx = dx / sf
-            dy = dy / sf
 
-        adjusted[0, 2] += float(dx)
-        adjusted[1, 2] += float(dy)
-        return adjusted
+        canvas = self.H2
+        height, width = (canvas.shape[0], canvas.shape[1]) if canvas is not None else (0, 0)
+        scaled_h = height / sf if height else 0
+        scaled_w = width / sf if width else 0
+
+        transforms = []
+        if rotation_deg:
+            pivot = (scaled_w / 2.0 if scaled else width / 2.0, scaled_h / 2.0 if scaled else height / 2.0)
+            transforms.append(rotation_about_pivot(rotation_deg, pivot))
+        transforms.append(translation_matrix(dx / sf, dy / sf))
+        return compose_into_base(h2_matrix, transforms)
 
     def _get_crop_points_for_widget(self, widget_id, scaled=False):
         pts = self.widget_crop_points.get(int(widget_id))
