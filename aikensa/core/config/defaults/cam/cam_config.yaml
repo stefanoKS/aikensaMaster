@@ -1,0 +1,29 @@
+# ===========================================================================
+# AIKensaMaster - camera operating parameters (MACHINE SPECIFIC)
+# ===========================================================================
+# Template only.  The live file is aikensa/core/config/cam/cam_config.yaml.
+# Keys 0/1 are logical camera indices.  All numeric values are written to the
+# camera at stream setup.
+ic4_rotate_180: true
+
+0:
+  name: Camera_0
+  resolution: [3072, 2048]
+  fps: 15
+  exposure_us: 9000
+  gain_db: 15
+  wb_temperature_k: 4500
+  wb_ratio_r: 2.2
+  wb_ratio_g: 1.0
+  wb_ratio_b: 2.2
+
+1:
+  name: Camera_1
+  resolution: [3072, 2048]
+  fps: 15
+  exposure_us: 9000
+  gain_db: 15
+  wb_temperature_k: 4500
+  wb_ratio_r: 2.2
+  wb_ratio_g: 1.0
+  wb_ratio_b: 2.2

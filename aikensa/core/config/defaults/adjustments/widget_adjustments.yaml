@@ -1,0 +1,4 @@
+# Machine specific per-widget overrides layered over part_registry.yaml.
+# Only widgets listed here deviate from the shared defaults.
+# Units: full-resolution pixels / degrees.  Not committed to git.
+widgets: {}

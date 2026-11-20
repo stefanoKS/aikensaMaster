@@ -283,6 +283,9 @@ def calculateHomography_template(img1, img2):
     charucoCorners2 = None
     charucoIds1 = None
     charucoIds2 = None
+    # Must be initialised: without enough common corners no homography exists and
+    # the caller has to keep the previously working calibration file.
+    M = None
 
     _, charucoCorners1, charucoIds1 = detectCharucoBoard_aprilTag(img1)
     _, charucoCorners2, charucoIds2 = detectCharucoBoard_aprilTag(img2)
@@ -320,10 +323,16 @@ def calculateHomography_template(img1, img2):
             corners1 = np.array(corners1).reshape(-1, 2)
             corners2 = np.array(corners2).reshape(-1, 2)
 
-            # Calculate the homography matrix
-            M, mask = cv2.findHomography(corners2, corners1, cv2.RANSAC, 5.0)
+            if corners1.shape[0] >= 4:
+                # Calculate the homography matrix
+                M, mask = cv2.findHomography(corners2, corners1, cv2.RANSAC, 5.0)
+            else:
+                print(
+                    f"Homography not calculated: only {corners1.shape[0]} common corner(s);"
+                    " at least 4 are required."
+                )
             # print(M)
-        
+
         if M is not None:
             results = warpTwoImages_template(img1, img2, M)
         else:
@@ -355,18 +364,25 @@ def warpTwoImages(img1, img2, H):
 def warpTwoImages_template(img1, img2, H): #image1 is template
     h1, w1 = img1.shape[:2]
     h2, w2 = img2.shape[:2]
-    
+
     # Warp img2 to the perspective of img1
     img2_warped = cv2.warpPerspective(img2, H, (w1, h1))
 
-    # Create a mask for img2 to handle alpha blending
-    mask2 = np.ones_like(img2_warped, dtype=np.uint8)
-
-    # Warp the mask to the perspective of img1
-    mask2_warped = cv2.warpPerspective(mask2, H, (w1, h1))
+    # The validity mask must be built in *source* coordinates and warped once.
+    # The previous implementation created the mask from the already warped image
+    # and then warped it a second time, which shrank the composited region.
+    mask2 = np.ones((h2, w2), dtype=np.uint8) * 255
+    mask2_warped = cv2.warpPerspective(
+        mask2, H, (w1, h1), flags=cv2.INTER_NEAREST, borderValue=0
+    )
 
     # Inserting img2 into img1
     result = img1.copy()
-    np.putmask(result, mask2_warped, img2_warped)
+    if img2_warped.shape[:2] != result.shape[:2]:
+        img2_warped = cv2.resize(img2_warped, (w1, h1), interpolation=cv2.INTER_LINEAR)
+    where_mask = mask2_warped.astype(bool)
+    if result.ndim == 3:
+        where_mask = where_mask[:, :, None]
+    np.copyto(result, img2_warped, where=where_mask)
 
     return result

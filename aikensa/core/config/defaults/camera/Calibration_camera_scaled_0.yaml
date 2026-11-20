@@ -1,0 +1,5 @@
+# Machine specific intrinsic calibration (preview scale).  `null` until calibrated.
+camera_matrix: null
+distortion_coefficients: null
+rotation_vectors: null
+translation_vectors: null

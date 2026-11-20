@@ -1,0 +1,10 @@
+# Machine specific global fine adjustment of camera 2 relative to camera 1.
+# Units: full-resolution template pixels / degrees.  Not committed to git.
+cam2:
+  x_px: 0.0
+  y_px: 0.0
+  rotation_deg: 0.0
+pivot_px: null
+limits:
+  max_abs_shift_px: 500.0
+  max_abs_rotation_deg: 2.0

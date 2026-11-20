@@ -1,0 +1,14 @@
+# ===========================================================================
+# AIKensaMaster - physical camera assignment (MACHINE SPECIFIC)
+# ===========================================================================
+# This is a git-tracked TEMPLATE only.  The live file is
+#   aikensa/core/config/cam/cam_id.yaml
+# which is machine specific and must NOT be committed.
+#
+# Logical index 0  -> UI label カメラ① -> Calibration_camera_0.yaml
+# Logical index 1  -> UI label カメラ② -> Calibration_camera_1.yaml
+#
+# Serial numbers are IC4 device serial strings.  Use `null` while the machine
+# has not been configured; never copy another machine's serials here.
+0: null
+1: null
