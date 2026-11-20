@@ -104,6 +104,9 @@ def backup_machine_files(
                 {
                     "group": label,
                     "name": name,
+                    # Stored relative to the application root so a backup made on
+                    # one machine can be restored on a replacement machine.
+                    "relative": _relative_to_root(source, paths.root),
                     "source": str(source),
                     "backup": str(target),
                     "sha256": digest,
@@ -171,7 +174,7 @@ def restore_machine_files(
     manifest = json.loads((backup_dir / MANIFEST_NAME).read_text(encoding="utf-8"))
     restored: List[str] = []
     for entry in manifest.get("files", []):
-        target = Path(entry["source"])
+        target = _restore_target(entry, paths)
         stored = Path(entry["backup"])
         restored.append(str(target))
         if dry_run:
@@ -190,6 +193,41 @@ def restore_machine_files(
             Path(tmp_name).unlink(missing_ok=True)
             raise
     return restored
+
+
+
+def _relative_to_root(path: Path, root: Path) -> Optional[str]:
+    try:
+        return str(Path(path).resolve().relative_to(root.resolve()))
+    except ValueError:
+        return None
+
+
+def _restore_target(entry: dict, paths: AppPaths) -> Path:
+    """Where an entry restores to on *this* machine.
+
+    The relative path recorded at backup time wins, so a backup taken on
+    machine A restores into machine B's own tree.  Absolute paths are only used
+    for manifests written before the relative field existed, and even then the
+    path must stay inside the current application root.
+    """
+
+    relative = entry.get("relative")
+    if relative:
+        candidate = (paths.root / relative).resolve()
+        if paths.root.resolve() not in candidate.parents and candidate != paths.root.resolve():
+            raise RuntimeError(f"refusing to restore outside the application root: {candidate}")
+        return candidate
+
+    original = Path(entry["source"]).resolve()
+    root = paths.root.resolve()
+    try:
+        return root / original.relative_to(root)
+    except ValueError as exc:
+        raise RuntimeError(
+            f"backup entry {entry.get('name')} points outside this application root "
+            f"({original}); re-create the backup on this machine"
+        ) from exc
 
 
 def list_backups(root: Optional[Path], paths: AppPaths) -> List[Path]:

@@ -199,3 +199,29 @@ def test_tampered_backup_fails_verification(settings, paths):
     assert problems
     with pytest.raises(RuntimeError):
         restore_machine_files(paths, result.backup_dir)
+
+
+def test_backup_is_restorable_on_a_different_machine_root(settings, paths, tmp_path):
+    """A backup made on machine A must restore into machine B's own tree."""
+
+    write_serial(settings, {0: "MACHINE-A-0", 1: "MACHINE-A-1"})
+    result = backup_machine_files(paths, reason="portable")
+    assert result.ok
+
+    replacement = tmp_path / "replacement"
+    (replacement / "aikensa").mkdir(parents=True)
+    (replacement / "aikensa" / "AIKensa.py").write_text("", encoding="utf-8")
+
+    from aikensa.core.settings.paths import AppPaths
+
+    new_paths = AppPaths(root=replacement)
+    restored = restore_machine_files(new_paths, result.backup_dir)
+
+    assert all(str(replacement) in name for name in restored)
+    restored_service = SettingsService(new_paths)
+    restored_service.bootstrap()
+    cameras, _ = restored_service.repository.load_camera_settings()
+    assert cameras.assignment(0).normalized_serial() == "MACHINE-A-0"
+    # The source machine's own file is untouched by a cross-machine restore.
+    source_cameras, _ = settings.repository.load_camera_settings()
+    assert source_cameras.assignment(0).normalized_serial() == "MACHINE-A-0"

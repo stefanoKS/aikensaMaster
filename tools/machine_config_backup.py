@@ -108,7 +108,12 @@ def cmd_restore(paths: AppPaths, args) -> int:
             print(f"  ! {problem}")
         return 1
 
-    restored = restore_machine_files(paths, target, dry_run=args.dry_run)
+    try:
+        restored = restore_machine_files(paths, target, dry_run=args.dry_run)
+    except RuntimeError as exc:
+        print("RESTORE REFUSED")
+        print(f"  ! {exc}")
+        return 1
     mode = "WOULD RESTORE" if args.dry_run else "RESTORED"
     print(f"{mode} {len(restored)} file(s) from {target}")
     for name in restored:
