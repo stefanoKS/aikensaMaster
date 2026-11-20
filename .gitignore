@@ -199,3 +199,14 @@ resultmergeframe1.png
 resultmergeframe2.png
 scaled_combined_image.png
 debug_crops/**
+# ===========================================================================
+# AIKensaMaster - machine-specific configuration (NEVER commit)
+# ===========================================================================
+# Camera serial numbers, hardware parameters, calibration results, machine
+# alignment corrections and local revision history differ per production
+# machine.  Git-tracked templates live in aikensa/core/config/defaults/.
+/aikensa/core/config/cam/cam_id.yaml
+/aikensa/core/config/cam/cam_config.yaml
+/aikensa/core/param/camera/
+/aikensa/core/param/adjustments/
+/aikensa/inspection_results/database_results.db
