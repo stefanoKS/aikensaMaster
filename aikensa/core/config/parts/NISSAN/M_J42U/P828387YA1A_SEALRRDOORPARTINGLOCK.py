@@ -76,7 +76,17 @@ bbox_offset = part_spec.get("bbox_offset", 10)
 segmentation_width = part_spec.get("segmentation_width", 1080)
 pixelMultiplier = part_spec.get("pixelMultiplier", 0.1655)
 
-DEBUG_ACCEPT_ANY_MARKING = True
+# Debug bypass for marker-ID checking.  It accepts ANY of marker class 1 or 2
+# as a valid ID, which can hide a wrong part being inspected.  It is therefore
+# OFF by default and must be enabled explicitly for a single debugging session:
+#     set AIKENSA_DEBUG_ACCEPT_ANY_MARKING=1      (Windows cmd)
+#     AIKENSA_DEBUG_ACCEPT_ANY_MARKING=1 ...      (POSIX)
+DEBUG_ACCEPT_ANY_MARKING = os.environ.get("AIKENSA_DEBUG_ACCEPT_ANY_MARKING", "").strip() in {
+    "1",
+    "true",
+    "True",
+    "yes",
+}
 
 
 # ============================================================
@@ -626,6 +636,11 @@ def partcheck(
         )
 
         if DEBUG_ACCEPT_ANY_MARKING and any(marker_id in detectedid for marker_id in (1, 2)):
+            # Loud diagnostic: a bypassed ID check must never be silent.
+            print(
+                "[P828387YA1A partcheck] WARNING DEBUG_ACCEPT_ANY_MARKING active: "
+                f"marker id check overridden (detectedid={detectedid})"
+            )
             resultid = [1] * len(idSpec)
 
     else:

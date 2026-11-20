@@ -113,57 +113,31 @@ class GenericPartInspector:
     
     def inspect_keypoint_based(self, image, keypoint_detections, **kwargs) -> Tuple:
         """
-        Generic keypoint-based inspection
-        
-        Args:
-            image: Input image
-            keypoint_detections: Keypoint detection results
-            **kwargs: Additional detection data (segmentation, etc.)
-        
-        Returns:
-            Tuple: (result_image, measuredPitch, resultPitch, resultid, status)
+        Generic keypoint-based inspection.
+
+        .. warning::
+           This generic implementation is **not** finished.  It raises
+           :class:`NotImplementedError` instead of returning ``"OK"`` so an
+           unimplemented inspector can never produce a false production OK.
+           Register a concrete part module in ``part_registry.yaml`` instead.
         """
-        # Initialize result containers
-        measuredPitch = [0] * len(self.pitchSpec)
-        resultPitch = [0] * len(self.pitchSpec)
-        resultid = [0] * len(self.idSpec)
-        status = "OK"
-        print_status = ""
-        
-        # TODO: Implement generic keypoint inspection logic
-        # This would iterate through keypoint_detections and:
-        # 1. Calculate distances between consecutive keypoints
-        # 2. Compare against tolerance_pitch using check_tolerance
-        # 3. Build the result arrays
-        
-        return image, measuredPitch, resultPitch, resultid, status
+        raise NotImplementedError(
+            f"generic keypoint inspection is not implemented for part {self.part_id}; "
+            "register a dedicated inspector module in part_registry.yaml"
+        )
     
     def inspect_segmentation_based(self, image, segmentation_results, **kwargs) -> Tuple:
         """
-        Generic segmentation-based inspection
-        
-        Args:
-            image: Input image
-            segmentation_results: Segmentation detection results
-            **kwargs: Additional detection data
-        
-        Returns:
-            Tuple: (result_image, measuredPitch, resultPitch, resultid, status)
+        Generic segmentation-based inspection.
+
+        .. warning::
+           Not implemented.  Raises :class:`NotImplementedError` rather than
+           returning ``"OK"`` (see :meth:`inspect_keypoint_based`).
         """
-        # Initialize result containers
-        measuredPitch = [0] * len(self.pitchSpec)
-        resultPitch = [0] * len(self.pitchSpec)
-        resultid = [0] * len(self.idSpec)
-        status = "OK"
-        print_status = ""
-        
-        # TODO: Implement generic segmentation inspection logic
-        # This would analyze segmentation masks and:
-        # 1. Extract feature points from segmentation
-        # 2. Calculate measurements
-        # 3. Compare against tolerances
-        
-        return image, measuredPitch, resultPitch, resultid, status
+        raise NotImplementedError(
+            f"generic segmentation inspection is not implemented for part {self.part_id}; "
+            "register a dedicated inspector module in part_registry.yaml"
+        )
     
     def draw_results(self, image, measuredPitch, resultPitch, status, print_status) -> np.ndarray:
         """Draw inspection results on image"""
