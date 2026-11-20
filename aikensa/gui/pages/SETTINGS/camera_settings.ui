@@ -1,0 +1,732 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>CameraSettingsPage</class>
+ <widget class="QWidget" name="CameraSettingsPage">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1300</width>
+    <height>860</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>カメラ設定</string>
+  </property>
+  <layout class="QVBoxLayout" name="cameraSettingsRootLayout">
+   <item>
+    <layout class="QHBoxLayout" name="cameraDiscoveryLayout">
+     <item>
+      <widget class="QPushButton" name="refreshCamerasButton">
+       <property name="text">
+        <string>カメラ検索 / 更新</string>
+       </property>
+       <property name="toolTip">
+        <string>Enumerate Imaging Source cameras and refresh the serial lists</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="cameraDiscoveryStatusLabel">
+       <property name="text">
+        <string>未検索</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="cameraDiscoverySpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="cameraCardsLayout">
+     <item>
+      <widget class="QGroupBox" name="camera0GroupBox">
+       <property name="title">
+        <string>カメラ① (Calibration_camera_0.yaml)</string>
+       </property>
+       <layout class="QFormLayout" name="camera0FormLayout">
+        <item row="0" column="0">
+         <widget class="QLabel" name="camera0SerialLabel">
+          <property name="text">
+           <string>シリアル番号</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QComboBox" name="camera0SerialComboBox">
+          <property name="editable">
+           <bool>true</bool>
+          </property>
+          <property name="toolTip">
+           <string>IC4 serial number. Empty means "not configured".</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="camera0ResolutionLabel">
+          <property name="text">
+           <string>解像度</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QComboBox" name="camera0ResolutionComboBox">
+          <property name="editable">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="camera0FpsLabel">
+          <property name="text">
+           <string>FPS</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QSpinBox" name="camera0FpsSpinBox">
+          <property name="minimum">
+           <number>1</number>
+          </property>
+          <property name="maximum">
+           <number>120</number>
+          </property>
+          <property name="value">
+           <number>15</number>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="0">
+         <widget class="QLabel" name="camera0ExposureLabel">
+          <property name="text">
+           <string>露光時間 (μs)</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="1">
+         <widget class="QDoubleSpinBox" name="camera0ExposureSpinBox">
+          <property name="decimals">
+           <number>1</number>
+          </property>
+          <property name="minimum">
+           <double>10.000000000000000</double>
+          </property>
+          <property name="maximum">
+           <double>5000000.000000000000000</double>
+          </property>
+          <property name="singleStep">
+           <double>100.000000000000000</double>
+          </property>
+          <property name="value">
+           <double>9000.000000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="0">
+         <widget class="QLabel" name="camera0GainLabel">
+          <property name="text">
+           <string>ゲイン (dB)</string>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="1">
+         <widget class="QDoubleSpinBox" name="camera0GainSpinBox">
+          <property name="decimals">
+           <number>2</number>
+          </property>
+          <property name="maximum">
+           <double>48.000000000000000</double>
+          </property>
+          <property name="singleStep">
+           <double>0.500000000000000</double>
+          </property>
+          <property name="value">
+           <double>15.000000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="0">
+         <widget class="QLabel" name="camera0WbTemperatureLabel">
+          <property name="text">
+           <string>色温度 (K)</string>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="1">
+         <widget class="QSpinBox" name="camera0WbTemperatureSpinBox">
+          <property name="minimum">
+           <number>1000</number>
+          </property>
+          <property name="maximum">
+           <number>12000</number>
+          </property>
+          <property name="singleStep">
+           <number>100</number>
+          </property>
+          <property name="value">
+           <number>4500</number>
+          </property>
+         </widget>
+        </item>
+        <item row="6" column="0">
+         <widget class="QLabel" name="camera0WbRatioRLabel">
+          <property name="text">
+           <string>WB比 R</string>
+          </property>
+         </widget>
+        </item>
+        <item row="6" column="1">
+         <widget class="QDoubleSpinBox" name="camera0WbRatioRSpinBox">
+          <property name="decimals">
+           <number>3</number>
+          </property>
+          <property name="minimum">
+           <double>0.050000000000000</double>
+          </property>
+          <property name="maximum">
+           <double>20.000000000000000</double>
+          </property>
+          <property name="singleStep">
+           <double>0.050000000000000</double>
+          </property>
+          <property name="value">
+           <double>2.200000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="7" column="0">
+         <widget class="QLabel" name="camera0WbRatioGLabel">
+          <property name="text">
+           <string>WB比 G</string>
+          </property>
+         </widget>
+        </item>
+        <item row="7" column="1">
+         <widget class="QDoubleSpinBox" name="camera0WbRatioGSpinBox">
+          <property name="decimals">
+           <number>3</number>
+          </property>
+          <property name="minimum">
+           <double>0.050000000000000</double>
+          </property>
+          <property name="maximum">
+           <double>20.000000000000000</double>
+          </property>
+          <property name="singleStep">
+           <double>0.050000000000000</double>
+          </property>
+          <property name="value">
+           <double>1.000000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="8" column="0">
+         <widget class="QLabel" name="camera0WbRatioBLabel">
+          <property name="text">
+           <string>WB比 B</string>
+          </property>
+         </widget>
+        </item>
+        <item row="8" column="1">
+         <widget class="QDoubleSpinBox" name="camera0WbRatioBSpinBox">
+          <property name="decimals">
+           <number>3</number>
+          </property>
+          <property name="minimum">
+           <double>0.050000000000000</double>
+          </property>
+          <property name="maximum">
+           <double>20.000000000000000</double>
+          </property>
+          <property name="singleStep">
+           <double>0.050000000000000</double>
+          </property>
+          <property name="value">
+           <double>2.200000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="9" column="0">
+         <widget class="QLabel" name="camera0RotateLabel">
+          <property name="text">
+           <string>180°回転</string>
+          </property>
+         </widget>
+        </item>
+        <item row="9" column="1">
+         <widget class="QCheckBox" name="camera0Rotate180CheckBox">
+          <property name="text">
+           <string>有効</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="10" column="0">
+         <widget class="QLabel" name="camera0AutoModeLabel">
+          <property name="text">
+           <string>自動露出/ゲイン/WB</string>
+          </property>
+         </widget>
+        </item>
+        <item row="10" column="1">
+         <widget class="QLabel" name="camera0AutoModeStatusLabel">
+          <property name="text">
+           <string>固定 (色安定のため変更不可)</string>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="11" column="0">
+         <widget class="QLabel" name="camera0StatusTextLabel">
+          <property name="text">
+           <string>接続状態</string>
+          </property>
+         </widget>
+        </item>
+        <item row="11" column="1">
+         <widget class="QLabel" name="camera0StatusLabel">
+          <property name="text">
+           <string>未接続</string>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="12" column="0">
+         <widget class="QLabel" name="camera0ReadbackTextLabel">
+          <property name="text">
+           <string>実測値</string>
+          </property>
+         </widget>
+        </item>
+        <item row="12" column="1">
+         <widget class="QLabel" name="camera0ReadbackLabel">
+          <property name="text">
+           <string>-</string>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="13" column="0">
+         <widget class="QLabel" name="camera0PreviewTextLabel">
+          <property name="text">
+           <string>プレビュー</string>
+          </property>
+         </widget>
+        </item>
+        <item row="13" column="1">
+         <widget class="QLabel" name="camera0PreviewLabel">
+          <property name="minimumSize">
+           <size>
+            <width>480</width>
+            <height>320</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>プレビューなし</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item row="14" column="1">
+         <widget class="QPushButton" name="camera0TestButton">
+          <property name="text">
+           <string>接続テスト</string>
+          </property>
+          <property name="toolTip">
+           <string>Open the camera once and read a single frame</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="camera1GroupBox">
+       <property name="title">
+        <string>カメラ② (Calibration_camera_1.yaml)</string>
+       </property>
+       <layout class="QFormLayout" name="camera1FormLayout">
+        <item row="0" column="0">
+         <widget class="QLabel" name="camera1SerialLabel">
+          <property name="text">
+           <string>シリアル番号</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QComboBox" name="camera1SerialComboBox">
+          <property name="editable">
+           <bool>true</bool>
+          </property>
+          <property name="toolTip">
+           <string>IC4 serial number. Empty means "not configured".</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="camera1ResolutionLabel">
+          <property name="text">
+           <string>解像度</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QComboBox" name="camera1ResolutionComboBox">
+          <property name="editable">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="camera1FpsLabel">
+          <property name="text">
+           <string>FPS</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QSpinBox" name="camera1FpsSpinBox">
+          <property name="minimum">
+           <number>1</number>
+          </property>
+          <property name="maximum">
+           <number>120</number>
+          </property>
+          <property name="value">
+           <number>15</number>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="0">
+         <widget class="QLabel" name="camera1ExposureLabel">
+          <property name="text">
+           <string>露光時間 (μs)</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="1">
+         <widget class="QDoubleSpinBox" name="camera1ExposureSpinBox">
+          <property name="decimals">
+           <number>1</number>
+          </property>
+          <property name="minimum">
+           <double>10.000000000000000</double>
+          </property>
+          <property name="maximum">
+           <double>5000000.000000000000000</double>
+          </property>
+          <property name="singleStep">
+           <double>100.000000000000000</double>
+          </property>
+          <property name="value">
+           <double>9000.000000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="0">
+         <widget class="QLabel" name="camera1GainLabel">
+          <property name="text">
+           <string>ゲイン (dB)</string>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="1">
+         <widget class="QDoubleSpinBox" name="camera1GainSpinBox">
+          <property name="decimals">
+           <number>2</number>
+          </property>
+          <property name="maximum">
+           <double>48.000000000000000</double>
+          </property>
+          <property name="singleStep">
+           <double>0.500000000000000</double>
+          </property>
+          <property name="value">
+           <double>15.000000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="0">
+         <widget class="QLabel" name="camera1WbTemperatureLabel">
+          <property name="text">
+           <string>色温度 (K)</string>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="1">
+         <widget class="QSpinBox" name="camera1WbTemperatureSpinBox">
+          <property name="minimum">
+           <number>1000</number>
+          </property>
+          <property name="maximum">
+           <number>12000</number>
+          </property>
+          <property name="singleStep">
+           <number>100</number>
+          </property>
+          <property name="value">
+           <number>4500</number>
+          </property>
+         </widget>
+        </item>
+        <item row="6" column="0">
+         <widget class="QLabel" name="camera1WbRatioRLabel">
+          <property name="text">
+           <string>WB比 R</string>
+          </property>
+         </widget>
+        </item>
+        <item row="6" column="1">
+         <widget class="QDoubleSpinBox" name="camera1WbRatioRSpinBox">
+          <property name="decimals">
+           <number>3</number>
+          </property>
+          <property name="minimum">
+           <double>0.050000000000000</double>
+          </property>
+          <property name="maximum">
+           <double>20.000000000000000</double>
+          </property>
+          <property name="singleStep">
+           <double>0.050000000000000</double>
+          </property>
+          <property name="value">
+           <double>2.200000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="7" column="0">
+         <widget class="QLabel" name="camera1WbRatioGLabel">
+          <property name="text">
+           <string>WB比 G</string>
+          </property>
+         </widget>
+        </item>
+        <item row="7" column="1">
+         <widget class="QDoubleSpinBox" name="camera1WbRatioGSpinBox">
+          <property name="decimals">
+           <number>3</number>
+          </property>
+          <property name="minimum">
+           <double>0.050000000000000</double>
+          </property>
+          <property name="maximum">
+           <double>20.000000000000000</double>
+          </property>
+          <property name="singleStep">
+           <double>0.050000000000000</double>
+          </property>
+          <property name="value">
+           <double>1.000000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="8" column="0">
+         <widget class="QLabel" name="camera1WbRatioBLabel">
+          <property name="text">
+           <string>WB比 B</string>
+          </property>
+         </widget>
+        </item>
+        <item row="8" column="1">
+         <widget class="QDoubleSpinBox" name="camera1WbRatioBSpinBox">
+          <property name="decimals">
+           <number>3</number>
+          </property>
+          <property name="minimum">
+           <double>0.050000000000000</double>
+          </property>
+          <property name="maximum">
+           <double>20.000000000000000</double>
+          </property>
+          <property name="singleStep">
+           <double>0.050000000000000</double>
+          </property>
+          <property name="value">
+           <double>2.200000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="9" column="0">
+         <widget class="QLabel" name="camera1RotateLabel">
+          <property name="text">
+           <string>180°回転</string>
+          </property>
+         </widget>
+        </item>
+        <item row="9" column="1">
+         <widget class="QCheckBox" name="camera1Rotate180CheckBox">
+          <property name="text">
+           <string>有効</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="10" column="0">
+         <widget class="QLabel" name="camera1AutoModeLabel">
+          <property name="text">
+           <string>自動露出/ゲイン/WB</string>
+          </property>
+         </widget>
+        </item>
+        <item row="10" column="1">
+         <widget class="QLabel" name="camera1AutoModeStatusLabel">
+          <property name="text">
+           <string>固定 (色安定のため変更不可)</string>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="11" column="0">
+         <widget class="QLabel" name="camera1StatusTextLabel">
+          <property name="text">
+           <string>接続状態</string>
+          </property>
+         </widget>
+        </item>
+        <item row="11" column="1">
+         <widget class="QLabel" name="camera1StatusLabel">
+          <property name="text">
+           <string>未接続</string>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="12" column="0">
+         <widget class="QLabel" name="camera1ReadbackTextLabel">
+          <property name="text">
+           <string>実測値</string>
+          </property>
+         </widget>
+        </item>
+        <item row="12" column="1">
+         <widget class="QLabel" name="camera1ReadbackLabel">
+          <property name="text">
+           <string>-</string>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="13" column="0">
+         <widget class="QLabel" name="camera1PreviewTextLabel">
+          <property name="text">
+           <string>プレビュー</string>
+          </property>
+         </widget>
+        </item>
+        <item row="13" column="1">
+         <widget class="QLabel" name="camera1PreviewLabel">
+          <property name="minimumSize">
+           <size>
+            <width>480</width>
+            <height>320</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>プレビューなし</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item row="14" column="1">
+         <widget class="QPushButton" name="camera1TestButton">
+          <property name="text">
+           <string>接続テスト</string>
+          </property>
+          <property name="toolTip">
+           <string>Open the camera once and read a single frame</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="cameraValidationLabel">
+     <property name="text">
+      <string>-</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="cameraActionLayout">
+     <item>
+      <widget class="QPushButton" name="saveCameraSettingsButton">
+       <property name="text">
+        <string>保存</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="revertCameraSettingsButton">
+       <property name="text">
+        <string>変更を取消</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="restoreCameraDefaultsButton">
+       <property name="text">
+        <string>既定値に戻す</string>
+       </property>
+       <property name="toolTip">
+        <string>Load the git-tracked template values into the form (not saved until 保存)</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="cameraActionSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

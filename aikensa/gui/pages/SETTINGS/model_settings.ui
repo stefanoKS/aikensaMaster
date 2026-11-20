@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ModelSettingsPage</class>
+ <widget class="QWidget" name="ModelSettingsPage">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1200</width>
+    <height>780</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>AIモデル設定</string>
+  </property>
+  <layout class="QVBoxLayout" name="modelSettingsRootLayout">
+   <item>
+    <layout class="QHBoxLayout" name="modelStatusLayout">
+     <item>
+      <widget class="QPushButton" name="refreshModelStatusButton">
+       <property name="text">
+        <string>モデル状態を更新</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="modelStatusLabel">
+       <property name="text">
+        <string>未確認</string>
+       </property>
+       <property name="wordWrap">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="modelStatusSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QTableWidget" name="modelTableWidget">
+     <property name="editTriggers">
+      <set>QAbstractItemView::NoEditTriggers</set>
+     </property>
+     <column>
+      <property name="text">
+       <string>モデル名</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>種類</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>パス</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>信頼度</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>状態</string>
+      </property>
+     </column>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="modelParameterGroupBox">
+     <property name="title">
+      <string>推論パラメータ (参照)</string>
+     </property>
+     <layout class="QFormLayout" name="modelParameterFormLayout">
+      <item row="0" column="0">
+       <widget class="QLabel" name="modelDeviceLabel">
+        <property name="text">
+         <string>デバイス</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QComboBox" name="modelDeviceComboBox">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="modelImageSizeLabel">
+        <property name="text">
+         <string>入力サイズ</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QSpinBox" name="modelImageSizeSpinBox">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="minimum">
+         <number>128</number>
+        </property>
+        <property name="maximum">
+         <number>2048</number>
+        </property>
+        <property name="singleStep">
+         <number>32</number>
+        </property>
+        <property name="value">
+         <number>640</number>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="modelCropSizeLabel">
+        <property name="text">
+         <string>切り出しサイズ</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QSpinBox" name="modelCropSizeSpinBox">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="minimum">
+         <number>128</number>
+        </property>
+        <property name="maximum">
+         <number>2048</number>
+        </property>
+        <property name="singleStep">
+         <number>32</number>
+        </property>
+        <property name="value">
+         <number>512</number>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="modelConfidenceLabel">
+        <property name="text">
+         <string>信頼度しきい値</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QDoubleSpinBox" name="modelConfidenceSpinBox">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="decimals">
+         <number>2</number>
+        </property>
+        <property name="minimum">
+         <double>0.010000000000000</double>
+        </property>
+        <property name="maximum">
+         <double>0.990000000000000</double>
+        </property>
+        <property name="singleStep">
+         <double>0.050000000000000</double>
+        </property>
+        <property name="value">
+         <double>0.400000000000000</double>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="modelNoEditNoteLabel">
+     <property name="text">
+      <string>モデル割当・前処理は共有設定 (models.yaml / parts_specifications.yaml) です。実行中の推論と矛盾しないよう、この画面では参照のみとしています。変更後は再起動してください。</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

@@ -1,0 +1,391 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>WidgetAdjustmentPage</class>
+ <widget class="QWidget" name="WidgetAdjustmentPage">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1300</width>
+    <height>860</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>品番別設定</string>
+  </property>
+  <layout class="QVBoxLayout" name="widgetAdjustmentRootLayout">
+   <item>
+    <layout class="QHBoxLayout" name="widgetSelectionLayout">
+     <item>
+      <widget class="QLabel" name="partSelectLabel">
+       <property name="text">
+        <string>品番</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="partComboBox">
+       <property name="minimumSize">
+        <size>
+         <width>320</width>
+         <height>0</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="widgetIdLabel">
+       <property name="text">
+        <string>ウィジェットID: -</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="partNumberLabel">
+       <property name="text">
+        <string>品番: -</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="widgetSelectionSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QLabel" name="widgetSourceLabel">
+       <property name="text">
+        <string>適用元: 共通既定値</string>
+       </property>
+       <property name="wordWrap">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="widgetAdjustmentBodyLayout">
+     <item>
+      <widget class="QGroupBox" name="widgetOffsetGroupBox">
+       <property name="title">
+        <string>カメラ② 補正 (全解像度ピクセル)</string>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>460</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <layout class="QVBoxLayout" name="widgetOffsetLayout">
+        <item>
+         <layout class="QFormLayout" name="widgetOffsetFormLayout">
+          <item row="0" column="0">
+           <widget class="QLabel" name="widgetOffsetXLabel">
+            <property name="text">
+             <string>X オフセット (px)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QDoubleSpinBox" name="widgetOffsetXSpinBox">
+            <property name="decimals">
+             <number>2</number>
+            </property>
+            <property name="minimum">
+             <double>-300.000000000000000</double>
+            </property>
+            <property name="maximum">
+             <double>300.000000000000000</double>
+            </property>
+            <property name="singleStep">
+             <double>1.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="widgetOffsetYLabel">
+            <property name="text">
+             <string>Y オフセット (px)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QDoubleSpinBox" name="widgetOffsetYSpinBox">
+            <property name="decimals">
+             <number>2</number>
+            </property>
+            <property name="minimum">
+             <double>-300.000000000000000</double>
+            </property>
+            <property name="maximum">
+             <double>300.000000000000000</double>
+            </property>
+            <property name="singleStep">
+             <double>1.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="widgetRotationLabel">
+            <property name="text">
+             <string>回転 (deg)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QDoubleSpinBox" name="widgetRotationSpinBox">
+            <property name="decimals">
+             <number>3</number>
+            </property>
+            <property name="minimum">
+             <double>-2.000000000000000</double>
+            </property>
+            <property name="maximum">
+             <double>2.000000000000000</double>
+            </property>
+            <property name="singleStep">
+             <double>0.010000000000000</double>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QGroupBox" name="cropGroupBox">
+          <property name="title">
+           <string>切り出し範囲 (x, y, 幅, 高さ)</string>
+          </property>
+          <layout class="QGridLayout" name="cropGridLayout">
+           <item row="0" column="0">
+            <widget class="QLabel" name="cropXLabel">
+             <property name="text">
+              <string>X</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QSpinBox" name="cropXSpinBox">
+             <property name="maximum">
+              <number>20000</number>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="2">
+            <widget class="QLabel" name="cropWidthLabel">
+             <property name="text">
+              <string>幅</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="3">
+            <widget class="QSpinBox" name="cropWidthSpinBox">
+             <property name="minimum">
+              <number>0</number>
+             </property>
+             <property name="maximum">
+              <number>20000</number>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLabel" name="cropYLabel">
+             <property name="text">
+              <string>Y</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QSpinBox" name="cropYSpinBox">
+             <property name="maximum">
+              <number>20000</number>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="2">
+            <widget class="QLabel" name="cropHeightLabel">
+             <property name="text">
+              <string>高さ</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="3">
+            <widget class="QSpinBox" name="cropHeightSpinBox">
+             <property name="minimum">
+              <number>0</number>
+             </property>
+             <property name="maximum">
+              <number>20000</number>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QGroupBox" name="katabuCropGroupBox">
+          <property name="title">
+           <string>カタブ切り出し範囲 (任意)</string>
+          </property>
+          <layout class="QGridLayout" name="katabuCropGridLayout">
+           <item row="0" column="0">
+            <widget class="QLabel" name="katabuCropXLabel">
+             <property name="text">
+              <string>X</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QSpinBox" name="katabuCropXSpinBox">
+             <property name="maximum">
+              <number>20000</number>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="2">
+            <widget class="QLabel" name="katabuCropWidthLabel">
+             <property name="text">
+              <string>幅</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="3">
+            <widget class="QSpinBox" name="katabuCropWidthSpinBox">
+             <property name="minimum">
+              <number>0</number>
+             </property>
+             <property name="maximum">
+              <number>20000</number>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLabel" name="katabuCropYLabel">
+             <property name="text">
+              <string>Y</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QSpinBox" name="katabuCropYSpinBox">
+             <property name="maximum">
+              <number>20000</number>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="2">
+            <widget class="QLabel" name="katabuCropHeightLabel">
+             <property name="text">
+              <string>高さ</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="3">
+            <widget class="QSpinBox" name="katabuCropHeightSpinBox">
+             <property name="minimum">
+              <number>0</number>
+             </property>
+             <property name="maximum">
+              <number>20000</number>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="widgetDraftLabel">
+          <property name="text">
+           <string>変更なし</string>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="widgetAdjustmentActionLayout">
+          <item>
+           <widget class="QPushButton" name="saveWidgetAdjustmentButton">
+            <property name="text">
+             <string>保存</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="revertWidgetAdjustmentButton">
+            <property name="text">
+             <string>取消</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="restoreWidgetDefaultButton">
+            <property name="text">
+             <string>共通既定値に戻す</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="copyFromPartButton">
+            <property name="text">
+             <string>他品番からコピー</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <layout class="QVBoxLayout" name="widgetPreviewLayout">
+       <item>
+        <widget class="QLabel" name="widgetFullPreviewLabel">
+         <property name="minimumSize">
+          <size>
+           <width>560</width>
+           <height>360</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>結合画像プレビュー</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="widgetCropPreviewLabel">
+         <property name="minimumSize">
+          <size>
+           <width>320</width>
+           <height>220</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>切り出しプレビュー</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

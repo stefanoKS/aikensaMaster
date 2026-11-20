@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>CalibrationSettingsPage</class>
+ <widget class="QWidget" name="CalibrationSettingsPage">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1100</width>
+    <height>800</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>校正・位置調整</string>
+  </property>
+  <layout class="QVBoxLayout" name="calibrationSettingsRootLayout">
+   <item>
+    <widget class="QLabel" name="calibrationNextActionLabel">
+     <property name="text">
+      <string>状態を読み込み中...</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QTableWidget" name="calibrationTableWidget">
+     <property name="columnCount">
+      <number>7</number>
+     </property>
+     <property name="rowCount">
+      <number>2</number>
+     </property>
+     <property name="editTriggers">
+      <set>QAbstractItemView::NoEditTriggers</set>
+     </property>
+     <column>
+      <property name="text">
+       <string>カメラ</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>シリアル</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>内部校正</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>ホモグラフィ</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>再投影誤差</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>最終校正日時</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>必要な対応</string>
+      </property>
+     </column>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="calibrationDetailGroupBox">
+     <property name="title">
+      <string>校正ファイル</string>
+     </property>
+     <layout class="QFormLayout" name="calibrationDetailFormLayout">
+      <item row="0" column="0">
+       <widget class="QLabel" name="calibrationCamera0FilesLabel">
+        <property name="text">
+         <string>カメラ①</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QLabel" name="calibrationCamera0FilesValueLabel">
+        <property name="text">
+         <string>-</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="calibrationCamera1FilesLabel">
+        <property name="text">
+         <string>カメラ②</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLabel" name="calibrationCamera1FilesValueLabel">
+        <property name="text">
+         <string>-</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="calibrationIssuesLabel">
+        <property name="text">
+         <string>診断</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QTextEdit" name="calibrationIssuesTextEdit">
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>140</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="calibrationActionLayout">
+     <item>
+      <widget class="QPushButton" name="recalibrateCamera0Button">
+       <property name="text">
+        <string>カメラ①を再校正</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="recalibrateCamera1Button">
+       <property name="text">
+        <string>カメラ②を再校正</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="reviewCalibrationButton">
+       <property name="text">
+        <string>校正結果を確認</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="restoreCalibrationButton">
+       <property name="text">
+        <string>バックアップから復元</string>
+       </property>
+       <property name="toolTip">
+        <string>Restore machine calibration files from a verified backup</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="calibrationActionSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="refreshCalibrationButton">
+       <property name="text">
+        <string>再読込</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

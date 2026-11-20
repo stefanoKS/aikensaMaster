@@ -122,6 +122,30 @@ background-color: rgba(255, 255, 255, 0);</string>
      <string>Quit</string>
     </property>
    </widget>
+   <widget class="QPushButton" name="settingsButton">
+    <property name="geometry">
+     <rect>
+      <x>1150</x>
+      <y>165</y>
+      <width>200</width>
+      <height>58</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>Noto Sans JP</family>
+      <pointsize>14</pointsize>
+      <weight>75</weight>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">background-color: rgb(252, 233, 79); color: rgb(46, 52, 54);</string>
+    </property>
+    <property name="text">
+     <string>設備設定</string>
+    </property>
+   </widget>
    <widget class="Line" name="line_3">
     <property name="geometry">
      <rect>

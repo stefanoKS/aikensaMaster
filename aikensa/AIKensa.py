@@ -28,6 +28,8 @@ from aikensa.core.thread.sio_thread import ServerMonitorThread
 from aikensa.core.thread.time_thread import TimeMonitorThread
 
 from aikensa.core.scripts.scripts_classes import DebouncedButton
+from aikensa.core.settings.service import SettingsService
+from aikensa.gui.settings_pages import SettingsController
 
 
 # List of UI files to be loaded
@@ -428,8 +430,65 @@ class AIKensa(QMainWindow):
                 button_main_menu.clicked.connect(lambda: self.stackedWidget.setCurrentIndex(0))
                 button_main_menu.clicked.connect(lambda: self._set_calib_params(self.calibration_thread, 'widget', 0))
 
+        self._append_settings_pages()
+
+        # Any saved machine setting must reach the running inspection thread.
+        self.settings_service.subscribe(self._on_machine_settings_changed)
+
         self.setCentralWidget(self.stackedWidget)
         self.showFullScreen()
+
+    # ------------------------------------------------------------------
+    # Machine settings (設備設定)
+    # ------------------------------------------------------------------
+    SETTINGS_WIDGET_NAME = "settingsMainPage"
+
+    def _append_settings_pages(self):
+        """Append the settings hub *after* the existing pages 0-49.
+
+        Indices 0-49 are part inspection / calibration pages and must never
+        move; the settings interface is therefore appended at the end.
+        """
+        self.settings_service = SettingsService()
+        self.settings_service.bootstrap()
+
+        self.settings_controller = SettingsController(
+            settings=self.settings_service,
+            on_back=lambda: self.stackedWidget.setCurrentIndex(0),
+            on_open_calibration=self._open_calibration_page,
+            on_settings_saved=self._on_machine_settings_changed,
+        )
+        self.settings_controller.setObjectName(self.SETTINGS_WIDGET_NAME)
+        self.settings_widget_index = self.stackedWidget.addWidget(self.settings_controller)
+
+        main_widget = self.stackedWidget.widget(0)
+        settings_button = main_widget.findChild(QPushButton, "settingsButton")
+        if settings_button is not None:
+            settings_button.clicked.connect(self._open_settings_page)
+
+        # Keep the camera preview out of production when the machine is not ready.
+        self.inspection_thread.cameraErrorSignal.connect(self._handleModelError)
+
+    def _open_settings_page(self):
+        self.settings_controller.refresh_all()
+        self.stackedWidget.setCurrentIndex(self.settings_widget_index)
+
+    def _open_calibration_page(self, camera_index: int):
+        """Switch to the existing calibration page and start streaming."""
+        page_index = 1 if camera_index == 0 else 2
+        self.calibration_thread.calib_config.widget = page_index
+        self.stackedWidget.setCurrentIndex(page_index)
+        if not self.calibration_thread.isRunning():
+            self.calibration_thread.start()
+
+    def _on_machine_settings_changed(self, what: str = ""):
+        if hasattr(self, "inspection_thread") and self.inspection_thread is not None:
+            reload_adjustments = getattr(self.inspection_thread, "reload_adjustments", None)
+            if callable(reload_adjustments):
+                try:
+                    reload_adjustments()
+                except Exception:
+                    traceback.print_exc()
 
     def connect_button_font_color_change(self, widget_index, qtbutton, cam_param):
         widget = self.stackedWidget.widget(widget_index)

@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SettingsMainPage</class>
+ <widget class="QWidget" name="SettingsMainPage">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1600</width>
+    <height>900</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>設備設定</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QWidget#SettingsMainPage { background-color: #2e3436; }
+QLabel { color: #eeeeec; font-size: 15px; }
+QLabel#settingsHeaderLabel { font-size: 26px; font-weight: bold; color: #ffffff; }
+QLabel#settingsStatusLabel { font-size: 15px; color: #fce94f; }
+QListWidget#settingsNavList { font-size: 17px; background-color: #3d4144; color: #eeeeec; border: 1px solid #555753; }
+QListWidget#settingsNavList::item { padding: 12px; }
+QListWidget#settingsNavList::item:selected { background-color: #3465a4; }
+QPushButton { font-size: 16px; min-height: 38px; padding: 4px 14px; }
+QGroupBox { font-size: 16px; color: #eeeeec; border: 1px solid #555753; margin-top: 12px; padding-top: 12px; }
+QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 4px; }
+QLabel#camera0PreviewLabel, QLabel#camera1PreviewLabel, QLabel#finePreviewLabel, QLabel#widgetFullPreviewLabel, QLabel#widgetCropPreviewLabel {
+    background-color: #1b1c1b; border: 1px solid #555753; color: #888a85; }
+QTableWidget { font-size: 14px; }
+</string>
+  </property>
+  <layout class="QVBoxLayout" name="settingsRootLayout">
+   <item>
+    <layout class="QHBoxLayout" name="settingsHeaderLayout">
+     <item>
+      <widget class="QLabel" name="settingsHeaderLabel">
+       <property name="text">
+        <string>設備設定 / Settings</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="settingsHeaderSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="reloadSettingsButton">
+       <property name="text">
+        <string>再読込</string>
+       </property>
+       <property name="toolTip">
+        <string>Reload the machine-specific settings from disk</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="backToMainButton">
+       <property name="text">
+        <string>メイン画面へ戻る</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="settingsStatusLabel">
+     <property name="text">
+      <string>状態を読み込み中...</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="settingsBodyLayout">
+     <item>
+      <widget class="QListWidget" name="settingsNavList">
+       <property name="minimumSize">
+        <size>
+         <width>240</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>280</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <item>
+        <property name="text">
+         <string>カメラ設定</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>校正・位置調整</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>全体微調整</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>品番別設定</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>検査条件</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>AIモデル設定</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>設定履歴</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item>
+      <widget class="QStackedWidget" name="settingsContentStack">
+       <property name="currentIndex">
+        <number>0</number>
+       </property>
+       <widget class="QWidget" name="settingsPlaceholderPage">
+        <layout class="QVBoxLayout" name="settingsPlaceholderLayout">
+         <item>
+          <widget class="QLabel" name="settingsPlaceholderLabel">
+           <property name="text">
+            <string>設定ページを読み込み中...</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

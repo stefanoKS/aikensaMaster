@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>FineAdjustmentPage</class>
+ <widget class="QWidget" name="FineAdjustmentPage">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1200</width>
+    <height>840</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>全体微調整</string>
+  </property>
+  <layout class="QHBoxLayout" name="fineAdjustmentRootLayout">
+   <item>
+    <widget class="QGroupBox" name="fineAdjustmentControlGroupBox">
+     <property name="title">
+      <string>カメラ②の位置補正 (全解像度ピクセル)</string>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>440</width>
+       <height>16777215</height>
+      </size>
+     </property>
+     <layout class="QVBoxLayout" name="fineAdjustmentControlLayout">
+      <item>
+       <layout class="QFormLayout" name="fineAdjustmentFormLayout">
+        <item row="0" column="0">
+         <widget class="QLabel" name="globalOffsetXLabel">
+          <property name="text">
+           <string>X 補正 (px)</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QDoubleSpinBox" name="globalOffsetXSpinBox">
+          <property name="decimals">
+           <number>2</number>
+          </property>
+          <property name="minimum">
+           <double>-500.000000000000000</double>
+          </property>
+          <property name="maximum">
+           <double>500.000000000000000</double>
+          </property>
+          <property name="singleStep">
+           <double>1.000000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="globalOffsetYLabel">
+          <property name="text">
+           <string>Y 補正 (px)</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QDoubleSpinBox" name="globalOffsetYSpinBox">
+          <property name="decimals">
+           <number>2</number>
+          </property>
+          <property name="minimum">
+           <double>-500.000000000000000</double>
+          </property>
+          <property name="maximum">
+           <double>500.000000000000000</double>
+          </property>
+          <property name="singleStep">
+           <double>1.000000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="globalRotationLabel">
+          <property name="text">
+           <string>回転 (deg)</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QDoubleSpinBox" name="globalRotationSpinBox">
+          <property name="decimals">
+           <number>3</number>
+          </property>
+          <property name="minimum">
+           <double>-2.000000000000000</double>
+          </property>
+          <property name="maximum">
+           <double>2.000000000000000</double>
+          </property>
+          <property name="singleStep">
+           <double>0.010000000000000</double>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="fineAdjustmentNudgeLayout">
+        <item>
+         <widget class="QLabel" name="nudgeStepLabel">
+          <property name="text">
+           <string>移動量</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="nudgeStepComboBox">
+          <item>
+           <property name="text">
+            <string>0.5 px</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>1 px</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>5 px</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QGridLayout" name="fineAdjustmentNudgeGrid">
+        <item row="0" column="1">
+         <widget class="QPushButton" name="nudgeUpButton">
+          <property name="text">
+           <string>▲ Y+</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QPushButton" name="nudgeLeftButton">
+          <property name="text">
+           <string>◀ X-</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QPushButton" name="nudgeCenterButton">
+          <property name="text">
+           <string>中心</string>
+          </property>
+          <property name="toolTip">
+           <string>Reset X/Y to 0 (rotation is kept)</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="2">
+         <widget class="QPushButton" name="nudgeRightButton">
+          <property name="text">
+           <string>X+ ▶</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QPushButton" name="nudgeDownButton">
+          <property name="text">
+           <string>▼ Y-</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QFormLayout" name="fineAdjustmentToggleFormLayout">
+        <item row="0" column="0">
+         <widget class="QLabel" name="overlayOpacityLabel">
+          <property name="text">
+           <string>重ね表示</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QSlider" name="overlayOpacitySlider">
+          <property name="minimum">
+           <number>0</number>
+          </property>
+          <property name="maximum">
+           <number>100</number>
+          </property>
+          <property name="value">
+           <number>50</number>
+          </property>
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="zoomLabel">
+          <property name="text">
+           <string>ズーム</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QSlider" name="zoomSlider">
+          <property name="minimum">
+           <number>10</number>
+          </property>
+          <property name="maximum">
+           <number>400</number>
+          </property>
+          <property name="value">
+           <number>100</number>
+          </property>
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="beforeAfterLabel">
+          <property name="text">
+           <string>補正前後</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QCheckBox" name="beforeAfterCheckBox">
+          <property name="text">
+           <string>補正前を表示</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QLabel" name="fineAdjustmentDraftLabel">
+        <property name="text">
+         <string>変更なし</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="fineAdjustmentRangeLabel">
+        <property name="text">
+         <string>許容範囲: ±500 px / ±2.0 deg</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="fineAdjustmentActionLayout">
+        <item>
+         <widget class="QPushButton" name="saveFineAdjustmentButton">
+          <property name="text">
+           <string>保存して適用</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="cancelFineAdjustmentButton">
+          <property name="text">
+           <string>取消</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="restoreFineAdjustmentButton">
+          <property name="text">
+           <string>初期値に戻す</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="finePreviewLabel">
+     <property name="text">
+      <string>プレビューは検査スレッド稼働中に表示されます</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+     <property name="scaledContents">
+      <bool>false</bool>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

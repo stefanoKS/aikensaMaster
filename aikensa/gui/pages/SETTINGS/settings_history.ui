@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SettingsHistoryPage</class>
+ <widget class="QWidget" name="SettingsHistoryPage">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1200</width>
+    <height>780</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>設定履歴</string>
+  </property>
+  <layout class="QVBoxLayout" name="settingsHistoryRootLayout">
+   <item>
+    <layout class="QHBoxLayout" name="settingsHistoryHeaderLayout">
+     <item>
+      <widget class="QPushButton" name="refreshHistoryButton">
+       <property name="text">
+        <string>履歴を更新</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="rollbackHistoryButton">
+       <property name="text">
+        <string>選択した版に戻す</string>
+       </property>
+       <property name="toolTip">
+        <string>Activate the selected revision again (all files are replaced atomically)</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="createBackupButton">
+       <property name="text">
+        <string>バックアップ作成</string>
+       </property>
+       <property name="toolTip">
+        <string>Copy every machine-specific file outside the work tree and verify checksums</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="settingsHistoryHeaderSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QLabel" name="historyActiveRevisionLabel">
+       <property name="text">
+        <string>適用中の版: -</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QTableWidget" name="historyTableWidget">
+     <property name="editTriggers">
+      <set>QAbstractItemView::NoEditTriggers</set>
+     </property>
+     <property name="selectionBehavior">
+      <enum>QAbstractItemView::SelectRows</enum>
+     </property>
+     <property name="selectionMode">
+      <enum>QAbstractItemView::SingleSelection</enum>
+     </property>
+     <column>
+      <property name="text">
+       <string>版ID</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>日時</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>作業者</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>端末ID</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>変更内容</string>
+      </property>
+     </column>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="historyDetailGroupBox">
+     <property name="title">
+      <string>詳細</string>
+     </property>
+     <layout class="QVBoxLayout" name="historyDetailLayout">
+      <item>
+       <widget class="QTextEdit" name="historyDetailTextEdit">
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>140</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="historyInfoLabel">
+     <property name="text">
+      <string>履歴はこの端末専用フォルダ (aikensa/core/param/adjustments/revisions) に保存されます。</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

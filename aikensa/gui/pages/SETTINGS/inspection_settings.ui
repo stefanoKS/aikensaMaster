@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>InspectionSettingsPage</class>
+ <widget class="QWidget" name="InspectionSettingsPage">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1300</width>
+    <height>800</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>検査条件</string>
+  </property>
+  <layout class="QVBoxLayout" name="inspectionSettingsRootLayout">
+   <item>
+    <layout class="QHBoxLayout" name="inspectionSelectionLayout">
+     <item>
+      <widget class="QLabel" name="inspectionPartSelectLabel">
+       <property name="text">
+        <string>品番</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="inspectionPartComboBox">
+       <property name="minimumSize">
+        <size>
+         <width>320</width>
+         <height>0</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="inspectionVariantLabel">
+       <property name="text">
+        <string>RH/LH: -</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="inspectionSelectionSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="reloadInspectionSettingsButton">
+       <property name="text">
+        <string>再読込</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QTableWidget" name="measurementTableWidget">
+     <property name="editTriggers">
+      <set>QAbstractItemView::NoEditTriggers</set>
+     </property>
+     <column>
+      <property name="text">
+       <string>測定ID</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>公称値</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>下限</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>上限</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>実測/基準値</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>単位</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>判定</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>説明</string>
+      </property>
+     </column>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="inspectionInfoLabel">
+     <property name="text">
+      <string>検査条件は共有仕様 (parts_specifications.yaml) から読み出しています。</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="inspectionNoEditNoteLabel">
+     <property name="text">
+      <string>公差・判定基準は基準サンプルでの再検証が必要なため、この画面では参照のみとしています。変更は parts_specifications.yaml をレビューした上で行い、アプリケーションを再起動してください。</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="inspectionSettingsActionLayout">
+     <item>
+      <widget class="QPushButton" name="inspectionOpenSpecButton">
+       <property name="text">
+        <string>仕様ファイルの場所を表示</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="inspectionSettingsActionSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="saveInspectionSettingsButton">
+       <property name="text">
+        <string>保存</string>
+       </property>
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="toolTip">
+        <string>Disabled: changing tolerances requires reference-sample validation</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
