@@ -278,13 +278,29 @@ def test_fullscreen_fits_actual_offscreen_geometry(qapp, settings):
 
 
 def test_application_window_switches_pages_without_hardware(qapp, settings, monkeypatch):
+    import importlib.util
+    import sys
+    from types import ModuleType
     from unittest.mock import MagicMock
     from PyQt5.QtWidgets import QPushButton
-    import aikensa.AIKensa as app_module
+
+    for module_name, names in (
+        ("calibration_thread", ("CalibrationThread", "CalibrationConfig")),
+        ("inspection_thread", ("InspectionThread", "InspectionConfig")),
+        ("sio_thread", ("ServerMonitorThread",)),
+        ("time_thread", ("TimeMonitorThread",)),
+    ):
+        fake = ModuleType(module_name)
+        for name in names:
+            setattr(fake, name, MagicMock())
+        monkeypatch.setitem(sys.modules, f"aikensa.core.thread.{module_name}", fake)
+    spec = importlib.util.spec_from_file_location(
+        "_test_aikensa_gui", REPO_ROOT / "aikensa" / "AIKensa.py"
+    )
+    app_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(app_module)
 
     monkeypatch.setattr(app_module, "SettingsService", lambda: settings)
-    for name in ("CalibrationThread", "InspectionThread", "ServerMonitorThread", "TimeMonitorThread"):
-        monkeypatch.setattr(app_module, name, MagicMock())
 
     window = app_module.AIKensa()
     window.showFullScreen()
