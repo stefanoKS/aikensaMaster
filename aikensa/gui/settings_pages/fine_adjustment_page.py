@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Callable, Optional
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QImage, QPixmap
+from PyQt5.QtGui import QColor, QImage, QPainter, QPen, QPixmap
 from PyQt5.QtWidgets import QWidget
 
 import numpy as np
@@ -34,7 +34,7 @@ class FineAdjustmentPage(QWidget):
         self.on_saved = on_saved
         self._active = GlobalAlignment()
         self._reference: Optional[np.ndarray] = None
-        self._original_pixmap: Optional[QPixmap] = None
+        self._reference_pixmap: Optional[QPixmap] = None
 
         for spin in (self.globalOffsetXSpinBox, self.globalOffsetYSpinBox, self.globalRotationSpinBox):
             spin.valueChanged.connect(self._on_value_changed)
@@ -151,12 +151,25 @@ class FineAdjustmentPage(QWidget):
 
     # ------------------------------------------------------------------
     def set_reference_image(self, image: np.ndarray) -> None:
-        """Supply the merged preview image (called by the main window)."""
+        """Supply the merged preview image as a numpy array."""
 
         self._reference = image
+        self._reference_pixmap = None
+        self._render_preview()
+
+    def set_reference_qimage(self, image) -> None:
+        """Supply the merged preview straight from a signal (QImage)."""
+
+        if image is None or image.isNull():
+            return
+        self._reference = None
+        self._reference_pixmap = QPixmap.fromImage(image)
         self._render_preview()
 
     def _render_preview(self, *_args) -> None:
+        if self._reference_pixmap is not None:
+            self._render_pixmap_preview()
+            return
         if self._reference is None:
             return
         draft = self.collect()
@@ -184,3 +197,52 @@ class FineAdjustmentPage(QWidget):
         self.finePreviewLabel.setPixmap(
             pixmap.scaled(target, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         )
+
+    def _render_pixmap_preview(self) -> None:
+        """Scale the incoming frame and draw a reference crosshair.
+
+        The crosshair follows the draft offset (and shows the un-corrected
+        position when 補正前を表示 is checked), so the operator gets immediate
+        feedback on direction and magnitude before saving.
+        """
+
+        base = self._reference_pixmap
+        if base is None:
+            return
+
+        zoom = max(0.1, self.zoomSlider.value() / 100.0)
+        scaled = base.scaled(
+            self.finePreviewLabel.size() * zoom, Qt.KeepAspectRatio, Qt.SmoothTransformation
+        )
+        if scaled.isNull():
+            return
+
+        draft = self.collect()
+        shift_x = 0.0 if self.beforeAfterCheckBox.isChecked() else draft.cam2_x_px
+        shift_y = 0.0 if self.beforeAfterCheckBox.isChecked() else draft.cam2_y_px
+
+        displayed_w = scaled.width()
+        displayed_h = scaled.height()
+        if base.width() > 0 and base.height() > 0:
+            ratio_x = displayed_w / float(base.width())
+            ratio_y = displayed_h / float(base.height())
+        else:  # pragma: no cover - defensive
+            ratio_x = ratio_y = 1.0
+
+        canvas = QPixmap(scaled.size())
+        canvas.fill(Qt.black)
+        painter = QPainter(canvas)
+        painter.setOpacity(self.overlayOpacitySlider.value() / 100.0)
+        painter.drawPixmap(0, 0, scaled)
+        painter.setOpacity(1.0)
+
+        center_x = displayed_w / 2.0 + shift_x * ratio_x
+        center_y = displayed_h / 2.0 + shift_y * ratio_y
+        pen = QPen(QColor(252, 233, 79))
+        pen.setWidth(2)
+        painter.setPen(pen)
+        painter.drawLine(int(center_x) - 30, int(center_y), int(center_x) + 30, int(center_y))
+        painter.drawLine(int(center_x), int(center_y) - 30, int(center_x), int(center_y) + 30)
+        painter.end()
+
+        self.finePreviewLabel.setPixmap(canvas)

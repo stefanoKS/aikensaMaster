@@ -317,3 +317,38 @@ def test_model_page_reports_missing_models(qapp, settings):
     page = ModelSettingsPage(settings)
     assert page.modelTableWidget.rowCount() == 1
     assert "見つかりません" in page.modelStatusLabel.text()
+
+
+def test_live_preview_updates_fine_adjustment_page(qapp, settings):
+    from PyQt5.QtCore import Qt
+    from PyQt5.QtGui import QImage
+
+    from aikensa.gui.settings_pages import SettingsController
+
+    controller = SettingsController(settings=settings)
+    controller.settingsNavList.setCurrentRow(2)  # 全体微調整
+
+    image = QImage(160, 120, QImage.Format_RGB888)
+    image.fill(Qt.gray)
+
+    controller.show()
+    controller.set_preview_qimage(image)
+    controller.hide()
+
+    pixmap = controller.fine_page.finePreviewLabel.pixmap()
+    assert pixmap is not None and not pixmap.isNull()
+
+
+def test_live_preview_is_ignored_while_hidden(qapp, settings):
+    from PyQt5.QtCore import Qt
+    from PyQt5.QtGui import QImage
+
+    from aikensa.gui.settings_pages import SettingsController
+
+    controller = SettingsController(settings=settings)
+    image = QImage(160, 120, QImage.Format_RGB888)
+    image.fill(Qt.gray)
+
+    controller.set_preview_qimage(image)  # hidden: must be a no-op
+
+    assert controller.fine_page.finePreviewLabel.pixmap() is None or controller.fine_page.finePreviewLabel.pixmap().isNull()

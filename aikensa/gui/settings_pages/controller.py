@@ -141,7 +141,20 @@ class SettingsController(QWidget):
         return False
 
     def set_preview_image(self, image) -> None:
-        """Feed the live merged image to the preview widgets."""
+        """Feed a numpy merged image to the preview widgets."""
 
         self.fine_page.set_reference_image(image)
         self.widget_page.set_reference_image(image)
+
+    def set_preview_qimage(self, image) -> None:
+        """Feed the merged frame from a thread signal (QImage) when visible.
+
+        The guard keeps a 15 fps signal from repainting hidden pages.
+        """
+
+        if not self.isVisible():
+            return
+        if self.settingsContentStack.currentIndex() not in (2, 3):
+            return
+        self.fine_page.set_reference_qimage(image)
+        self.widget_page.set_reference_qimage(image)
