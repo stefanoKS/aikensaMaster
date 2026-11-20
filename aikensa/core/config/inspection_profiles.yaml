@@ -1,0 +1,6 @@
+profiles:
+  - part_id: P808387UA1A
+    strategy: p808387ua1a
+    directory: "808387UA1A"
+    name: "Seal FRDoor Parting"
+    widget_id: 17

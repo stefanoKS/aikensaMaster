@@ -31,6 +31,11 @@ from ultralytics import YOLO
 
 # NEW: Registry-based part inspection system
 from aikensa.core.scripts.part_inspector_registry import get_registry
+from aikensa.core.inspection import (
+    InspectionContext, InspectionCoordinator, InspectionError,
+    P808387UA1AStrategy, load_profiles,
+)
+from pathlib import Path
 
 # LEGACY: Keep old imports for backward compatibility during transition
 from aikensa.core.config.parts.MMC.M_5A45.P828XXW0X0P_CTRPLR import partcheck as P828XXW0X0P_check
@@ -140,6 +145,11 @@ class InspectionThread(QThread):
 
         # ---- Config ----
         self.inspection_config = inspection_config or InspectionConfig()
+        profiles = load_profiles(Path(__file__).resolve().parents[1] / "config" / "inspection_profiles.yaml")
+        self.inspection_coordinator = InspectionCoordinator(
+            profiles, {"p808387ua1a": P808387UA1AStrategy()}
+        )
+        self.strategy_profiles_by_widget = {profile.widget_id: profile for profile in profiles.values()}
 
         # ---- NEW: Initialize Part Registry ----
         try:
@@ -808,6 +818,7 @@ class InspectionThread(QThread):
                             self.emit = self.combinedImage_scaled
                             self._emit_kensa_status(x_offset=-200, y_offset=-90)
 
+                            self._inspection_start_image = None
                             self.InspectionImages[0], self.InspectionImages_bgr[0] = self._build_inspection_image(
                                                                                     planarize_transform=self.planarizeTransform_wide,
                                                                                     planarize_size=self.wide_planarize,
@@ -816,61 +827,48 @@ class InspectionThread(QThread):
                                                                                     blank_canvas=self.homography_blank_canvas
                                                                                 )
 
-                            for i in range(len(self.InspectionImages_bgr)):
-                                # Check if CLIP model is available
-                                if not self._check_model_available('P808387UA1A_CLIP_Model'):
-                                    continue
-                                
-                                try:
-                                    self.InspectionResult_ClipDetection[i] = get_sliced_prediction(
-                                                self.InspectionImages_bgr[i], 
-                                                self.P808387UA1A_CLIP_Model, 
-                                                slice_height=512, slice_width=1980, 
-                                                overlap_height_ratio=0.0, overlap_width_ratio=0.2,
-                                                postprocess_match_metric="IOS",
-                                                postprocess_match_threshold=0.2,
-                                                postprocess_class_agnostic=True,
-                                                postprocess_type="GREEDYNMM",
-                                                verbose=0,
-                                                perform_standard_pred=False
-                                            )
-                                except Exception as e:
-                                    print(f"[Inference Error] P808387UA1A_CLIP_Model: {e}")
-                                    self.modelErrorSignal.emit("no ai model found in the image")
-                                    continue
+                            try:
+                                if self._inspection_start_image is None:
+                                    raise InspectionError("full-resolution image preparation failed")
+                                profile = self.strategy_profiles_by_widget.get(self.inspection_config.widget)
+                                if profile is None:
+                                    raise InspectionError("no inspection profile for widget")
+                                result = self.inspection_coordinator.inspect(profile.part_id, InspectionContext(
+                                    image=self.InspectionImages[0],
+                                    inference_image=self.InspectionImages_bgr[0],
+                                    clip_model=getattr(self, "P808387UA1A_CLIP_Model", None),
+                                    keypoint_model=getattr(self, "P808387UA1A_keypoint", None),
+                                    sliced_prediction=get_sliced_prediction,
+                                    anomaly_model=getattr(self, "P828447UA0A_ANOMALY_CLASSIFICATION_Model", None),
+                                    partcheck=P808387UA1A_check,
+                                ))
 
-                                self.InspectionImages_keypoint_Left[i] = self.InspectionImages[i][:, :512, :]
-                                self.InspectionImages_keypoint_Right[i] = self.InspectionImages[i][:, -512:, :]
-                                
-                                # Check if keypoint model is available
-                                if not self._check_model_available('P808387UA1A_keypoint'):
-                                    self.InspectionResult_keypoint_Left[i] = None
-                                    self.InspectionResult_keypoint_Right[i] = None
-                                else:
-                                    try:
-                                        self.InspectionResult_keypoint_Left[i] = self.P808387UA1A_keypoint(source=self.InspectionImages_keypoint_Left[i], conf=0.6, imgsz=512, verbose=False)
-                                        self.InspectionResult_keypoint_Right[i] = self.P808387UA1A_keypoint(source=self.InspectionImages_keypoint_Right[i], conf=0.6, imgsz=512, verbose=False)
-                                    except Exception as e:
-                                        print(f"[Inference Error] P808387UA1A_keypoint: {e}")
-                                        self.modelErrorSignal.emit("no ai model found in the image")
-                                        self.InspectionResult_keypoint_Left[i] = None
-                                        self.InspectionResult_keypoint_Right[i] = None
+                                def finalize_strategy_result(result):
+                                    self.InspectionImages[0] = result.image
+                                    self.InspectionResult_PitchMeasured[0] = result.measurements
+                                    self.InspectionResult_PitchResult[0] = result.judgments
+                                    self.InspectionResult_DeltaPitch[0] = result.id_judgments
+                                    self.InspectionResult_Status[0] = result.status
+                                    self.InspectionResult_NGReason[0] = result.ng_reason
+                                    self._update_ok_ng_counts_single(self.inspection_config.widget, idx=0, status=result.status)
+                                    self._finalize_inspection_common(
+                                        widget=self.inspection_config.widget,
+                                        preview_size=(1791, 169),
+                                        pitch_signal=self.P808387UA1A_InspectionResult_PitchMeasured,
+                                    )
 
-                                # Check if anomaly classification model is available
-                                anomaly_model = self.P828447UA0A_ANOMALY_CLASSIFICATION_Model if self._check_model_available('P828447UA0A_ANOMALY_CLASSIFICATION_Model') else None
-
-                                self.InspectionImages[i], self.InspectionResult_PitchMeasured[i], self.InspectionResult_PitchResult[i], self.InspectionResult_DeltaPitch[i], self.InspectionResult_Status[i], self.InspectionResult_NGReason[i] = P808387UA1A_check(self.InspectionImages[i], 
-                                                                                                                                                                                                                                                self.InspectionResult_ClipDetection[i].object_prediction_list,
-                                                                                                                                                                                                                                                self.InspectionResult_keypoint_Left[i],
-                                                                                                                                                                                                                                                self.InspectionResult_keypoint_Right[i],
-                                                                                                                                                                                                                                                anomaly_model)
-
-                            self._update_ok_ng_counts_single(self.inspection_config.widget, idx=0, status=self.InspectionResult_Status[0])
-                            self._finalize_inspection_common(
-                                widget=self.inspection_config.widget,
-                                preview_size=(1791, 169),
-                                pitch_signal=self.P808387UA1A_InspectionResult_PitchMeasured
-                            )
+                                self.inspection_coordinator.finalize(result, finalize_strategy_result)
+                            except InspectionError as exc:
+                                logging.exception("Inspection failed for widget %s", self.inspection_config.widget)
+                                self.InspectionResult_PitchMeasured[0] = None
+                                self.InspectionResult_PitchResult[0] = None
+                                self.InspectionResult_DeltaPitch[0] = None
+                                self.InspectionResult_Status[0] = None
+                                self.InspectionResult_NGReason[0] = None
+                                self.P808387UA1A_InspectionResult_PitchMeasured.emit(
+                                    self.InspectionResult_PitchMeasured, self.InspectionResult_PitchResult
+                                )
+                                self.modelErrorSignal.emit(f"Inspection equipment error: {exc}")
                             time.sleep(1.5)
 
             #for the P828447UA0A (widget 18)
