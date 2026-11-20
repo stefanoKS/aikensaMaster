@@ -16,7 +16,6 @@ Backwards compatibility that must be preserved:
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 import numpy as np

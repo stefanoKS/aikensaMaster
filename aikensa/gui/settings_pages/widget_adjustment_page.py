@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Callable, Dict, Mapping, Optional
+from typing import Callable, Dict, Optional
 
 import numpy as np
 from PyQt5.QtCore import Qt

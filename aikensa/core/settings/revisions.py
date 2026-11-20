@@ -25,7 +25,7 @@ import tempfile
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Iterable, List, Mapping, Optional, Tuple
+from typing import Dict, Iterable, List, Mapping, Optional
 
 import yaml
 

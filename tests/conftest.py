@@ -149,7 +149,7 @@ def _silence_modal_dialogs(monkeypatch):
         yield
         return
 
-    app = QApplication.instance() or QApplication([])
+    QApplication.instance() or QApplication([])
     messages = []
 
     def _information(parent, title, text, *args, **kwargs):

@@ -13,13 +13,13 @@ from __future__ import annotations
 
 from typing import Callable, List, Optional
 
-from PyQt5.QtWidgets import QStackedWidget, QWidget
+from PyQt5.QtWidgets import QWidget
 
-from aikensa.core.settings.migration import backup_machine_files, verify_backup
+from aikensa.core.settings.migration import backup_machine_files
 from aikensa.core.settings.service import SettingsService
 from aikensa.gui.settings_pages.calibration_settings_page import CalibrationSettingsPage
 from aikensa.gui.settings_pages.camera_settings_page import CameraSettingsPage
-from aikensa.gui.settings_pages.common import load_settings_ui, show_error, show_info
+from aikensa.gui.settings_pages.common import load_settings_ui, show_error
 from aikensa.gui.settings_pages.fine_adjustment_page import FineAdjustmentPage
 from aikensa.gui.settings_pages.history_page import SettingsHistoryPage
 from aikensa.gui.settings_pages.inspection_settings_page import InspectionSettingsPage

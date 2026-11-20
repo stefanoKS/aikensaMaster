@@ -8,7 +8,6 @@ conditions in the refactoring brief).
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Optional
 
 from PyQt5.QtWidgets import QTableWidgetItem, QWidget
@@ -18,7 +17,6 @@ from aikensa.core.settings.service import SettingsService
 from aikensa.core.settings.yaml_store import SettingsFileError, read_yaml
 from aikensa.gui.settings_pages.common import load_settings_ui, show_info
 
-SPEC_KEYS = ("pitchSpec", "tolerance_pitch", "idSpec", "pixelMultiplier")
 
 
 class InspectionSettingsPage(QWidget):

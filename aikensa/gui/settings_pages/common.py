@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
-from typing import Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional
 
 from PyQt5.QtWidgets import QMessageBox, QWidget
 from PyQt5.uic import loadUi
