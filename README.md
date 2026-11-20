@@ -44,6 +44,68 @@ Designed for production-line use: camera capture → preprocessing → ML infere
 
 > Exact versions depend on your environment. If you don’t have a `requirements.txt` yet, create one once your environment is stable.
 
+
+---
+
+## 設備設定 (Machine settings)
+
+日常的な設備パラメータ（カメラのシリアル番号・解像度・露光・校正・位置補正・
+品番別調整）は **UI から変更できます**。Python / YAML を直接編集する必要はありません。
+
+メイン画面の **設備設定** ボタン →
+カメラ設定 / 校正・位置調整 / 全体微調整 / 品番別設定 / 検査条件 / AIモデル設定 / 設定履歴
+
+### ドキュメント（日本語）
+
+- [docs/settings/README.md](docs/settings/README.md) — 目次と全体像
+- [docs/settings/install_and_start.md](docs/settings/install_and_start.md) — インストール、新規設備の初期設定
+- [docs/settings/camera_assignment.md](docs/settings/camera_assignment.md) — カメラのシリアル割当
+- [docs/settings/calibration.md](docs/settings/calibration.md) — 校正とホモグラフィ
+- [docs/settings/fine_adjustment.md](docs/settings/fine_adjustment.md) — 全体／品番別の微調整
+- [docs/settings/save_and_restore.md](docs/settings/save_and_restore.md) — 保存・状態・復元
+- [docs/settings/git_pull_protection.md](docs/settings/git_pull_protection.md) — `git pull` からの保護（重要）
+- [docs/settings/parameter_reference.md](docs/settings/parameter_reference.md) — パラメータ一覧
+- [docs/settings/troubleshooting.md](docs/settings/troubleshooting.md) — 異常時の対処
+- [docs/settings/hardware_checklist.md](docs/settings/hardware_checklist.md) — 実機検証チェックリスト
+
+### 重要: 設備固有ファイルは Git 管理外
+
+```
+aikensa/core/config/cam/cam_id.yaml          # カメラのシリアル番号
+aikensa/core/config/cam/cam_config.yaml      # 解像度・露光など
+aikensa/core/param/camera/                   # 校正・ホモグラフィ・平面化
+aikensa/core/param/adjustments/              # 微調整・履歴
+```
+
+`git pull` の前に **必ず** バックアップしてください。
+
+```bat
+tools\backup_machine_config.cmd     :: "BACKUP VERIFIED" を確認してから git pull
+```
+
+Git 管理のテンプレートは `aikensa/core/config/defaults/` にあります（`null` 初期値）。
+
+## アーキテクチャ（主要モジュール）
+
+| モジュール | 責務 |
+|------------|------|
+| `aikensa/core/settings/` | 型付き設定・検証・原子的保存・版管理・バックアップ |
+| `aikensa/core/camera/` | カメラの単一所有権・状態遷移・シリアル解決 |
+| `aikensa/core/geometry/` | null 安全な校正利用・スケール変換・変換合成・マスク合成 |
+| `aikensa/gui/pages/SETTINGS/` | Qt Designer `.ui`（設備設定の 8 画面） |
+| `aikensa/gui/settings_pages/` | 上記 `.ui` のコントローラ |
+| `aikensa/core/thread/` | 校正スレッド / 検査スレッド（共有カメラサービスを使用） |
+
+### テスト
+
+```bat
+tools\run_tests.cmd
+```
+
+実機カメラ・GPU・PLC は不要です（UI は `QT_QPA_PLATFORM=offscreen`）。
+実機でしか確認できない項目は
+[docs/settings/hardware_checklist.md](docs/settings/hardware_checklist.md) を参照してください。
+
 ---
 
 ## Quick Start
