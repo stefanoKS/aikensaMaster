@@ -14,7 +14,7 @@ from aikensa.core.settings.migration import (
 )
 from aikensa.core.settings.schema import CalibrationState
 from aikensa.core.settings.service import SettingsService
-from aikensa.gui.settings_pages.common import load_settings_ui, show_error, show_info
+from aikensa.gui.settings_pages.common import confirm_change, load_settings_ui, show_error, show_info
 
 _NEXT_ACTION_JA = {
     CalibrationState.MISSING: "校正を実行してください",
@@ -148,6 +148,10 @@ class CalibrationSettingsPage(QWidget):
         problems = verify_backup(latest)
         if problems:
             show_error(self, "復元できません", "バックアップが検証できません:\n" + "\n".join(problems))
+            return
+        if not confirm_change(
+            self, "バックアップを復元", f"現在の設備ファイルを {latest.name} で上書きします。復元しますか？"
+        ):
             return
         try:
             restored = restore_machine_files(self.settings.paths, latest)

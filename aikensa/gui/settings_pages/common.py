@@ -30,6 +30,12 @@ def show_error(parent: Optional[QWidget], title_ja: str, message_ja: str) -> Non
     QMessageBox.critical(parent, title_ja, message_ja)
 
 
+def confirm_change(parent: QWidget, title_ja: str, message_ja: str) -> bool:
+    return QMessageBox.question(
+        parent, title_ja, message_ja, QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+    ) == QMessageBox.Yes
+
+
 def format_issues(issues: Iterable) -> str:
     lines: List[str] = []
     for issue in issues:

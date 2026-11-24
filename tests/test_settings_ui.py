@@ -7,7 +7,7 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
-from aikensa.core.settings.schema import GlobalAlignment
+from aikensa.core.settings.schema import CropRect, GlobalAlignment
 from tests.conftest import REPO_ROOT, write_serial
 
 SETTINGS_DIR = REPO_ROOT / "aikensa" / "gui" / "pages" / "SETTINGS"
@@ -167,20 +167,27 @@ def test_main_page_has_settings_button(qapp):
 # Settings pages behave
 # ---------------------------------------------------------------------------
 def test_settings_controller_navigation(qapp, settings):
+    from PyQt5.QtCore import Qt
     from aikensa.gui.settings_pages import SettingsController
 
     controller = SettingsController(settings=settings)
     stack = controller.settingsContentStack
     assert stack.count() == 7
 
-    controller.settingsNavList.setCurrentRow(3)
+    controller.select_page(3)
     assert stack.currentIndex() == 3
 
-    controller.settingsNavList.setCurrentRow(0)
+    controller.select_page(0)
     assert stack.currentIndex() == 0
+    headings = [controller.settingsNavList.item(row) for row in (0, 4, 8)]
+    assert [item.text() for item in headings] == ["設備・カメラ", "検査条件", "管理"]
+    for item in headings:
+        assert not item.flags() & Qt.ItemIsSelectable
+        controller.settingsNavList.setCurrentItem(item)
+        assert stack.currentIndex() == 0
 
 
-@pytest.mark.parametrize("size", [(1920, 1080), (1280, 720)])
+@pytest.mark.parametrize("size", [(1920, 1080), (1600, 900), (1280, 720)])
 def test_settings_scroll_without_expanding_window(qapp, settings, size):
     from PyQt5.QtCore import QSize
     from PyQt5.QtWidgets import QMainWindow, QStackedWidget
@@ -197,7 +204,7 @@ def test_settings_scroll_without_expanding_window(qapp, settings, size):
 
     assert controller.minimumSizeHint().height() < 720
     for index in range(7):
-        controller.settingsNavList.setCurrentRow(index)
+        controller.select_page(index)
         qapp.processEvents()
         assert window.size() == QSize(*size)
         assert stack.size() == window.size()
@@ -368,16 +375,48 @@ def test_settings_preview_does_not_expand_layout(qapp, settings):
     window.setCentralWidget(controller)
     window.resize(1280, 720)
     window.show()
-    controller.settingsNavList.setCurrentRow(2)
+    controller.select_page(2)
     qapp.processEvents()
     image = QImage(1600, 800, QImage.Format_RGB32)
     image.fill(0)
     controller.fine_page.set_reference_qimage(image)
     qapp.processEvents()
     pixmap = controller.fine_page.finePreviewLabel.pixmap()
-    assert pixmap.width() == 2 * pixmap.height()
+    assert abs(pixmap.width() - 2 * pixmap.height()) <= 1  # Qt rounds scaled sizes.
     assert window.width() == 1280 and window.height() == 720
     window.close()
+
+
+def test_ready_details_do_not_expand_settings_window(qapp, settings, monkeypatch):
+    from PyQt5.QtCore import QSize
+    from aikensa.gui.settings_pages import SettingsController
+
+    monkeypatch.setattr(settings, "readiness_report", lambda _snapshot: ["長い診断" * 300] * 30)
+    controller = SettingsController(settings=settings)
+    controller.resize(1280, 720)
+    controller.show()
+    qapp.processEvents()
+    assert controller.size() == QSize(1280, 720)
+    assert controller.settingsStatusLabel.text() == "検査準備: 要確認"
+    controller.close()
+
+
+@pytest.mark.parametrize(
+    ("crop", "expected"),
+    [
+        (CropRect(200, 100, 600, 400), (20, 10, 60, 40)),
+        (CropRect(960, 180, 100, 140), (96, 18, 4, 14)),
+        (CropRect(-20, -20, 100, 40), (0, 0, 8, 2)),
+        (CropRect(1010, 100, 80, 40), (0, 0, 0, 0)),
+        (CropRect(100, 100, 0, 40), (0, 0, 0, 0)),
+    ],
+)
+def test_preview_crop_maps_from_full_merged_pixels(crop, expected):
+    from PyQt5.QtCore import QSize
+    from aikensa.gui.page_viewport import preview_crop_rect
+
+    assert preview_crop_rect(crop, QSize(1000, 500), QSize(100, 50)).getRect() == expected
+    assert preview_crop_rect(crop, QSize(), QSize(100, 50)).isEmpty()
 
 
 def test_camera_page_saves_machine_yaml(qapp, settings):
@@ -395,6 +434,31 @@ def test_camera_page_saves_machine_yaml(qapp, settings):
 
     raw = (settings.paths.cam_id_file()).read_text(encoding="utf-8")
     assert "40720154" in raw
+
+
+def test_camera_tabs_keep_each_draft_and_fit_settings_width(qapp, settings):
+    from PyQt5.QtWidgets import QMainWindow
+    from aikensa.gui.settings_pages import SettingsController
+
+    window = QMainWindow()
+    controller = SettingsController(settings=settings)
+    window.setCentralWidget(controller)
+    window.resize(1280, 720)
+    window.show()
+    qapp.processEvents()
+    page = controller.camera_page
+    page.camera0SerialComboBox.setEditText("SN-0")
+    page.cameraTabs.setCurrentIndex(1)
+    assert not page.camera0PreviewLabel.isVisible()
+    assert page.camera1PreviewLabel.isVisible()
+    page.camera1SerialComboBox.setEditText("SN-1")
+    page.cameraTabs.setCurrentIndex(0)
+    assert page.camera0SerialComboBox.currentText() == "SN-0"
+    assert page.camera1SerialComboBox.currentText() == "SN-1"
+    assert controller.settingsContentStack.currentWidget().horizontalScrollBar().maximum() == 0
+    cameras, _ = settings.repository.load_camera_settings()
+    assert not cameras.assignment(0).is_assigned and not cameras.assignment(1).is_assigned
+    window.close()
 
 
 def test_camera_page_rejects_duplicate_serials(qapp, settings):
@@ -488,7 +552,8 @@ def test_widget_page_restores_shared_default(qapp, settings):
     assert 43 not in settings.active_widget_overrides()
 
 
-def test_history_page_lists_and_rolls_back(qapp, settings):
+def test_history_page_lists_and_confirms_rollback(qapp, settings, monkeypatch):
+    from PyQt5.QtWidgets import QMessageBox
     from aikensa.gui.settings_pages.history_page import SettingsHistoryPage
 
     settings.save_global_alignment(GlobalAlignment(cam2_x_px=3.0))
@@ -504,6 +569,11 @@ def test_history_page_lists_and_rolls_back(qapp, settings):
         if page.historyTableWidget.item(row, 0).text() == first:
             page.historyTableWidget.selectRow(row)
             break
+    monkeypatch.setattr(QMessageBox, "question", lambda *args: QMessageBox.No)
+    page.rollbackHistoryButton.click()
+    assert settings.active_global_alignment().cam2_x_px == pytest.approx(30.0)
+
+    monkeypatch.setattr(QMessageBox, "question", lambda *args: QMessageBox.Yes)
     page.rollbackHistoryButton.click()
 
     assert settings.active_global_alignment().cam2_x_px == pytest.approx(3.0)
@@ -533,17 +603,22 @@ def test_live_preview_updates_fine_adjustment_page(qapp, settings):
     from aikensa.gui.settings_pages import SettingsController
 
     controller = SettingsController(settings=settings)
-    controller.settingsNavList.setCurrentRow(2)  # 全体微調整
+    controller.select_page(2)  # 全体微調整
 
     image = QImage(160, 120, QImage.Format_RGB888)
     image.fill(Qt.gray)
 
     controller.show()
     controller.set_preview_qimage(image)
-    controller.hide()
 
     pixmap = controller.fine_page.finePreviewLabel.pixmap()
     assert pixmap is not None and not pixmap.isNull()
+    assert controller.widget_page.widgetFullPreviewLabel.pixmap() is None
+
+    controller.select_page(3)
+    pixmap = controller.widget_page.widgetFullPreviewLabel.pixmap()
+    assert pixmap is not None and not pixmap.isNull()
+    controller.close()
 
 
 def test_live_preview_is_ignored_while_hidden(qapp, settings):

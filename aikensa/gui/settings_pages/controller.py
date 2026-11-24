@@ -13,7 +13,12 @@ from __future__ import annotations
 
 from typing import Callable, List, Optional
 
-from PyQt5.QtWidgets import QFrame, QScrollArea, QSizePolicy, QWidget
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QColor
+from PyQt5.QtWidgets import (
+    QDialog, QDialogButtonBox, QFrame, QListWidgetItem, QPlainTextEdit,
+    QScrollArea, QSizePolicy, QVBoxLayout, QWidget,
+)
 
 from aikensa.core.settings.migration import backup_machine_files
 from aikensa.core.settings.service import SettingsService
@@ -47,12 +52,24 @@ class SettingsController(QWidget):
 
         self._pages: List[QWidget] = []
         self._build_pages()
+        self._preview_qimage = None
+        self._preview_full_size = None
+        self._readiness_details = ""
 
-        self.settingsNavList.currentRowChanged.connect(self._select_page)
+        self._nav_pages = [self.settingsNavList.item(index) for index in range(len(self._pages))]
+        for index, item in enumerate(self._nav_pages):
+            item.setData(Qt.UserRole, index)
+        for index, title in reversed(((0, "設備・カメラ"), (3, "検査条件"), (6, "管理"))):
+            heading = QListWidgetItem(title)
+            heading.setFlags(Qt.NoItemFlags)
+            heading.setForeground(QColor("#aab3bc"))
+            self.settingsNavList.insertItem(index, heading)
+        self.settingsNavList.currentItemChanged.connect(self._select_page)
         self.backToMainButton.clicked.connect(self._go_back)
         self.reloadSettingsButton.clicked.connect(self.refresh_all)
+        self.settingsStatusDetailsButton.clicked.connect(self._show_readiness_details)
 
-        self.settingsNavList.setCurrentRow(0)
+        self.select_page(0)
         self.refresh_all()
 
     # ------------------------------------------------------------------
@@ -102,9 +119,15 @@ class SettingsController(QWidget):
             label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
 
     # ------------------------------------------------------------------
-    def _select_page(self, row: int) -> None:
-        if 0 <= row < len(self._pages):
-            self.settingsContentStack.setCurrentIndex(row)
+    def select_page(self, index: int) -> None:
+        self.settingsNavList.setCurrentItem(self._nav_pages[index])
+
+    def _select_page(self, item, _previous) -> None:
+        index = None if item is None else item.data(Qt.UserRole)
+        if index is not None:
+            self.settingsContentStack.setCurrentIndex(index)
+            if self._preview_qimage is not None:
+                self.set_preview_qimage(self._preview_qimage, self._preview_full_size)
 
     def _go_back(self) -> None:
         if self.on_back is not None:
@@ -122,8 +145,23 @@ class SettingsController(QWidget):
         if self.settings.production_ready(snapshot):
             header = "検査準備: 完了"
         else:
-            header = "検査準備: 未完了 (校正またはカメラ設定が必要です)"
-        self.settingsStatusLabel.setText(header + "\n" + "\n".join(lines))
+            header = "検査準備: 要確認"
+        self.settingsStatusLabel.setText(header)
+        self._readiness_details = "\n".join(lines)
+
+    def _show_readiness_details(self) -> None:
+        dialog = QDialog(self)
+        dialog.setWindowTitle("準備状況の詳細")
+        details = QPlainTextEdit(self._readiness_details, dialog)
+        details.setReadOnly(True)
+        buttons = QDialogButtonBox(QDialogButtonBox.Close, parent=dialog)
+        buttons.button(QDialogButtonBox.Close).setText("閉じる")
+        buttons.rejected.connect(dialog.reject)
+        layout = QVBoxLayout(dialog)
+        layout.addWidget(details)
+        layout.addWidget(buttons)
+        dialog.resize(660, 380)
+        dialog.exec_()
 
     def refresh_all(self) -> None:
         self.refresh_status()
@@ -159,19 +197,26 @@ class SettingsController(QWidget):
         self.fine_page.set_reference_image(image)
         self.widget_page.set_reference_image(image)
 
-    def set_preview_qimage(self, image) -> None:
+    def set_preview_qimage(self, image, full_size=None) -> None:
         """Feed the merged frame from a thread signal (QImage) when visible.
 
         The guard keeps a 15 fps signal from repainting hidden pages.
         """
 
         if image is None or image.isNull():
+            self._preview_qimage = None
+            self._preview_full_size = None
             self.fine_page.set_reference_qimage(image)
             self.widget_page.set_reference_qimage(image)
             return
         if not self.isVisible():
             return
-        if self.settingsContentStack.currentIndex() not in (2, 3):
-            return
-        self.fine_page.set_reference_qimage(image)
-        self.widget_page.set_reference_qimage(image)
+        index = self.settingsContentStack.currentIndex()
+        if index == 2:
+            self._preview_qimage = image
+            self._preview_full_size = full_size
+            self.fine_page.set_reference_qimage(image)
+        elif index == 3:
+            self._preview_qimage = image
+            self._preview_full_size = full_size
+            self.widget_page.set_reference_qimage(image, full_size)

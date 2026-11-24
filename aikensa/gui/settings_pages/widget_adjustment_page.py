@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Callable, Dict, Optional
 
 import numpy as np
-from PyQt5.QtCore import QRect, Qt
+from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor, QImage, QPainter, QPen, QPixmap
 from PyQt5.QtWidgets import QInputDialog, QWidget
 
@@ -14,6 +14,7 @@ from aikensa.core.settings.service import SettingsService
 from aikensa.core.settings.validator import validate_widget_alignment
 from aikensa.core.settings.yaml_store import SettingsValidationError
 from aikensa.core.settings.part_registry import load_part_registry_entries
+from aikensa.gui.page_viewport import preview_crop_rect
 from aikensa.gui.settings_pages.common import load_settings_ui, show_error, show_info
 
 
@@ -35,8 +36,8 @@ class WidgetAdjustmentPage(QWidget):
         self._defaults = self.settings.repository.shared_widget_defaults()
         self._overrides: Dict[int, WidgetAlignment] = self.settings.active_widget_overrides()
         self._current: Optional[WidgetAlignment] = None
-        self._reference: Optional[np.ndarray] = None
         self._reference_pixmap = None
+        self._reference_full_size = None
 
         for widget_id, part_number, label in self._parts:
             self.partComboBox.addItem(f"{widget_id}: {label} ({part_number})", widget_id)
@@ -240,97 +241,51 @@ class WidgetAdjustmentPage(QWidget):
 
     # ------------------------------------------------------------------
     def set_reference_image(self, image: np.ndarray) -> None:
-        self._reference = image
-        self._reference_pixmap = None
-        self._render_preview()
+        height, width = image.shape[:2]
+        rgb = np.ascontiguousarray(image[:, :, ::-1])
+        qimage = QImage(rgb.data, width, height, rgb.strides[0], QImage.Format_RGB888)
+        self.set_reference_qimage(qimage, qimage.size())
 
-    def set_reference_qimage(self, image) -> None:
+    def set_reference_qimage(self, image, full_size=None) -> None:
         """Supply the merged image straight from a thread signal (QImage)."""
 
         if image is None or image.isNull():
-            self._reference = self._reference_pixmap = None
+            self._reference_pixmap = self._reference_full_size = None
             self.widgetFullPreviewLabel.clear()
             self.widgetCropPreviewLabel.clear()
             return
-        self._reference = None
         self._reference_pixmap = QPixmap.fromImage(image)
+        self._reference_full_size = full_size
         self._render_preview()
 
     def _render_preview(self) -> None:
-        if self._reference_pixmap is not None:
-            self._render_pixmap_preview()
-            return
-        if self._reference is None:
-            return
-        image = self._reference
-        height, width = image.shape[:2]
-        rgb = image[:, :, ::-1] if image.ndim == 3 else image
-        qimage = QImage(rgb.data, width, height, rgb.strides[0], QImage.Format_RGB888)
-        pixmap = QPixmap.fromImage(qimage.copy())
-        self.widgetFullPreviewLabel.setPixmap(
-            pixmap.scaled(
-                self.widgetFullPreviewLabel.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation
-            )
-        )
-
-        draft = self.collect()
-        if draft is None or draft.crop is None:
-            return
-        safe = draft.crop.clamp_to(width, height)
-        cropped = image[
-            safe.y_px : safe.y_px + safe.height_px, safe.x_px : safe.x_px + safe.width_px
-        ]
-        if cropped.size == 0:
-            return
-        crop_rgb = cropped[:, :, ::-1] if cropped.ndim == 3 else cropped
-        crop_q = QImage(
-            crop_rgb.data, crop_rgb.shape[1], crop_rgb.shape[0], crop_rgb.strides[0], QImage.Format_RGB888
-        )
-        self.widgetCropPreviewLabel.setPixmap(
-            QPixmap.fromImage(crop_q.copy()).scaled(
-                self.widgetCropPreviewLabel.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation
-            )
-        )
-
-    def _render_pixmap_preview(self) -> None:
-        """Show the incoming frame with the draft crop rectangle overlaid."""
-
         base = self._reference_pixmap
-        if base is None or base.width() == 0 or base.height() == 0:
+        if base is None or base.isNull():
             return
-
         scaled = base.scaled(
             self.widgetFullPreviewLabel.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation
         )
         if scaled.isNull():
             return
-
-        canvas = QPixmap(scaled.size())
-        canvas.fill(Qt.black)
-        painter = QPainter(canvas)
-        painter.drawPixmap(0, 0, scaled)
-
-        rect = None
+        self.widgetFullPreviewLabel.setPixmap(scaled)
         draft = self.collect()
-        if draft is not None and draft.crop is not None and draft.crop.is_valid():
-            ratio_x = scaled.width() / float(base.width())
-            ratio_y = scaled.height() / float(base.height())
-            rect = QRect(
-                int(draft.crop.x_px * ratio_x),
-                int(draft.crop.y_px * ratio_y),
-                max(1, int(draft.crop.width_px * ratio_x)),
-                max(1, int(draft.crop.height_px * ratio_y)),
-            )
-            pen = QPen(QColor(252, 233, 79))
-            pen.setWidth(2)
-            painter.setPen(pen)
-            painter.drawRect(rect)
+        if draft is None or draft.crop is None or self._reference_full_size is None:
+            self.widgetCropPreviewLabel.setText("切出し範囲を表示できません")
+            return
+        full_size = self._reference_full_size
+        source_rect = preview_crop_rect(draft.crop, full_size, base.size())
+        if source_rect.isEmpty():
+            self.widgetCropPreviewLabel.setText("切出し範囲が画像外です")
+            return
+        # Paint in the displayed pixmap, before QLabel centers it in the viewport.
+        rect = preview_crop_rect(draft.crop, full_size, scaled.size())
+        painter = QPainter(scaled)
+        painter.setPen(QPen(QColor(252, 233, 79), 2))
+        painter.drawRect(rect.adjusted(0, 0, -1, -1))
         painter.end()
-
-        crop_pixmap = canvas.copy(rect) if rect is not None else canvas
-        self.widgetFullPreviewLabel.setPixmap(canvas)
+        self.widgetFullPreviewLabel.setPixmap(scaled)
         self.widgetCropPreviewLabel.setPixmap(
-            crop_pixmap.scaled(
+            base.copy(source_rect).scaled(
                 self.widgetCropPreviewLabel.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation
             )
         )

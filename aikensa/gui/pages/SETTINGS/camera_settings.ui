@@ -49,13 +49,12 @@
     </layout>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="cameraCardsLayout">
-     <item>
-      <widget class="QGroupBox" name="camera0GroupBox">
-       <property name="title">
-        <string>カメラ① (Calibration_camera_0.yaml)</string>
-       </property>
-       <layout class="QFormLayout" name="camera0FormLayout">
+    <widget class="QTabWidget" name="cameraTabs">
+      <widget class="QWidget" name="camera0GroupBox">
+       <attribute name="title">
+        <string>カメラ①</string>
+       </attribute>
+       <layout class="QGridLayout" name="camera0FormLayout" columnstretch="0,1,2">
         <item row="0" column="0">
          <widget class="QLabel" name="camera0SerialLabel">
           <property name="text">
@@ -325,19 +324,19 @@
           </property>
          </widget>
         </item>
-        <item row="13" column="0">
+        <item row="0" column="2">
          <widget class="QLabel" name="camera0PreviewTextLabel">
           <property name="text">
            <string>プレビュー</string>
           </property>
          </widget>
         </item>
-        <item row="13" column="1">
+        <item row="1" column="2" rowspan="12">
          <widget class="QLabel" name="camera0PreviewLabel">
           <property name="minimumSize">
            <size>
-            <width>480</width>
-            <height>320</height>
+            <width>260</width>
+            <height>170</height>
            </size>
           </property>
           <property name="text">
@@ -360,13 +359,11 @@
         </item>
        </layout>
       </widget>
-     </item>
-     <item>
-      <widget class="QGroupBox" name="camera1GroupBox">
-       <property name="title">
-        <string>カメラ② (Calibration_camera_1.yaml)</string>
-       </property>
-       <layout class="QFormLayout" name="camera1FormLayout">
+      <widget class="QWidget" name="camera1GroupBox">
+       <attribute name="title">
+        <string>カメラ②</string>
+       </attribute>
+       <layout class="QGridLayout" name="camera1FormLayout" columnstretch="0,1,2">
         <item row="0" column="0">
          <widget class="QLabel" name="camera1SerialLabel">
           <property name="text">
@@ -636,19 +633,19 @@
           </property>
          </widget>
         </item>
-        <item row="13" column="0">
+        <item row="0" column="2">
          <widget class="QLabel" name="camera1PreviewTextLabel">
           <property name="text">
            <string>プレビュー</string>
           </property>
          </widget>
         </item>
-        <item row="13" column="1">
+        <item row="1" column="2" rowspan="12">
          <widget class="QLabel" name="camera1PreviewLabel">
           <property name="minimumSize">
            <size>
-            <width>480</width>
-            <height>320</height>
+            <width>260</width>
+            <height>170</height>
            </size>
           </property>
           <property name="text">
@@ -671,8 +668,7 @@
         </item>
        </layout>
       </widget>
-     </item>
-    </layout>
+    </widget>
    </item>
    <item>
     <widget class="QLabel" name="cameraValidationLabel">

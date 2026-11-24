@@ -14,28 +14,42 @@
    <string>設備設定</string>
   </property>
   <property name="styleSheet">
-   <string notr="true">QWidget#SettingsMainPage { background-color: #2e3436; }
-QLabel { color: #eeeeec; font-size: 15px; }
-QLabel#settingsHeaderLabel { font-size: 26px; font-weight: bold; color: #ffffff; }
-QLabel#settingsStatusLabel { font-size: 15px; color: #fce94f; }
-QListWidget#settingsNavList { font-size: 17px; background-color: #3d4144; color: #eeeeec; border: 1px solid #555753; }
-QListWidget#settingsNavList::item { padding: 12px; }
-QListWidget#settingsNavList::item:selected { background-color: #3465a4; }
-QPushButton { font-size: 16px; min-height: 38px; padding: 4px 14px; }
-QGroupBox { font-size: 16px; color: #eeeeec; border: 1px solid #555753; margin-top: 12px; padding-top: 12px; }
+   <string notr="true">QWidget#SettingsMainPage { background-color: #25292d; }
+QWidget { color: #f1f3f5; font-size: 10pt; }
+QLabel#settingsHeaderLabel { font-size: 17pt; font-weight: bold; }
+QLabel#settingsStatusLabel { font-weight: bold; }
+QListWidget#settingsNavList { background-color: #30363c; border: 1px solid #505a63; }
+QListWidget#settingsNavList::item { padding: 7px 12px; }
+QListWidget#settingsNavList::item:selected { background-color: #426b91; }
+QPushButton { background-color: #30363c; border: 1px solid #505a63; border-radius: 4px; min-height: 28px; padding: 2px 12px; }
+QPushButton#saveCameraSettingsButton, QPushButton#saveFineAdjustmentButton, QPushButton#saveWidgetAdjustmentButton,
+QPushButton:hover:enabled { background-color: #426b91; }
+QPushButton:focus { border-color: #aab3bc; }
+QPushButton:disabled { color: #aab3bc; }
+QComboBox, QSpinBox, QDoubleSpinBox, QLineEdit { background-color: #1f2327; min-height: 28px; }
+QGroupBox { background-color: #30363c; border: 1px solid #505a63; margin-top: 10px; padding-top: 8px; }
 QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 4px; }
 QLabel#camera0PreviewLabel, QLabel#camera1PreviewLabel, QLabel#finePreviewLabel, QLabel#widgetFullPreviewLabel, QLabel#widgetCropPreviewLabel {
-    background-color: #1b1c1b; border: 1px solid #555753; color: #888a85; }
-QTableWidget { font-size: 14px; }
+    background-color: #1f2327; border: 1px solid #505a63; color: #aab3bc; }
+QTabWidget::pane, QScrollArea { background-color: #30363c; }
+QTabBar::tab { background-color: #30363c; padding: 7px 14px; }
+QTabBar::tab:selected { background-color: #426b91; }
+QTableWidget, QPlainTextEdit { background-color: #1f2327; alternate-background-color: #30363c; }
+QHeaderView::section { background-color: #30363c; color: #f1f3f5; padding: 4px; }
 </string>
   </property>
   <layout class="QVBoxLayout" name="settingsRootLayout">
+   <property name="spacing"><number>12</number></property>
+   <property name="leftMargin"><number>16</number></property>
+   <property name="topMargin"><number>16</number></property>
+   <property name="rightMargin"><number>16</number></property>
+   <property name="bottomMargin"><number>16</number></property>
    <item>
     <layout class="QHBoxLayout" name="settingsHeaderLayout">
      <item>
       <widget class="QLabel" name="settingsHeaderLabel">
        <property name="text">
-        <string>設備設定 / Settings</string>
+        <string>設備設定</string>
        </property>
       </widget>
      </item>
@@ -58,7 +72,7 @@ QTableWidget { font-size: 14px; }
         <string>再読込</string>
        </property>
        <property name="toolTip">
-        <string>Reload the machine-specific settings from disk</string>
+        <string>保存済みの設備設定を読み込み直します</string>
        </property>
       </widget>
      </item>
@@ -72,28 +86,33 @@ QTableWidget { font-size: 14px; }
     </layout>
    </item>
    <item>
-    <widget class="QLabel" name="settingsStatusLabel">
-     <property name="text">
-      <string>状態を読み込み中...</string>
-     </property>
-     <property name="wordWrap">
-      <bool>true</bool>
-     </property>
-    </widget>
+    <layout class="QHBoxLayout" name="settingsStatusLayout">
+     <item>
+      <widget class="QLabel" name="settingsStatusLabel">
+       <property name="text"><string>状態を読み込み中...</string></property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="settingsStatusDetailsButton">
+       <property name="text"><string>準備状況の詳細</string></property>
+      </widget>
+     </item>
+    </layout>
    </item>
    <item>
     <layout class="QHBoxLayout" name="settingsBodyLayout">
+     <property name="spacing"><number>12</number></property>
      <item>
       <widget class="QListWidget" name="settingsNavList">
        <property name="minimumSize">
         <size>
-         <width>240</width>
+         <width>176</width>
          <height>0</height>
         </size>
        </property>
        <property name="maximumSize">
         <size>
-         <width>280</width>
+         <width>210</width>
          <height>16777215</height>
         </size>
        </property>

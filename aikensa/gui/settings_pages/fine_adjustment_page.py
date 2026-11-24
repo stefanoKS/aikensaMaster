@@ -162,7 +162,7 @@ class FineAdjustmentPage(QWidget):
 
         if image is None or image.isNull():
             self._reference = self._reference_pixmap = None
-            self.finePreviewLabel.clear()
+            self.finePreviewLabel.setText("カメラマージ画像なし")
             return
         self._reference = None
         self._reference_pixmap = QPixmap.fromImage(image)
@@ -174,39 +174,14 @@ class FineAdjustmentPage(QWidget):
             return
         if self._reference is None:
             return
-        draft = self.collect()
-        image = self._reference
-        shift_x = 0.0 if self.beforeAfterCheckBox.isChecked() else draft.cam2_x_px
-        shift_y = 0.0 if self.beforeAfterCheckBox.isChecked() else draft.cam2_y_px
-
-        if shift_x or shift_y:
-            matrix = np.array(
-                [[1.0, 0.0, shift_x], [0.0, 1.0, shift_y], [0.0, 0.0, 1.0]],
-                dtype=np.float64,
-            )
-            import cv2
-
-            image = cv2.warpAffine(
-                image, matrix[:2], (image.shape[1], image.shape[0])
-            )
-
-        rgb = image[:, :, ::-1] if image.ndim == 3 else image
+        rgb = np.ascontiguousarray(self._reference[:, :, ::-1])
         height, width = rgb.shape[:2]
         qimage = QImage(rgb.data, width, height, rgb.strides[0], QImage.Format_RGB888)
-        pixmap = QPixmap.fromImage(qimage.copy())
-        zoom = max(0.1, self.zoomSlider.value() / 100.0)
-        target = self.finePreviewLabel.size() * zoom
-        self.finePreviewLabel.setPixmap(
-            pixmap.scaled(target, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-        )
+        self._reference_pixmap = QPixmap.fromImage(qimage.copy())
+        self._render_pixmap_preview()
 
     def _render_pixmap_preview(self) -> None:
-        """Scale the incoming frame and draw a reference crosshair.
-
-        The crosshair follows the draft offset (and shows the un-corrected
-        position when 補正前を表示 is checked), so the operator gets immediate
-        feedback on direction and magnitude before saving.
-        """
+        """Draw a reference guide without shifting the already merged image."""
 
         base = self._reference_pixmap
         if base is None:

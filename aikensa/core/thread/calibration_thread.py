@@ -8,7 +8,7 @@ import yaml
 import time
 import logging
 
-from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot, Qt, QTimer
+from PyQt5.QtCore import QSize, QThread, pyqtSignal, pyqtSlot, Qt, QTimer
 from PyQt5.QtGui import QImage, QPixmap
 
 from aikensa.core.scripts.cam_init.cam_init import initialize_camera
@@ -66,7 +66,7 @@ class CalibrationThread(QThread):
     CalibCamStream = pyqtSignal(int, QImage)
     CamMerge1 = pyqtSignal(QImage)
     CamMerge2 = pyqtSignal(QImage)
-    CamMergeAll = pyqtSignal(QImage)
+    CamMergeAll = pyqtSignal(QImage, QSize)
     cameraErrorSignal = pyqtSignal(str)
 
     def __init__(self, calib_config: CalibrationConfig = None):
@@ -223,7 +223,7 @@ class CalibrationThread(QThread):
                 else self.convertQImage(self.downSampling(frame.image, 246, 163)).copy()
             )
             signal.emit(preview)
-        self.CamMergeAll.emit(QImage())  # Clear the old merge (including Fine Adjustment).
+        self.CamMergeAll.emit(QImage(), QSize())
         self._report_camera_status(" / ".join(self.camera_stream.errors.values()))
         return False
 
@@ -567,7 +567,10 @@ class CalibrationThread(QThread):
                 if self.mergeframe2_downsampled is not None:
                     self.CamMerge2.emit(self.convertQImage(self.mergeframe2_downsampled))
                 if self.combinedImage_scaled is not None:
-                    self.CamMergeAll.emit(self.convertQImage(self.combinedImage_scaled))
+                    self.CamMergeAll.emit(
+                        self.convertQImage(self.combinedImage_scaled).copy(),
+                        QSize(self.homography_size[1], self.homography_size[0]),
+                    )
 
             #wait for 5ms
             # self.msleep(2)

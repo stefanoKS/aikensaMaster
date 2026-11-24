@@ -1499,14 +1499,14 @@ class AIKensa(QMainWindow):
         label = widget.findChild(QLabel, "camMerge2")
         display_image(label, image)
 
-    def _setMergeFrameAll(self, image):
+    def _setMergeFrameAll(self, image, full_size):
         widget = self.stackedWidget.widget(3)
         label = widget.findChild(QLabel, "camMergeAll")
         display_image(label, image)
         # Live preview for 全体微調整 / 品番別設定 (no-op while the page is hidden).
         controller = getattr(self, "settings_controller", None)
         if controller is not None:
-            controller.set_preview_qimage(image)
+            controller.set_preview_qimage(image, full_size)
 
     def _setPartFrame(self, image):
         for i in self.inspectionWidget_indices:

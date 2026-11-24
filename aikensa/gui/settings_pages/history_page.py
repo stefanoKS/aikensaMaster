@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import QTableWidgetItem, QWidget
 
 from aikensa.core.settings.migration import backup_machine_files
 from aikensa.core.settings.service import SettingsService
-from aikensa.gui.settings_pages.common import load_settings_ui, show_error, show_info
+from aikensa.gui.settings_pages.common import confirm_change, load_settings_ui, show_error, show_info
 
 
 class SettingsHistoryPage(QWidget):
@@ -86,6 +86,8 @@ class SettingsHistoryPage(QWidget):
         revision_id = self._selected_revision_id()
         if revision_id is None:
             show_info(self, "戻せません", "戻す版を選択してください。")
+            return
+        if not confirm_change(self, "設定のロールバック", f"現在の設定を版 {revision_id} に戻しますか？"):
             return
         try:
             self.settings.rollback(revision_id)

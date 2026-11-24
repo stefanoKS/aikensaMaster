@@ -71,4 +71,28 @@ migration is to be enabled.
   frame timing, reconnect behavior, calibration, and production I/O remain
   **NOT TESTED**.
 
-Next: D, improve the Settings layout and draft previews.
+### D — Settings layout and preview foundation (partial)
+
+- All seven pages and Designer control names remain. The hub has grouped,
+  non-selectable headings, a compact readiness summary with a scrollable
+  details dialog, and shared styling. Camera tabs retain both unsaved drafts.
+- At 1280×720 the hub stays 1280×720. Minimum hints fell to 358×196 for
+  the hub and 560×704 for the camera page, with no camera-page horizontal
+  scroll. All pages were also exercised at 1600×900 and 1920×1080.
+- Only the active adjustment page renders valid live previews. Full-resolution
+  crop coordinates are mapped and clamped using merged-image size metadata.
+  Fine adjustment identifies the merged-image preview as a reference guide,
+  not a verified camera-2 correction. Backup restore and history rollback
+  now require confirmation.
+- Targeted Settings/camera/inspection suite: 96 passed. Full suite: 157
+  passed, 0 failed, 0 skipped. `compileall` passed. Production configuration
+  is unchanged.
+
+Next unfinished gate: D5, implement camera-2-only before/after preview from
+equivalent source frames using the production transform order and verify
+translation and rotation on synthetic markers. Also finish D's page-specific
+layout/details (advanced camera controls, conditional Katabu UI, and fuller
+inspection/model metadata). Then proceed to E: inject the widget-17
+specification explicitly and test the reusable clip/keypoint strategy with
+a second independent specification before generalizing registration.
+Gates E–M and physical qualification have not been executed.

@@ -229,7 +229,7 @@
         <item row="2" column="1">
          <widget class="QCheckBox" name="beforeAfterCheckBox">
           <property name="text">
-           <string>補正前を表示</string>
+           <string>ガイドを中央に表示</string>
           </property>
          </widget>
         </item>
@@ -284,9 +284,19 @@
     </widget>
    </item>
    <item>
+    <widget class="QLabel" name="finePreviewNoticeLabel">
+     <property name="text">
+      <string>参考表示のみ（カメラ②だけを補正した検査画像ではありません）</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QLabel" name="finePreviewLabel">
      <property name="text">
-      <string>プレビューは検査スレッド稼働中に表示されます</string>
+      <string>カメラマージ画像なし</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignCenter</set>
