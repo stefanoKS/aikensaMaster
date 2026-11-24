@@ -582,22 +582,6 @@ W/STRIP-RR DOOR, LH</string>
      <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
     </property>
    </widget>
-   <widget class="QLabel" name="label">
-    <property name="geometry">
-     <rect>
-      <x>360</x>
-      <y>1080</y>
-      <width>271</width>
-      <height>121</height>
-     </rect>
-    </property>
-    <property name="styleSheet">
-     <string notr="true">background-color: rgb(181, 181, 181);</string>
-    </property>
-    <property name="text">
-     <string/>
-    </property>
-   </widget>
    <widget class="QLabel" name="label_8">
     <property name="geometry">
      <rect>
@@ -768,7 +752,7 @@ W/STRIP-RR DOOR, LH</string>
       <x>50</x>
       <y>510</y>
       <width>474</width>
-      <height>231</height>
+      <height>244</height>
      </rect>
     </property>
     <layout class="QGridLayout" name="gridLayout_2">
@@ -1587,7 +1571,7 @@ CCM1</string>
      <string/>
     </property>
    </widget>
-   <zorder>label</zorder>
+   <zorder>settingsButton</zorder>
    <zorder>label_1</zorder>
    <zorder>label_2</zorder>
    <zorder>line_3</zorder>
@@ -1626,7 +1610,7 @@ CCM1</string>
      <x>0</x>
      <y>0</y>
      <width>1920</width>
-     <height>21</height>
+     <height>20</height>
     </rect>
    </property>
   </widget>
