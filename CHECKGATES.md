@@ -71,7 +71,8 @@ machine PASS.
 
 - `tests/test_daily_inspection.py` and `tests/test_settings_ui.py` exercise
   incomplete sessions, reinspection, recording and equipment failure,
-  and rejection of replaced attempts and prior-session events.
+  and rejection of duplicate or delayed starts, replaced attempts and
+  prior-session events.
 - A reference configuration change invalidates affected current positions.
   Completed historical data and the legacy product interlock policy are
   unchanged; equipment diagnostics take priority over daily judgments.

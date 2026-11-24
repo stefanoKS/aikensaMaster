@@ -31,6 +31,7 @@ class DailyPositionUpdate:
     widget: int
     session_id: str
     cycle_id: str
+    attempt_sequence: int
     state: DailyPositionState
     details: str = ""
     revision_id: str | None = None
@@ -51,13 +52,18 @@ class DailySession:
     approved_profiles: dict[int, DailyProfileSpec] | None = None
 
     def apply(self, update: DailyPositionUpdate) -> bool:
-        if update.session_id != self.session_id or update.widget not in DAILY_POSITIONS:
+        if (update.session_id != self.session_id or update.widget not in DAILY_POSITIONS
+                or not update.cycle_id or update.attempt_sequence <= 0):
             return False
         previous = self.positions.get(update.widget)
-        if update.state is not DailyPositionState.INSPECTING and (
-            previous is None or previous.cycle_id != update.cycle_id
-            or previous.state is not DailyPositionState.INSPECTING
-        ):
+        if update.state is DailyPositionState.INSPECTING:
+            if previous is not None and (
+                update.attempt_sequence <= previous.attempt_sequence or update.cycle_id == previous.cycle_id
+            ):
+                return False
+        elif (previous is None or previous.cycle_id != update.cycle_id
+              or previous.attempt_sequence != update.attempt_sequence
+              or previous.state is not DailyPositionState.INSPECTING):
             return False
         if (update.profile is not None and self.approved_profiles is not None
                 and self.approved_profiles.get(update.widget) != update.profile):

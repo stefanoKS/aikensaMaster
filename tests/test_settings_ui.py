@@ -423,12 +423,16 @@ def test_small_window_clips_fixed_pages_without_resizing(qapp, application_windo
 
 
 def _emit_daily_update(window, widget, state, image, *, cycle="cycle", details="", session_id=None):
-    from aikensa.core.inspection.daily_session import DailyPositionUpdate
+    from aikensa.core.inspection.daily_session import DailyPositionState, DailyPositionUpdate
 
     if session_id is None:
         session_id = window._daily_session.session_id
+    previous = window._daily_session.positions.get(widget)
+    sequence = previous.attempt_sequence if previous else 0
+    if state is DailyPositionState.INSPECTING:
+        sequence += 1
     window.inspection_thread.dailyResultSignal.emit(
-        DailyPositionUpdate(widget, session_id, cycle, state, details), image,
+        DailyPositionUpdate(widget, session_id, cycle, sequence, state, details), image,
     )
 
 

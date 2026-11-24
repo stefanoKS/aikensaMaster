@@ -19,6 +19,8 @@ until approval, then passes, survives restart and returns NG on rollback.
 The previous placeholder/navigation and production tests remain passing.
 Software: compilation PASS, 35 daily checks, 69 Qt checks, 237 full tests,
 no failures or skips.
+Daily session tests also reject duplicate starts and delayed starts from an
+older attempt; a completion must match both the cycle and attempt sequence.
 
 Model switching is not enabled: only the deployed daily pose model is
 registered for this workflow. Daily result metadata now records a SHA-256

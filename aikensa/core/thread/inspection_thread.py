@@ -2280,8 +2280,9 @@ class InspectionThread(QThread):
         today_counts = tuple(config.today_numofPart[widget])
         session_id = config.daily_session_id or self._daily_session_id
         cycle_id, timestamp = uuid4().hex, datetime.now()
+        attempt_sequence = time.monotonic_ns()
         self.dailyResultSignal.emit(
-            DailyPositionUpdate(widget, session_id, cycle_id, DailyPositionState.INSPECTING), QImage(),
+            DailyPositionUpdate(widget, session_id, cycle_id, attempt_sequence, DailyPositionState.INSPECTING), QImage(),
         )
         try:
             active = self.settings.load_daily_configuration()
@@ -2307,7 +2308,7 @@ class InspectionThread(QThread):
                 else ("CALIBRATION_ERROR" if isinstance(exc, UncalibratedError) else "CONFIGURATION_ERROR")
             )
             self.dailyResultSignal.emit(DailyPositionUpdate(
-                widget, session_id, cycle_id, DailyPositionState.EQUIPMENT_ERROR, f"{category}: {exc}",
+                widget, session_id, cycle_id, attempt_sequence, DailyPositionState.EQUIPMENT_ERROR, f"{category}: {exc}",
             ), QImage())
             return False
 
@@ -2351,7 +2352,7 @@ class InspectionThread(QThread):
         preview = self.downSampling(annotated, width=1791, height=131)
         preview = cv2.cvtColor(preview, cv2.COLOR_BGR2RGB)
         self.dailyResultSignal.emit(DailyPositionUpdate(
-            widget, session_id, cycle_id, outcome, details,
+            widget, session_id, cycle_id, attempt_sequence, outcome, details,
             cycle.revision_id, profile, result.status, local, remote,
         ), self.convertQImage(preview).copy())
         if fresh_record and outcome in (DailyPositionState.OK, DailyPositionState.NG):
