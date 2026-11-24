@@ -212,36 +212,15 @@ def test_settings_scroll_without_expanding_window(qapp, settings, size):
     window.close()
 
 
-@pytest.mark.parametrize("size", [(1920, 1080), (1280, 720)])
-def test_legacy_pages_scroll_to_controls(qapp, size):
-    from PyQt5.QtCore import QSize
-    from PyQt5.QtWidgets import QMainWindow, QPushButton, QStackedWidget
-    from PyQt5.uic import loadUi
-    from aikensa.gui.page_viewport import legacy_page_viewport
-
+def test_inspection_designer_canvases_have_the_fixed_size():
     paths = _ui_files_list()
-    window = QMainWindow()
-    stack = QStackedWidget()
-    for index in (1, 6, 17):
-        page = QMainWindow()
-        loadUi(str(REPO_ROOT / paths[index]), page)
-        stack.addWidget(legacy_page_viewport(page))
-    window.setCentralWidget(stack)
-    window.resize(*size)
-    window.show()
-    for index, name in enumerate(("calibCam", "mainmenubutton", "InspectButton")):
-        stack.setCurrentIndex(index)
-        qapp.processEvents()
-        scroll = stack.currentWidget()
-        button = scroll.findChild(QPushButton, name)
-        assert button is not None
-        scroll.ensureWidgetVisible(button, 0, 0)
-        qapp.processEvents()
-        position = button.mapTo(scroll.viewport(), button.rect().topLeft())
-        assert scroll.viewport().rect().contains(position)
-        assert scroll.viewport().rect().contains(position + button.rect().bottomRight())
-        assert window.size() == QSize(*size)
-    window.close()
+    inspection_files = [name for name in paths[4:] if not name.endswith("/empty.ui")]
+    assert len(inspection_files) == 36
+    for name in inspection_files:
+        root = ET.parse(REPO_ROOT / name)
+        rect = root.find('widget/property[@name="geometry"]/rect')
+        assert rect is not None
+        assert (rect.findtext("width"), rect.findtext("height")) == ("1920", "1080"), name
 
 
 def test_main_menu_controls_fit_designer_canvas_without_overlap(qapp):
@@ -292,12 +271,25 @@ def test_fullscreen_fits_actual_offscreen_geometry(qapp, settings):
     window.close()
 
 
-def test_application_window_switches_pages_without_hardware(qapp, settings, monkeypatch):
+@pytest.fixture
+def application_window(qapp, settings, monkeypatch):
     import importlib.util
     import sys
     from types import ModuleType
     from unittest.mock import MagicMock
-    from PyQt5.QtWidgets import QMainWindow, QPushButton, QScrollArea, QScrollBar
+    from PyQt5.QtCore import QObject, pyqtSignal
+
+    class Worker(QObject):
+        cameraErrorSignal = pyqtSignal(str)
+        modelErrorSignal = pyqtSignal(str)
+
+        def __init__(self, config):
+            super().__init__()
+            self.fake = MagicMock()
+            self.fake.calib_config = self.fake.inspection_config = config
+
+        def __getattr__(self, name):
+            return getattr(self.fake, name)
 
     for module_name, names in (
         ("calibration_thread", ("CalibrationThread", "CalibrationConfig")),
@@ -306,8 +298,11 @@ def test_application_window_switches_pages_without_hardware(qapp, settings, monk
         ("time_thread", ("TimeMonitorThread",)),
     ):
         fake = ModuleType(module_name)
-        for name in names:
-            setattr(fake, name, MagicMock())
+        if len(names) == 2:
+            setattr(fake, names[0], Worker)
+            setattr(fake, names[1], MagicMock())
+        else:
+            setattr(fake, names[0], MagicMock())
         monkeypatch.setitem(sys.modules, f"aikensa.core.thread.{module_name}", fake)
     spec = importlib.util.spec_from_file_location(
         "_test_aikensa_gui", REPO_ROOT / "aikensa" / "AIKensa.py"
@@ -318,16 +313,48 @@ def test_application_window_switches_pages_without_hardware(qapp, settings, monk
     monkeypatch.setattr(app_module, "SettingsService", lambda: settings)
 
     window = app_module.AIKensa()
+    yield window
+    window.close()
+
+
+def test_all_legacy_pages_are_direct_and_controls_fit_at_design_size(qapp, application_window):
+    from PyQt5.QtCore import QRect, QSize
+    from PyQt5.QtWidgets import (
+        QCheckBox, QComboBox, QLabel, QLineEdit, QMainWindow, QPushButton, QScrollBar, QSlider,
+    )
+
+    window = application_window
+    design_size = QSize(1920, 1080)
+    paths = _ui_files_list()
+    window.resize(design_size)
+    window.show()
+    for index in range(50):
+        window.stackedWidget.setCurrentIndex(index)
+        qapp.processEvents()
+        page = window.stackedWidget.currentWidget()
+        assert isinstance(page, QMainWindow), index
+        assert not any(bar.isVisible() for bar in page.findChildren(QScrollBar)), index
+        assert page.size() == design_size, index
+        canvas = page.centralWidget()
+        if paths[index].endswith("/empty.ui"):
+            continue
+        assert canvas is not None, index
+        for control in canvas.findChildren((QCheckBox, QComboBox, QLabel, QLineEdit, QPushButton, QSlider)):
+            if control.isVisibleTo(canvas):
+                rect = QRect(control.mapTo(canvas, control.rect().topLeft()), control.size())
+                assert canvas.rect().contains(rect), (index, control.objectName(), rect)
+
+
+def test_application_window_switches_pages_without_hardware(qapp, application_window):
+    from PyQt5.QtWidgets import QPushButton
+
+    window = application_window
     window.showFullScreen()
     qapp.processEvents()
     assert window.isFullScreen()
     assert window.geometry() == window.screen().geometry()
     main = window.stackedWidget.widget(0)
-    assert isinstance(main, QMainWindow)
-    assert not main.findChildren(QScrollBar)
     assert window.settings_widget_index == 50
-    for index in range(1, 50):
-        assert isinstance(window.stackedWidget.widget(index), QScrollArea)
     for name, index in STANDARD_MENU_BUTTONS.items():
         window.stackedWidget.setCurrentIndex(0)
         main.findChild(QPushButton, name).click()
@@ -337,6 +364,17 @@ def test_application_window_switches_pages_without_hardware(qapp, settings, monk
     main.findChild(QPushButton, "camcalibrationbutton1").click()
     assert window.stackedWidget.currentIndex() == 1
     assert window.calibration_thread.calib_config.widget == 1
+    window.stackedWidget.widget(1).findChild(QPushButton, "calibSingleFrame").click()
+    assert window.calibration_thread.calib_config.calculateSingeFrameMatrix is True
+    window.stackedWidget.setCurrentIndex(0)
+    main.findChild(QPushButton, "dailytenkenbutton").click()
+    for index, name, target in (
+        (21, "nextButton", 22), (22, "nextButton", 23), (23, "prevButton", 22),
+        (22, "prevButton", 21), (21, "mainmenubutton", 0),
+    ):
+        assert window.stackedWidget.currentIndex() == index
+        window.stackedWidget.currentWidget().findChild(QPushButton, name).click()
+        assert window.stackedWidget.currentIndex() == target
     window.stackedWidget.setCurrentIndex(0)
     main.findChild(QPushButton, "settingsButton").click()
     assert window.stackedWidget.currentIndex() == window.settings_widget_index
@@ -346,7 +384,54 @@ def test_application_window_switches_pages_without_hardware(qapp, settings, monk
         assert window.isFullScreen()
         assert window.geometry() == window.screen().geometry()
         assert window.stackedWidget.size() == window.size()
-    window.close()
+
+
+def test_small_window_clips_fixed_pages_without_resizing(qapp, application_window):
+    from PyQt5.QtCore import QSize
+    from PyQt5.QtWidgets import QPushButton
+
+    window = application_window
+    window.resize(1280, 720)
+    window.show()
+    for index in (0, 1, 3, 4, 6, 17, 21, 49, window.settings_widget_index):
+        window.stackedWidget.setCurrentIndex(index)
+        qapp.processEvents()
+        assert window.size() == QSize(1280, 720)
+    window.stackedWidget.setCurrentIndex(17)
+    button = window.stackedWidget.currentWidget().findChild(QPushButton, "InspectButton")
+    assert button.geometry().bottom() >= window.height()
+
+
+def test_camera_and_model_signals_reach_visible_page_diagnostics(application_window):
+    from PyQt5.QtWidgets import QScrollArea
+
+    window = application_window
+    stack = window.stackedWidget
+    for index in (1, 3, 17, 21, 23, 49):
+        stack.setCurrentIndex(index)
+        page = stack.currentWidget()
+        on_calibration = index in (1, 3)
+        active = window.calibration_thread if on_calibration else window.inspection_thread
+        inactive = window.inspection_thread if on_calibration else window.calibration_thread
+        active.cameraErrorSignal.emit(f"Camera failed on page {index}")
+        inactive.cameraErrorSignal.emit("Inactive worker error")
+        assert page.statusBar().currentMessage() == f"Camera failed on page {index}"
+        window.inspection_thread.modelErrorSignal.emit("Model unavailable")
+        assert page.statusBar().currentMessage() == (
+            f"Camera failed on page {index}" if on_calibration else "Model unavailable"
+        )
+    # Exercise the same diagnostics if a page is hosted inside a viewport.
+    index = stack.currentIndex()
+    page = stack.currentWidget()
+    stack.removeWidget(page)
+    wrapper = QScrollArea()
+    wrapper.setWidget(page)
+    stack.insertWidget(index, wrapper)
+    stack.setCurrentIndex(index)
+    window.inspection_thread.cameraErrorSignal.emit("Camera failed on wrapped page")
+    assert page.statusBar().currentMessage() == "Camera failed on wrapped page"
+    window.inspection_thread.modelErrorSignal.emit("Model unavailable on wrapped page")
+    assert page.statusBar().currentMessage() == "Model unavailable on wrapped page"
 
 
 def test_legacy_preview_scales_without_changing_image(qapp):

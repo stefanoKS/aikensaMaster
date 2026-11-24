@@ -34,6 +34,20 @@ machine PASS.
 - Test against the original partcheck using identical synthetic fixtures.
   Software tests do not establish camera, GPU, PLC or machine behavior.
 
+## Fixed inspection pages (CG-10 through CG-13)
+
+- Every populated production and daily Designer root is 1920×1080.
+- The main menu, calibration, inspection and reserved pages are direct stack
+  children at the original indices 0-49. Settings remains at 50 and can
+  scroll internally.
+- At 1920×1080, all visible control and label geometry fits inside the Qt
+  page contents. At smaller logical resolutions, fixed pages may clip
+  without resizing the window. Navigation preserves fullscreen.
+- Exercise daily navigation through 21-23, calibration controls, and camera
+  and model diagnostics with fake workers. Inspect representative offscreen
+  screenshots; confirm the actual display separately on the machine.
+- Regression checks: `tests/test_settings_ui.py`.
+
 ## Commands
 
 ```sh

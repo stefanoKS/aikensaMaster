@@ -1,19 +1,14 @@
-"""Scrollable viewports for the existing fixed-coordinate pages."""
+"""Resolve page content and fit images into their existing display area."""
 
 from PyQt5.QtCore import QRect, QSize, Qt
 from PyQt5.QtGui import QImage, QPixmap
-from PyQt5.QtWidgets import QFrame, QLabel, QScrollArea, QWidget
+from PyQt5.QtWidgets import QLabel, QScrollArea, QWidget
 
 from aikensa.core.settings.schema import CropRect
 
 
-def legacy_page_viewport(page: QWidget) -> QScrollArea:
-    page.setMinimumSize(page.size())
-    viewport = QScrollArea()
-    viewport.setFrameShape(QFrame.NoFrame)
-    viewport.setWidgetResizable(True)
-    viewport.setWidget(page)
-    return viewport
+def page_content(page: QWidget | None) -> QWidget | None:
+    return page.widget() if isinstance(page, QScrollArea) else page
 
 
 def display_image(label: QLabel, image: QImage) -> None:

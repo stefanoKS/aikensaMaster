@@ -30,7 +30,7 @@ from aikensa.core.thread.time_thread import TimeMonitorThread
 from aikensa.core.scripts.scripts_classes import DebouncedButton
 from aikensa.core.settings.service import SettingsService
 from aikensa.gui.settings_pages import SettingsController
-from aikensa.gui.page_viewport import display_image, legacy_page_viewport
+from aikensa.gui.page_viewport import display_image, page_content
 
 
 # List of UI files to be loaded
@@ -251,9 +251,8 @@ class AIKensa(QMainWindow):
 
         self.stackedWidget = QStackedWidget()
 
-        for page_index, ui in enumerate(UI_FILES):
-            widget = self._load_ui(ui)
-            self.stackedWidget.addWidget(widget if page_index == 0 else legacy_page_viewport(widget))
+        for ui in UI_FILES:
+            self.stackedWidget.addWidget(self._load_ui(ui))
 
         self.stackedWidget.setCurrentIndex(0)
 
@@ -477,8 +476,9 @@ class AIKensa(QMainWindow):
         from_calibration = self.sender() is self.calibration_thread
         if from_calibration != (index in (1, 2, 3)):
             return
-        page = self.stackedWidget.widget(index).widget()
-        page.statusBar().showMessage(message)
+        page = page_content(self.stackedWidget.currentWidget())
+        if isinstance(page, QMainWindow):
+            page.statusBar().showMessage(message)
 
     def _open_settings_page(self):
         self.settings_controller.refresh_all()
@@ -1645,15 +1645,18 @@ class AIKensa(QMainWindow):
     def _handleModelError(self, error_message):
         """Handle model error messages from the inspection thread."""
         print(f"[GUI Model Error] {error_message}")
-        # Display error message on all relevant widgets
+        active_index = self.stackedWidget.currentIndex()
         for widget_index in range(self.stackedWidget.count()):
-            widget = self.stackedWidget.widget(widget_index)
-            if widget:
-                # Try to find a label to display the error
-                error_label = widget.findChild(QLabel, "error_label")
-                if error_label:
-                    error_label.setText(error_message)
-                    error_label.setStyleSheet("color: red; font-weight: bold; background-color: yellow;")
+            page = page_content(self.stackedWidget.widget(widget_index))
+            if page is None:
+                continue
+            error_label = page.findChild(QLabel, "error_label")
+            if error_label is not None:
+                error_label.setText(error_message)
+                error_label.setStyleSheet("color: red; font-weight: bold; background-color: yellow;")
+            elif (widget_index == active_index and widget_index in self.inspectionWidget_indices
+                  and isinstance(page, QMainWindow)):
+                page.statusBar().showMessage(error_message)
 
     def _load_json(self, path):
         try:

@@ -1,5 +1,10 @@
 # Milestones
 
+The program's current work order and evidence are recorded in the
+[agent handover](./docs/development/AGENT_HANDOVER.md). WP0's clean-checkout
+fixture work and WP1's inspection page policy extend the historical gates
+below; neither changes which inspection algorithms run.
+
 1. Establish repository rules and software checkgates.
 2. Introduce and validate the widget-17 strategy without migrating other families.
 3. Implement generic dynamic presentation, camera geometry, counters, and persistence
@@ -96,3 +101,16 @@ inspection/model metadata). Then proceed to E: inject the widget-17
 specification explicitly and test the reusable clip/keypoint strategy with
 a second independent specification before generalizing registration.
 Gates E–M and physical qualification have not been executed.
+
+### WP1 — Fixed inspection pages (software PASS)
+
+- All 36 populated inspection Designer roots are 1920×1080. This includes
+  three daily pages and one legacy production page not enabled by navigation.
+  Only the root size changed in 14 files; child geometry and names are intact.
+- Pages 0–49 are hosted directly, including calibration and reserved pages.
+  At 1920×1080 all visible controls fit. Settings retains internal scrolling
+  and the same index. Camera and model errors reach the selected page.
+- Tracked-source sweep: 159 tests passed; `compileall` passed. Reviewed
+  offscreen Qt screenshots of the menu, calibration merge, production,
+  clip-picking, Katabu, clip selection and all three daily positions.
+- Physical display and hardware operation are **NOT TESTED**.
