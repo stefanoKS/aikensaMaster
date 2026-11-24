@@ -17,12 +17,17 @@ play sounds. Late draft results are discarded. The synthetic Position 2
 test measures 101.4 mm with both the default and edited region, stays NG
 until approval, then passes, survives restart and returns NG on rollback.
 The previous placeholder/navigation and production tests remain passing.
-Software: compilation PASS, 34 daily checks, 69 Qt checks, 236 full tests,
+Software: compilation PASS, 35 daily checks, 69 Qt checks, 237 full tests,
 no failures or skips.
 
 Model switching is not enabled: only the deployed daily pose model is
-registered for this workflow. Complete model artifact/geometry identity,
-legacy geometry and remote recovery before claiming the outstanding Phase
+registered for this workflow. Daily result metadata now records a SHA-256
+of the loaded weight file and a digest of the actual intrinsics, native
+sizes, effective homographies, rotation and crop. Weight files are hashed
+at load time; replacing the same path invalidates subsequent measurements
+until the model owner is restarted. Alternate model activation, whole-cycle
+hardware qualification, legacy geometry and remote recovery remain open
+before claiming the outstanding Phase
 3B gates. Physical cameras, PLC, GPU, Windows and workload performance
 remain NOT TESTED. No machine settings or production records were touched.
 

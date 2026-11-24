@@ -42,6 +42,7 @@ from queue import Empty, Full, Queue
 
 from aikensa.core.inspection.daily import DailyFailure, DailyInspectionError, DailyInspectionStrategy
 from aikensa.core.inspection.daily_draft import DailyDraftRequest, DailyDraftResult, run_daily_draft
+from aikensa.core.inspection.daily_identity import DailyModelArtifact, daily_geometry_digest
 from aikensa.core.inspection.daily_recording import DailyCycle, legacy_row, write_daily_result
 from aikensa.core.inspection.daily_session import DailyPositionState, DailyPositionUpdate, RecordingState
 from aikensa.core.settings.revisions import RevisionError
@@ -2237,17 +2238,18 @@ class InspectionThread(QThread):
 
     def _daily_model_for_profile(self, profile):
         model = getattr(self, profile.model_key, None)
-        if (callable(model) and self._loaded_daily_model_path == profile.model_path
-                and getattr(model, "task", "pose") == "pose"):
+        if (callable(model) and self._daily_model_artifact is not None
+                and self._loaded_daily_model_path == profile.model_path and getattr(model, "task", None) == "pose"):
+            self._daily_model_artifact.ensure_current(profile.model_path)
             return model
         return None
 
-    def _prepare_daily_reference(self, widget, *, keep_raw=False):
+    def _prepare_daily_reference(self, widget, *, keep_raw=False, geometry_callback=None):
         raw, _ = self._build_inspection_image(
             planarize_transform=self.planarizeTransform_wide,
             planarize_size=self.wide_planarize,
             h1=self.H1, h2=self.H2, blank_canvas=self.homography_blank_canvas,
-            widget_id=widget, strict=True, keep_raw=keep_raw,
+            widget_id=widget, strict=True, keep_raw=keep_raw, geometry_callback=geometry_callback,
         )
         return raw
 
@@ -2264,8 +2266,11 @@ class InspectionThread(QThread):
             if not all(is_valid_homography(matrix) for matrix in (self.H1_scaled, self.H2_scaled)):
                 raise UncalibratedError("縮小ホモグラフィ")
             raw = self._prepare_daily_reference(profile.widget_id)
-            return run_daily_draft(request, raw, self._daily_model_for_profile(profile))
-        except (DailyInspectionError, UncalibratedError, cv2.error, OSError, ValueError, yaml.YAMLError) as exc:
+            model = self._daily_model_for_profile(profile) if request.measure else None
+            return run_daily_draft(request, raw, model)
+        except DailyInspectionError as exc:
+            return DailyDraftResult(request, f"{exc.category.value}: {exc}")
+        except (UncalibratedError, cv2.error, OSError, ValueError, yaml.YAMLError) as exc:
             return DailyDraftResult(request, str(exc))
 
     def _run_daily_cycle(self, widget):
@@ -2286,11 +2291,13 @@ class InspectionThread(QThread):
                 raise DailyInspectionError(
                     DailyFailure.MODEL_ERROR, "承認済みの日常点検モデルが読込まれていません。",
                 )
+            geometry = []
+            raw = self._prepare_daily_reference(widget, keep_raw=True, geometry_callback=geometry.append)
             cycle = DailyCycle.begin(
                 profile, active.revision_id, session_id, operator, current_counts, today_counts,
                 cycle_id=cycle_id, timestamp=timestamp,
+                model_digest=self._daily_model_artifact.digest, geometry_digest=geometry[0],
             )
-            raw = self._prepare_daily_reference(widget, keep_raw=True)
             result = DailyInspectionStrategy().inspect(
                 raw, profile.reference, profile.roi, profile.inference, model,
             )
@@ -2905,6 +2912,7 @@ class InspectionThread(QThread):
     def initialize_model(self):
         print("Model Dummy Loaded")
         self._loaded_daily_model_path = None
+        self._daily_model_artifact = None
 
         config_path = "./aikensa/core/config/models.yaml"
 
@@ -2979,7 +2987,18 @@ class InspectionThread(QThread):
             model = None
 
             if loader == "yolo":
-                model = _load_yolo(path, attr_name)
+                if attr_name == DAILY_MODEL:
+                    try:
+                        artifact = DailyModelArtifact.read(path)
+                        model = _load_yolo(path, attr_name)
+                        artifact.ensure_current(path)
+                        if model is not None:
+                            self._daily_model_artifact = artifact
+                    except (OSError, TypeError, DailyInspectionError) as exc:
+                        print(f"[Daily Model Error] {attr_name}: {exc}")
+                        model = None
+                else:
+                    model = _load_yolo(path, attr_name)
 
             elif loader == "sahi":
                 model_type = spec.get("model_type", "yolov8")
@@ -3900,6 +3919,7 @@ class InspectionThread(QThread):
             widget_id=None,
             strict=False,
             keep_raw=True,
+            geometry_callback=None,
         ):
         """
         Build combined image from mergeframe1/2 using:
@@ -4024,9 +4044,10 @@ class InspectionThread(QThread):
             return _fallback()
 
         # ---- Rotate ----
-        if rotate_code is not None and not self.ic4_rotate_180:
-            mf1 = cv2.rotate(mf1, rotate_code)
-            mf2 = cv2.rotate(mf2, rotate_code)
+        rotation = rotate_code if not self.ic4_rotate_180 else None
+        if rotation is not None:
+            mf1 = cv2.rotate(mf1, rotation)
+            mf2 = cv2.rotate(mf2, rotation)
 
         # ---- Merge by homography ----
         try:
@@ -4055,6 +4076,11 @@ class InspectionThread(QThread):
             return _fallback()
 
         combined_bgr = combined
+        if geometry_callback is not None:
+            geometry_callback(daily_geometry_digest(
+                self._full_geometry.intrinsics, (frame1.shape, frame2.shape), (h1, h2),
+                crop_points, local_blank_canvas.shape, rotation,
+            ))
         # Keep a pristine copy for raw (nama) saving before partcheck draws on images.
         if keep_raw:
             self._inspection_start_image = combined_bgr.copy()

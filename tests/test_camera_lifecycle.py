@@ -869,6 +869,7 @@ def test_daily_settings_change_drives_real_worker_and_rolls_back(
     from threading import Event
 
     from PyQt5.QtCore import QEventLoop, QThread, QTimer
+    from aikensa.core.inspection.daily_identity import DailyModelArtifact
     from aikensa.core.inspection.daily_session import DailyPositionState, RecordingState
     from aikensa.core.settings.service import SettingsService
     from aikensa.gui.settings_pages import SettingsController
@@ -921,6 +922,7 @@ def test_daily_settings_change_drives_real_worker_and_rolls_back(
             worker.inspection_config.widget = 23
         return [SimpleNamespace(keypoints=SimpleNamespace(xy=np.array([[[0, 1], [632, 4]]])))]
 
+    infer.task = "pose"
     worker.NICHIJOU_TENKEN_Model = infer
     worker._loaded_daily_model_path = settings.load_daily_defaults().profile_for_widget(22).model_path
     signals = []
@@ -934,6 +936,10 @@ def test_daily_settings_change_drives_real_worker_and_rolls_back(
 
     worker.dailyResultSignal.connect(on_result)
     monkeypatch.chdir(tmp_path)
+    artifact = Path(worker._loaded_daily_model_path)
+    artifact.parent.mkdir(parents=True)
+    artifact.write_bytes(b"synthetic model identifier")
+    worker._daily_model_artifact = DailyModelArtifact.read(worker._loaded_daily_model_path)
     monkeypatch.setattr(module.cv2, "imread", lambda _: np.zeros((431, 6550, 3), np.uint8))
     worker.save_debug_image = Mock()
     from aikensa.core.config.parts import NICHIJOU_TENKEN
@@ -1036,7 +1042,7 @@ def test_daily_settings_change_drives_real_worker_and_rolls_back(
         try:
             row = con.execute("""
                 SELECT i.partName, i.detected_pitch, i.status, m.profile_id, m.revision_id, m.actual_mm,
-                       m.raw_path, m.result_path, m.profile_digest
+                       m.raw_path, m.result_path, m.profile_digest, m.model_digest, m.geometry_digest
                 FROM inspection_results i JOIN daily_inspection_metadata m ON i.id = m.result_id
                 ORDER BY i.id DESC LIMIT 1
             """).fetchone()
@@ -1050,8 +1056,11 @@ def test_daily_settings_change_drives_real_worker_and_rolls_back(
         annotated = module.cv2.imdecode(np.fromfile(root / row[7], np.uint8), module.cv2.IMREAD_COLOR)
         assert annotated is not None and np.count_nonzero(annotated[:, :150]) > 0
         assert row[8] == signals[1][0].profile.configuration_digest
+        assert row[9] == worker._daily_model_artifact.digest
+        assert len(row[10]) == 64
+        return row[10]
 
-    run_cycle(22, "NG", "shared-defaults")
+    original_geometry = run_cycle(22, "NG", "shared-defaults")
     monkeypatch.setattr(daily_inspection_settings_page, "confirm_change", lambda *_: True)
     controller = SettingsController(settings)
     controller.select_page(6)
@@ -1105,10 +1114,12 @@ def test_daily_settings_change_drives_real_worker_and_rolls_back(
         assert worker.save_debug_image.call_count == diagnostics + int(widget != 22)
     assert settings.load_daily_configuration().profile_for_widget(22).reference.mm_per_px == 0.1604477
     worker.settings = SettingsService(settings.paths)
-    run_cycle(22, "OK", revision_id)
+    assert run_cycle(22, "OK", revision_id) == original_geometry
+    worker.widget_h2_offsets[22] = (2.0, 0.0)
+    assert run_cycle(22, "OK", revision_id) != original_geometry
     page.dailyHistoryCombo.setCurrentIndex(0)
     page.dailyRollbackButton.click()
     reverted = worker.settings.load_daily_configuration().revision_id
     assert reverted != revision_id
     run_cycle(22, "NG", reverted)
-    assert module.play_ok_sound.call_count == 2 and module.play_ng_sound.call_count == 5
+    assert module.play_ok_sound.call_count == 3 and module.play_ng_sound.call_count == 5

@@ -109,6 +109,9 @@ machine PASS.
 - `CG-UI` checks active/draft separation, late response rejection, fixed
   inspection pages and placeholders. Set `AIKENSA_DAILY_SETTINGS_EVIDENCE`
   to an existing directory to collect offscreen Settings screenshots.
+- The actual daily result carries profile, loaded model-file and applied
+  geometry digests. Tests replace the model under the same path and adjust
+  an effective homography offset to verify identity changes.
 - Registered alternate model activation and physical qualification are
   **NOT TESTED**. The deployed daily pose model is read-only in this editor.
 

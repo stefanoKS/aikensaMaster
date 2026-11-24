@@ -250,6 +250,22 @@ def test_daily_draft_overlay_marks_same_region_that_reaches_inference(daily_sett
     assert tuple(raw[35, 20]) == (0, 0, 0)
 
 
+def test_daily_model_artifact_rejects_replaced_weights_at_same_path(tmp_path):
+    from aikensa.core.inspection.daily_identity import DailyModelArtifact
+
+    weights = tmp_path / "daily.pt"
+    weights.write_bytes(b"original model contents")
+    artifact = DailyModelArtifact.read(str(weights))
+    artifact.ensure_current(str(weights))
+    replacement = tmp_path / "replacement.pt"
+    replacement.write_bytes(b"modified model contents")
+    replacement.replace(weights)
+    with pytest.raises(DailyInspectionError) as error:
+        artifact.ensure_current(str(weights))
+    assert error.value.category is DailyFailure.MODEL_ERROR
+    assert DailyModelArtifact.read(str(weights)).digest != artifact.digest
+
+
 def test_two_settings_services_cannot_both_approve_the_same_starting_revision(daily_settings):
     from concurrent.futures import ThreadPoolExecutor
     from threading import Barrier

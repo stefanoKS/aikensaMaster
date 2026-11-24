@@ -23,15 +23,18 @@ class DailyCycle:
     timestamp: datetime
     current_counts: tuple[int, int]
     today_counts: tuple[int, int]
+    model_digest: str | None = None
+    geometry_digest: str | None = None
 
     @classmethod
     def begin(
         cls, profile, revision_id, session_id, operator, current_counts, today_counts,
-        *, cycle_id=None, timestamp=None,
+        *, cycle_id=None, timestamp=None, model_digest=None, geometry_digest=None,
     ):
         return cls(
             profile, revision_id, session_id, operator, cycle_id or uuid4().hex, timestamp or datetime.now(),
             tuple(current_counts), tuple(today_counts),
+            model_digest, geometry_digest,
         )
 
 
@@ -67,7 +70,7 @@ def write_daily_result(
             revision_id TEXT NOT NULL, actual_mm REAL, nominal_mm REAL NOT NULL,
             tolerance_mm REAL NOT NULL, mm_per_px REAL NOT NULL, difference_mm REAL,
             raw_path TEXT NOT NULL, result_path TEXT NOT NULL,
-            profile_digest TEXT,
+            profile_digest TEXT, model_digest TEXT, geometry_digest TEXT,
             FOREIGN KEY(result_id) REFERENCES inspection_results(id)
         )
     """)
@@ -77,8 +80,9 @@ def write_daily_result(
         with connection:
             connection.execute("BEGIN IMMEDIATE")
             columns = {row[1] for row in connection.execute("PRAGMA table_info(daily_inspection_metadata)")}
-            if "profile_digest" not in columns:
-                connection.execute("ALTER TABLE daily_inspection_metadata ADD COLUMN profile_digest TEXT")
+            for name in ("profile_digest", "model_digest", "geometry_digest"):
+                if name not in columns:
+                    connection.execute(f"ALTER TABLE daily_inspection_metadata ADD COLUMN {name} TEXT")
             if connection.execute(
                 "SELECT 1 FROM daily_inspection_metadata WHERE cycle_id = ?", (cycle.cycle_id,)
             ).fetchone():
@@ -100,14 +104,16 @@ def write_daily_result(
             connection.execute("""
                 INSERT INTO daily_inspection_metadata (
                     cycle_id, result_id, session_id, profile_id, widget_id, revision_id, actual_mm,
-                    nominal_mm, tolerance_mm, mm_per_px, difference_mm, raw_path, result_path, profile_digest
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    nominal_mm, tolerance_mm, mm_per_px, difference_mm, raw_path, result_path, profile_digest,
+                    model_digest, geometry_digest
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 cycle.cycle_id, record_id, cycle.session_id, cycle.profile.profile_id,
                 cycle.profile.widget_id, cycle.revision_id, measurement.actual_mm,
                 ref.nominal_mm, ref.tolerance_mm, ref.mm_per_px, measurement.difference_mm,
                 str(raw_path.relative_to(root)), str(result_path.relative_to(root)),
                 cycle.profile.configuration_digest,
+                cycle.model_digest, cycle.geometry_digest,
             ))
     except (OSError, sqlite3.Error, cv2.error) as exc:
         for path in written:

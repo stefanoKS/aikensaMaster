@@ -5,8 +5,9 @@
 1. Baseline: software PASS (233 tests at `6f488af`).
 2. Daily Settings: v3 common/position overrides, prepared-image capture,
    ROI verification, and worker-owned draft measurement software verified.
-3. Complete qualified model selection and artifact/geometry identity, then
-   continue legacy geometry, recording recovery and production migration.
+3. Capture daily model and geometry identities. Qualified alternate model
+   selection, legacy geometry, recording recovery and production migration
+   remain open.
 
 ## Phase 3 (historical)
 
