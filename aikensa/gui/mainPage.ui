@@ -459,102 +459,6 @@ Camera②Calib.</string>
 Camera Merge</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="P82833W050Pbutton">
-    <property name="geometry">
-     <rect>
-      <x>50</x>
-      <y>984</y>
-      <width>220</width>
-      <height>70</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <family>Ubuntu Mono</family>
-      <pointsize>12</pointsize>
-     </font>
-    </property>
-    <property name="styleSheet">
-     <string notr="true">background-color: rgb(124, 227, 255);</string>
-    </property>
-    <property name="text">
-     <string>5A45
-82833W050P
-W/STRIP-RR DOOR, LH</string>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="P82833W090Pbutton">
-    <property name="geometry">
-     <rect>
-      <x>280</x>
-      <y>984</y>
-      <width>220</width>
-      <height>70</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <family>Ubuntu Mono</family>
-      <pointsize>12</pointsize>
-     </font>
-    </property>
-    <property name="styleSheet">
-     <string notr="true">background-color: rgb(15, 190, 224);</string>
-    </property>
-    <property name="text">
-     <string>5A45
-82833W090P
-W/STRIP-RR DOOR, LH</string>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="P82832W040Pbutton">
-    <property name="geometry">
-     <rect>
-      <x>510</x>
-      <y>984</y>
-      <width>220</width>
-      <height>70</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <family>Ubuntu Mono</family>
-      <pointsize>12</pointsize>
-     </font>
-    </property>
-    <property name="styleSheet">
-     <string notr="true">background-color: rgb(165, 177, 255);</string>
-    </property>
-    <property name="text">
-     <string>5A45
-82832W040P
- W/STRIP-RR DOOR, RH</string>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="P82832W080Pbutton">
-    <property name="geometry">
-     <rect>
-      <x>740</x>
-      <y>984</y>
-      <width>220</width>
-      <height>70</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <family>Ubuntu Mono</family>
-      <pointsize>12</pointsize>
-     </font>
-    </property>
-    <property name="styleSheet">
-     <string notr="true">background-color: rgb(53, 132, 228);</string>
-    </property>
-    <property name="text">
-     <string>5A45
-82832W080P
- W/STRIP-RR DOOR, RH</string>
-    </property>
-   </widget>
    <widget class="QLabel" name="label_9">
     <property name="geometry">
      <rect>
@@ -1588,10 +1492,6 @@ CCM1</string>
    <zorder>camcalibrationbutton1</zorder>
    <zorder>camcalibrationbutton2</zorder>
    <zorder>cameraMerge</zorder>
-   <zorder>P82833W050Pbutton</zorder>
-   <zorder>P82833W090Pbutton</zorder>
-   <zorder>P82832W040Pbutton</zorder>
-   <zorder>P82832W080Pbutton</zorder>
    <zorder>label_9</zorder>
    <zorder>label_8</zorder>
    <zorder>line</zorder>
