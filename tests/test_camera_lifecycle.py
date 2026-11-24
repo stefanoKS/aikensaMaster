@@ -454,9 +454,10 @@ def worker_modules(monkeypatch):
         sys.modules.pop(module.__name__, None)
 
 
-@pytest.mark.parametrize("missing", [(1,), (0, 1)])
+@pytest.mark.parametrize("missing", [(0,), (1,), (0, 1)])
+@pytest.mark.parametrize("widget", [17, 22])
 def test_inspection_run_blocks_inference_and_result_on_camera_loss(
-    qapp, settings, monkeypatch, tmp_path, worker_modules, missing,
+    qapp, settings, monkeypatch, tmp_path, worker_modules, missing, widget,
 ):
     from unittest.mock import Mock
     from PyQt5.QtCore import QThread
@@ -471,7 +472,7 @@ def test_inspection_run_blocks_inference_and_result_on_camera_loss(
 
     worker = module.InspectionThread.__new__(module.InspectionThread)
     QThread.__init__(worker)
-    worker.inspection_config = module.InspectionConfig(widget=17, doInspection=True)
+    worker.inspection_config = module.InspectionConfig(widget=widget, doInspection=True)
     original_current = [counts.copy() for counts in worker.inspection_config.current_numofPart]
     worker.camera_service = service
     worker.camera_stream = stream
@@ -485,13 +486,15 @@ def test_inspection_run_blocks_inference_and_result_on_camera_loss(
     worker._check_date_rollover = Mock()
     worker.downSampling = Mock()
     worker.inspection_coordinator = Mock()
-    worker.msleep = lambda _: setattr(worker, "running", False)
+    worker.NICHIJOU_TENKEN_Model = Mock()
+    iterations = iter((True, True, False))
+    worker.msleep = lambda _: setattr(worker, "running", next(iterations))
     for name in ("mysqlHost", "mysqlID", "mysqlPassword", "mysqlHostPort"):
         setattr(worker, name, None)
     errors = []
     worker.cameraErrorSignal.connect(errors.append)
-    previews = []
-    worker.partCam.connect(previews.append)
+    states = []
+    worker.equipmentPreviewSignal.connect(lambda sequence, state: states.append((sequence, state)))
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(module.cv2, "imread", lambda _: np.zeros((10, 10, 3), np.uint8))
 
@@ -501,8 +504,13 @@ def test_inspection_run_blocks_inference_and_result_on_camera_loss(
     assert worker.inspection_config.current_numofPart == original_current
     worker.downSampling.assert_not_called()
     worker.inspection_coordinator.execute.assert_not_called()
+    worker.NICHIJOU_TENKEN_Model.assert_not_called()
     assert len(errors) == 1
-    assert len(previews) == 1 and previews[0].width() == 690 * len(missing)
+    assert [state.readiness.name for _, state in states] == ["CAMERA_UNAVAILABLE", "CONNECTING"]
+    assert states[0][1].missing_cameras == missing
+    assert [camera.name for camera in states[0][1].cameras] == [
+        "READ_FAILED" if index in missing else "AVAILABLE" for index in range(2)
+    ]
     for index in missing:
         assert f"カメラ{index + 1}" in errors[0]
     try:
@@ -774,6 +782,8 @@ def test_daily_settings_change_drives_real_worker_and_rolls_back(
 
     worker.NICHIJOU_TENKEN_Model = infer
     signals = []
+    live_previews = []
+    worker.inspectionPreviewSignal.connect(lambda *event: live_previews.append(event))
 
     def on_result(widget, _session, image, status):
         signals.append((widget, image, status))
@@ -796,14 +806,18 @@ def test_daily_settings_change_drives_real_worker_and_rolls_back(
 
     def run_cycle(widget, expected_status, expected_revision):
         worker.inspection_config.widget = widget
+        worker.inspection_config.preview_target = (widget, 8)
         worker.inspection_config.doInspection = True
         worker.InspectionTimeStart = 0
         worker.running = True
         signals.clear()
+        live_previews.clear()
         worker.run()
         worker.conn.close()
         assert worker.inspection_config.current_numofPart[17] == [7, 2]
         assert len(signals) == 2
+        assert live_previews and live_previews[0][:2] == (widget, 8)
+        assert not live_previews[0][3].isNull()
         assert signals[0][0] == signals[1][0] == widget
         assert signals[1][1].width() == 1791 and signals[1][2].startswith(f"{expected_status} /")
         root = tmp_path / "aikensa/inspection_results"

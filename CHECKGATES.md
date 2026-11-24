@@ -55,6 +55,18 @@ machine PASS.
 - Test active production, daily, calibration and Settings navigation; keep
   the fixed-canvas, fullscreen and no-outer-scroll checks.
 
+## Inspection equipment preview (CG-P3-10)
+
+- `tests/test_settings_ui.py` exercises both daily navigation directions,
+  returning from the main menu, one/both missing cameras, calibration
+  required, recovery and late previews. Set `AIKENSA_PREVIEW_EVIDENCE`
+  to an existing directory to save the seven 1920×1080 offscreen views.
+- `tests/test_camera_lifecycle.py` checks real worker dispatch with fake
+  cameras: no duplicate fault presentation, trigger/inference/recording
+  blocked on camera loss, and a tagged live frame after valid geometry.
+- Actual reconnect, orientation and the physical Windows display remain
+  **NOT TESTED**.
+
 ## IC4 camera configuration (CG-20)
 
 - With no injected capture factory, `CameraService.acquire()` forwards the

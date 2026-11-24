@@ -13,6 +13,7 @@ failure, never a fallback to another inspector.
 | Profile registry | Settings registry and `PartInspectorRegistry` | Consolidate product identity, capabilities, and strategy selection without moving indices 0-49. |
 | Inspection | `InspectionCoordinator`, widget-17 strategy and legacy worker branches | Strategies consume prepared inputs and return measurements or an explicit failure; they own no Qt widgets. |
 | Results and GUI | Legacy signals/counters/persistence and `AIKensa` | Route one qualified result to presentation, counters and storage. An equipment failure must not count as an inspection. |
+| Inspection preview | `EquipmentPreview` and the active Qt page | Publish availability changes once; replay the current diagnostic upon page entry. Tag live images with page activation and equipment sequence. Do not feed rendered diagnostics into the worker's image buffers. |
 
 Existing paths remain active until a replacement is verified for that
 profile. See the [migration status](./MIGRATION_STATUS.md) for the handoff.

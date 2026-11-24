@@ -1,5 +1,25 @@
 # Agent handover
 
+## Phase 3
+
+Started at clean `9cb91787b74d5c4ca812e637bd913774d1c8616e`, matching remote
+`main`. Independent baseline: 212 passed, zero failures/skips, compilation
+PASS (Conda `aikensamaster`, Python 3.11.14). Machine calibration and
+overrides still reside under `aikensa/core/param`; the software tests use
+temporary configuration, images and databases.
+
+CG-P3-10: reproduced the blank Position 2 label after clicking Next. The
+worker only sent a placeholder when a fault changed; the UI only painted
+the selected page and reset discarded the old images. The worker now
+publishes deduplicated equipment state independently of diagnostics, and
+the active page presents that state upon entry or session reset. A tagged
+live image can replace it only for the current page activation and equipment
+sequence. Production, calibration and camera Settings remain separate.
+Software checks: camera 51, offscreen Qt 67, full regression 219 passed
+with no failures/skips; seven screenshots at 1920×1080.
+Physical cameras and Windows display remain NOT TESTED. Next: structured
+daily session outcomes, including reinspection invalidation.
+
 ## Phase 2
 
 Local and remote `main` started at `c8d486874a8ff633135a4c54a48b1cf179be588b`

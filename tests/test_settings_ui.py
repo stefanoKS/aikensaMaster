@@ -294,7 +294,8 @@ def application_window(qapp, settings, monkeypatch):
         cameraErrorSignal = pyqtSignal(str)
         modelErrorSignal = pyqtSignal(str)
         dailyResultSignal = pyqtSignal(int, str, object, str)
-        dailyPreviewSignal = pyqtSignal(int, object)
+        inspectionPreviewSignal = pyqtSignal(int, int, int, object)
+        equipmentPreviewSignal = pyqtSignal(int, object)
 
         def __init__(self, config):
             super().__init__()
@@ -421,9 +422,11 @@ def test_small_window_clips_fixed_pages_without_resizing(qapp, application_windo
 def test_daily_result_from_previous_position_is_not_rendered_on_active_position(application_window):
     from PyQt5.QtGui import QColor, QImage
     from PyQt5.QtWidgets import QLabel
+    from aikensa.core.camera.preview_state import EquipmentPreview, PreviewReadiness
 
     window = application_window
     window.stackedWidget.setCurrentIndex(22)
+    window.inspection_thread.equipmentPreviewSignal.emit(1, EquipmentPreview(PreviewReadiness.READY))
     result = QImage(64, 32, QImage.Format_RGB888)
     result.fill(QColor("green"))
     window.inspection_thread.dailyResultSignal.emit(21, window._daily_session_id, result, "OK / 実測値: 100.6 mm")
@@ -432,6 +435,123 @@ def test_daily_result_from_previous_position_is_not_rendered_on_active_position(
     assert not first.findChild(QLabel, "framePart").pixmap().isNull()
     assert "100.6" in first.statusBar().currentMessage()
     assert "100.6" not in second.statusBar().currentMessage()
+
+
+def _capture_preview_evidence(window, name):
+    import os
+    from pathlib import Path
+
+    output = os.environ.get("AIKENSA_PREVIEW_EVIDENCE")
+    if output:
+        window.show()
+        window.repaint()
+        capture = window.grab()
+        # QMainWindow's central stack adds no outer frame to the 1920x1080 page.
+        assert (capture.width(), capture.height()) == (1920, 1080)
+        assert capture.save(str(Path(output) / f"{name}.png"))
+
+
+def test_daily_navigation_replays_equipment_preview_without_a_new_fault(qapp, application_window):
+    from PyQt5.QtWidgets import QLabel, QPushButton
+    from aikensa.core.camera.preview_state import EquipmentPreview, PreviewReadiness
+
+    window = application_window
+    window.resize(1920, 1080)
+    window.show()
+    qapp.processEvents()
+    menu = window.stackedWidget.widget(0)
+    menu.findChild(QPushButton, "P808387UA1A_button").click()
+    assert window.stackedWidget.currentIndex() == 17
+    label = window.stackedWidget.currentWidget().findChild(QLabel, "framePart")
+    assert "確認中" in label.accessibleDescription()
+    window.inspection_thread.equipmentPreviewSignal.emit(
+        1, EquipmentPreview(PreviewReadiness.CAMERA_UNAVAILABLE, (0, 1), "カメラ未接続")
+    )
+    assert not label.pixmap().isNull()
+    _capture_preview_evidence(window, "07-production-both-unavailable")
+    window.stackedWidget.setCurrentIndex(0)
+    menu.findChild(QPushButton, "dailytenkenbutton").click()
+    for index, button in (
+        (21, "nextButton"), (22, "nextButton"), (23, "prevButton"),
+        (22, "prevButton"), (21, "mainmenubutton"),
+    ):
+        page = window.stackedWidget.currentWidget()
+        assert window.stackedWidget.currentIndex() == index
+        preview = page.findChild(QLabel, "framePart").pixmap()
+        assert preview is not None and not preview.isNull(), index
+        _capture_preview_evidence(window, f"0{index - 20}-daily-position-{index - 20}-unavailable")
+        page.findChild(QPushButton, button).click()
+    assert window.stackedWidget.currentIndex() == 0
+    menu.findChild(QPushButton, "dailytenkenbutton").click()
+    assert window.stackedWidget.currentIndex() == 21
+    assert not window.stackedWidget.currentWidget().findChild(QLabel, "framePart").pixmap().isNull()
+
+
+@pytest.mark.parametrize("missing", [(0,), (1,)])
+def test_equipment_preview_distinguishes_recovery_and_rejects_stale_frames(
+    qapp, application_window, monkeypatch, missing,
+):
+    from PyQt5.QtCore import QTimer
+    from PyQt5.QtGui import QColor, QImage
+    from PyQt5.QtWidgets import QLabel, QPushButton
+    from aikensa.core.camera.preview_state import EquipmentPreview, PreviewReadiness
+    from aikensa.gui import inspection_preview
+
+    rendered = []
+    original = inspection_preview.make_camera_placeholder
+
+    def placeholder(camera, width, height):
+        rendered.append(camera)
+        return original(camera, width, height)
+
+    monkeypatch.setattr(inspection_preview, "make_camera_placeholder", placeholder)
+    window = application_window
+    window.resize(1920, 1080)
+    window.show()
+    menu = window.stackedWidget.widget(0)
+    menu.findChild(QPushButton, "dailytenkenbutton").click()
+    worker = window.inspection_thread
+    page = window.stackedWidget.currentWidget()
+    label = page.findChild(QLabel, "framePart")
+    ready = EquipmentPreview(PreviewReadiness.READY)
+    worker.equipmentPreviewSignal.emit(1, ready)
+    valid = QImage(1791, 131, QImage.Format_RGB888)
+    valid.fill(QColor("#146239"))
+    worker.dailyResultSignal.emit(21, window._daily_session_id, valid, "OK / 実測値: 100.6 mm")
+    assert label.pixmap() is not None
+
+    state = EquipmentPreview(PreviewReadiness.CAMERA_UNAVAILABLE, missing, "カメラ画像取得エラー")
+    worker.equipmentPreviewSignal.emit(2, state)
+    assert rendered == list(missing)
+    assert "画像取得エラー" in page.statusBar().currentMessage()
+    disconnected = label.pixmap().cacheKey()
+    worker.equipmentPreviewSignal.emit(2, state)
+    assert label.pixmap().cacheKey() == disconnected
+    assert rendered == list(missing)
+    if missing == (0,):
+        _capture_preview_evidence(window, "04-camera-1-unavailable")
+
+    worker.equipmentPreviewSignal.emit(
+        3, EquipmentPreview(PreviewReadiness.CALIBRATION_REQUIRED, message="内部パラメータが未校正です。")
+    )
+    assert "未校正" in label.accessibleDescription()
+    if missing == (0,):
+        _capture_preview_evidence(window, "05-calibration-required")
+
+    worker.equipmentPreviewSignal.emit(4, ready)
+    old_target = window._preview_epoch
+    QTimer.singleShot(0, lambda: worker.inspectionPreviewSignal.emit(21, old_target, 4, valid))
+    page.findChild(QPushButton, "nextButton").click()
+    window.stackedWidget.currentWidget().findChild(QPushButton, "prevButton").click()
+    waiting = label.pixmap().cacheKey()
+    qapp.processEvents()
+    assert label.pixmap().cacheKey() == waiting
+    worker.inspectionPreviewSignal.emit(21, window._preview_epoch, 3, valid)
+    assert label.pixmap().cacheKey() == waiting
+    worker.inspectionPreviewSignal.emit(21, window._preview_epoch, 4, valid)
+    assert label.pixmap().toImage().pixelColor(20, 20) == QColor("#146239")
+    if missing == (0,):
+        _capture_preview_evidence(window, "06-valid-synthetic-preview")
 
 
 def test_camera_and_model_signals_reach_visible_page_diagnostics(application_window):

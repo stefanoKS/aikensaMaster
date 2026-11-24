@@ -1,6 +1,13 @@
 # Milestones
 
-## Active sequence — Phase 2
+## Active sequence — Phase 3
+
+1. Reproduce the baseline and restore equipment previews across navigation.
+2. Correct daily session state and result identity.
+3. Harden production geometry and effective configuration revisions.
+4. Complete daily Settings and recording before production migration.
+
+## Phase 2 (historical)
 
 1. CG-P2-00: current main menu and baseline reconciled (software PASS:
    161 tests; machine NOT TESTED).

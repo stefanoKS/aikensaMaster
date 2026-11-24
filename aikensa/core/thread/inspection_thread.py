@@ -17,7 +17,7 @@ from PyQt5.QtCore import QThread, pyqtSignal, Qt, QTimer
 from PyQt5.QtGui import QImage, QPixmap
 
 from aikensa.core.camera.camera_service import CameraRole, CameraStream
-from aikensa.core.camera.placeholder import make_camera_placeholder
+from aikensa.core.camera.preview_state import CameraPreviewState, EquipmentPreview, PreviewReadiness
 from aikensa.core.camera.registry import get_camera_service
 from aikensa.core.settings.service import SettingsService
 from aikensa.core.scripts.img_processing.cameracalibrate import warpTwoImages_template
@@ -76,6 +76,7 @@ class InspectionConfig:
 
     doInspection: bool = False
     daily_session_id: str = ""
+    preview_target: tuple[int, int] = (0, 0)
     button_sensor: int = 0
 
     kensainNumber: str = None
@@ -145,7 +146,8 @@ class InspectionThread(QThread):
     # Emitted when the configured cameras cannot provide a production image source.
     cameraErrorSignal = pyqtSignal(str)
     dailyResultSignal = pyqtSignal(int, str, QImage, str)
-    dailyPreviewSignal = pyqtSignal(int, QImage)
+    inspectionPreviewSignal = pyqtSignal(int, int, int, QImage)
+    equipmentPreviewSignal = pyqtSignal(int, object)
 
     pickingOrderSignal = pyqtSignal(list)
 
@@ -239,6 +241,13 @@ class InspectionThread(QThread):
         self.camera_stream.close()
         self.camera_ready = False
         self._camera_diagnostic = ("", ())
+        self._publish_equipment_preview(EquipmentPreview())
+
+    def _publish_equipment_preview(self, state):
+        if state != getattr(self, "_equipment_preview", None):
+            self._equipment_preview = state
+            self._equipment_sequence = getattr(self, "_equipment_sequence", 0) + 1
+            self.equipmentPreviewSignal.emit(self._equipment_sequence, state)
 
     def _capture_inspection_frames(self):
         first, second = self.camera_stream.read_pair()
@@ -255,8 +264,16 @@ class InspectionThread(QThread):
             if (message, missing) != self._camera_diagnostic:
                 self._camera_diagnostic = (message, missing)
                 self.cameraErrorSignal.emit(message)
-                preview = np.hstack([make_camera_placeholder(i, 690, 120) for i in missing])
-                self._emit_live_preview(self.inspection_config.widget, preview, copy=True)
+            self._publish_equipment_preview(
+                EquipmentPreview(
+                    PreviewReadiness.CAMERA_UNAVAILABLE, missing, message,
+                    tuple(
+                        self.camera_stream.failures.get(index, CameraPreviewState.UNKNOWN)
+                        if frame is None else CameraPreviewState.AVAILABLE
+                        for index, frame in enumerate((first, second))
+                    ),
+                )
+            )
             return False
         if self._camera_diagnostic[1]:
             self.inspection_config.doInspection = False
@@ -290,6 +307,7 @@ class InspectionThread(QThread):
             if self._camera_diagnostic[0] != message:
                 self._camera_diagnostic = (message, ())
                 self.cameraErrorSignal.emit(message)
+            self._publish_equipment_preview(EquipmentPreview(PreviewReadiness.CALIBRATION_REQUIRED, message=message))
             return False
         for index, ((map1, map2), (preview1, preview2)) in enumerate(zip(full, scaled)):
             config.map1[index], config.map2[index] = map1, map2
@@ -445,6 +463,7 @@ class InspectionThread(QThread):
 
                 if all(self.inspection_config.mapCalculated[:2]):
                     preview_widget = self.inspection_config.widget
+                    preview_target = self.inspection_config.preview_target
 
                     has_downscaled_maps = all(v is not None for v in [
                         self.inspection_config.map1_downscaled[0],
@@ -478,6 +497,9 @@ class InspectionThread(QThread):
                                 self._camera_diagnostic = (message, ())
                                 self.cameraErrorSignal.emit(message)
                             self.inspection_config.doInspection = False
+                            self._publish_equipment_preview(
+                                EquipmentPreview(PreviewReadiness.CALIBRATION_REQUIRED, message=message)
+                            )
                             self.msleep(100)
                             continue
                         if self._camera_diagnostic[0]:
@@ -488,8 +510,22 @@ class InspectionThread(QThread):
                             widget_id=preview_widget,
                             scaled=True,
                         )
-                        self.combinedImage_scaled = warpTwoImages_template(self.homography_blank_canvas_scaled, self.mergeframe1_scaled, self.H1_scaled)
-                        self.combinedImage_scaled = warpTwoImages_template(self.combinedImage_scaled, self.mergeframe2_scaled, h2_scaled_for_widget)
+                        try:
+                            self.combinedImage_scaled = warpTwoImages_template(
+                                self.homography_blank_canvas_scaled, self.mergeframe1_scaled, self.H1_scaled
+                            )
+                            self.combinedImage_scaled = warpTwoImages_template(
+                                self.combinedImage_scaled, self.mergeframe2_scaled, h2_scaled_for_widget
+                            )
+                        except cv2.error:
+                            self.combinedImage_scaled = None
+                            self.inspection_config.doInspection = False
+                            self._publish_equipment_preview(EquipmentPreview(
+                                PreviewReadiness.GEOMETRY_ERROR,
+                                message="結合画像を作成できません。カメラマージ校正を確認してください。",
+                            ))
+                            self.msleep(100)
+                            continue
                         crop_points_scaled = self._get_crop_points_for_widget(preview_widget, scaled=True)
                         self.combinedImage_scaled = self._crop_image_by_4points(self.combinedImage_scaled, crop_points_scaled)
                        
@@ -526,7 +562,13 @@ class InspectionThread(QThread):
                             height=preview_height,
                         )
 
-                    self._emit_live_preview(preview_widget, self.combinedImage_scaled)
+                    if self.combinedImage_scaled is not None:
+                        self._publish_equipment_preview(EquipmentPreview(PreviewReadiness.READY))
+                        if preview_target[0] == preview_widget:
+                            self.inspectionPreviewSignal.emit(
+                                preview_widget, preview_target[1], self._equipment_sequence,
+                                self.convertQImage(self.combinedImage_scaled).copy(),
+                            )
         
                     self.P82833W050P_InspectionResult_PitchMeasured.emit(self.InspectionResult_PitchMeasured, self.InspectionResult_PitchResult)
                     self.P82832W040P_InspectionResult_PitchMeasured.emit(self.InspectionResult_PitchMeasured, self.InspectionResult_PitchResult)
@@ -2160,13 +2202,6 @@ class InspectionThread(QThread):
     # =========================
     # Supporting methods
     # =========================
-
-    def _emit_live_preview(self, widget, image, *, copy=False):
-        if widget in (21, 22, 23):
-            self.dailyPreviewSignal.emit(widget, self.convertQImage(image).copy())
-        else:
-            preview = self.convertQImage(image)
-            self.partCam.emit(preview.copy() if copy else preview)
 
     def _run_daily_cycle(self, widget):
         config = self.inspection_config

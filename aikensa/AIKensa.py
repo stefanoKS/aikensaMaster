@@ -32,6 +32,8 @@ from aikensa.core.scripts.scripts_classes import DebouncedButton
 from aikensa.core.settings.service import SettingsService
 from aikensa.gui.settings_pages import SettingsController
 from aikensa.gui.page_viewport import display_image, page_content
+from aikensa.core.camera.preview_state import EquipmentPreview, PreviewReadiness
+from aikensa.gui.inspection_preview import display_equipment_preview
 
 
 # List of UI files to be loaded
@@ -469,7 +471,13 @@ class AIKensa(QMainWindow):
         self._daily_status = {}
         self._daily_session_id = ""
         self.inspection_thread.dailyResultSignal.connect(self._show_daily_result)
-        self.inspection_thread.dailyPreviewSignal.connect(self._show_daily_preview)
+        self._equipment_preview = EquipmentPreview()
+        self._equipment_sequence = 0
+        self._preview_epoch = 0
+        self._inspection_model_error = ""
+        self.inspection_thread.equipmentPreviewSignal.connect(self._update_equipment_preview)
+        self.inspection_thread.inspectionPreviewSignal.connect(self._show_inspection_preview)
+        self.stackedWidget.currentChanged.connect(self._activate_inspection_preview)
 
     def _reset_daily_status(self):
         self._daily_status.clear()
@@ -480,7 +488,7 @@ class AIKensa(QMainWindow):
             page.statusBar().showMessage(f"点検位置{index - 20}: 未点検")
             label = page.findChild(QLabel, "framePart")
             if label:
-                label.clear()
+                display_equipment_preview(label, self._equipment_preview)
 
     def _show_daily_result(self, index, session_id, image, status):
         if index not in (21, 22, 23) or session_id != self._daily_session_id:
@@ -501,15 +509,50 @@ class AIKensa(QMainWindow):
         page = self.stackedWidget.widget(index)
         for position in (21, 22, 23):
             message = status if position == index else self._daily_status.get(position, "未点検")
-            self.stackedWidget.widget(position).statusBar().showMessage(f"{message}    ({session_status} / {summary})")
+            self.stackedWidget.widget(position).statusBar().showMessage(
+                self._equipment_preview.message or f"{message}    ({session_status} / {summary})"
+            )
         label = page.findChild(QLabel, "framePart")
-        if label and not image.isNull():
+        if label and not image.isNull() and self._equipment_preview.readiness is PreviewReadiness.READY:
             display_image(label, image)
 
-    def _show_daily_preview(self, index, image):
-        if index == self.stackedWidget.currentIndex():
+    def _activate_inspection_preview(self, index):
+        self._preview_epoch += 1
+        self.inspection_thread.inspection_config.preview_target = (index, self._preview_epoch)
+        self._render_equipment_preview(index)
+
+    def _update_equipment_preview(self, sequence, state):
+        if sequence <= self._equipment_sequence:
+            return
+        self._equipment_sequence = sequence
+        self._equipment_preview = state
+        self._render_equipment_preview(self.stackedWidget.currentIndex())
+
+    def _render_equipment_preview(self, index):
+        if index in self.inspectionWidget_indices:
+            page = self.stackedWidget.widget(index)
+            if not isinstance(page, QMainWindow):
+                return
+            label = page.findChild(QLabel, "framePart")
+            if label:
+                display_equipment_preview(label, self._equipment_preview)
+            if self._equipment_preview.message:
+                page.statusBar().showMessage(self._equipment_preview.message)
+            elif self._inspection_model_error:
+                page.statusBar().showMessage(self._inspection_model_error)
+            elif index in (21, 22, 23):
+                page.statusBar().showMessage(self._daily_status.get(index, f"点検位置{index - 20}: 未点検"))
+            else:
+                page.statusBar().clearMessage()
+
+    def _show_inspection_preview(self, index, epoch, equipment_sequence, image):
+        if (index in self.inspectionWidget_indices and index == self.stackedWidget.currentIndex()
+                and epoch == self._preview_epoch
+                and equipment_sequence == self._equipment_sequence
+                and self._equipment_preview.readiness is PreviewReadiness.READY):
             label = self.stackedWidget.widget(index).findChild(QLabel, "framePart")
             if label:
+                label.setAccessibleDescription("")
                 display_image(label, image)
 
     def _show_camera_error(self, message):
@@ -1554,6 +1597,8 @@ class AIKensa(QMainWindow):
             controller.set_preview_qimage(image, full_size)
 
     def _setPartFrame(self, image):
+        if self._equipment_preview.readiness is not PreviewReadiness.READY:
+            return
         for i in self.inspectionWidget_indices:
             if i in (21, 22, 23):
                 continue
@@ -1694,6 +1739,7 @@ class AIKensa(QMainWindow):
     def _handleModelError(self, error_message):
         """Handle model error messages from the inspection thread."""
         print(f"[GUI Model Error] {error_message}")
+        self._inspection_model_error = error_message
         active_index = self.stackedWidget.currentIndex()
         for widget_index in range(self.stackedWidget.count()):
             page = page_content(self.stackedWidget.widget(widget_index))

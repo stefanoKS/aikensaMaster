@@ -26,6 +26,7 @@ from typing import Callable, Dict, Optional, Tuple
 import numpy as np
 from cv2 import error as OpenCVError
 
+from aikensa.core.camera.preview_state import CameraPreviewState
 from aikensa.core.settings.schema import CameraSettings
 from aikensa.core.settings.service import SettingsService
 
@@ -345,6 +346,7 @@ class CameraStream:
         self.service = service
         self.role = role
         self.errors: Dict[int, str] = {}
+        self.failures: Dict[int, CameraPreviewState] = {}
         self._retry_at = {0: 0.0, 1: 0.0}
 
     def read(self, index: int) -> Optional[RealCameraFrame]:
@@ -354,13 +356,15 @@ class CameraStream:
             try:
                 self.service.acquire(index, self.role)
             except CameraUnavailableError as exc:
-                self._fail(index, exc.reason_ja)
+                self._fail(index, exc.reason_ja, CameraPreviewState.DISCONNECTED)
                 return None
         frame = self.service.read_real_frame(index, self.role)
         if frame is None:
-            self._fail(index, f"カメラ{index + 1} の画像取得エラー。接続・電源を確認してください。")
+            self._fail(index, f"カメラ{index + 1} の画像取得エラー。接続・電源を確認してください。",
+                       CameraPreviewState.READ_FAILED)
         else:
             self.errors.pop(index, None)
+            self.failures.pop(index, None)
         return frame
 
     def read_pair(self) -> Tuple[Optional[RealCameraFrame], Optional[RealCameraFrame]]:
@@ -370,16 +374,19 @@ class CameraStream:
             LOGGER.debug("%s camera pair receive skew: %.3f ms", self.role.value, receive_skew * 1000)
             if receive_skew > _MAX_PAIR_AGE:
                 self.errors[0] = "カメラ1 の画像が古すぎます。接続・FPS 設定を確認してください。"
+                self.failures[0] = CameraPreviewState.STALE_FRAME
                 first = None
         return first, second
 
     def close(self) -> None:
         self.service.release_all(self.role)
         self.errors.clear()
+        self.failures.clear()
         self._retry_at = {0: 0.0, 1: 0.0}
 
-    def _fail(self, index: int, reason: str) -> None:
+    def _fail(self, index: int, reason: str, failure: CameraPreviewState) -> None:
         self.errors[index] = reason
+        self.failures[index] = failure
         self._retry_at[index] = time.monotonic() + _RECONNECT_INTERVAL
         with self.service._locks[index]:
             if self.service.owner(index) is self.role:
