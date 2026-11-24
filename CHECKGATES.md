@@ -79,6 +79,15 @@ machine PASS.
   original calibration resolution. Production crop and high-homography
   preparation failures and physical orientation remain open checks.
 
+## Daily reference strategy (CG-P2-30, partial)
+
+- `tests/test_daily_inspection.py` tests horizontal measurement, rounding before
+  judgment, all three ROI offsets, valid detection NG, and configuration,
+  model and inference failures with synthetic poses.
+- The legacy daily renderer uses the shared measurement kernel without
+  replacing passing measurements with the nominal value. The strict strategy
+  is not yet active in the worker; these tests are not end-to-end evidence.
+
 ## Commands
 
 ```sh

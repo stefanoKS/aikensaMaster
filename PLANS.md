@@ -7,7 +7,9 @@
 2. CG-P2-10: independent native rectification and trigger guards implemented;
    production crop/high-homography fail-closed coverage remains open.
 3. CG-P2-20 through CG-P2-50: typed configuration, daily strategy, three-position
-   workflow, and editable Settings with restart and rollback evidence.
+   workflow, and editable Settings with restart and rollback evidence. Typed
+   daily measurements and standalone strategy implemented; active revision
+   resolution and worker/Settings integration remain open.
 4. CG-P2-60 through CG-P2-80: production migration and preview work, after the
    daily workflow passes.
 

@@ -21,6 +21,19 @@ machine configuration files were changed. Gate remains partial: move
 production crop/high-homography and late preparation errors out of the
 legacy black-image fallback; verify transform parity and reconnect metadata.
 
+CG-P2-20/30 partial: validated daily reference, ROI and inference types plus
+a Qt/audio-independent strategy. The legacy daily wrapper now uses the
+shared measurement function, so a passing 100.6 mm is still 100.6 mm even
+with debug enabled. Default ROIs are in native cropped-merge coordinates:
+the shared widget crop is 6528×431, so the legacy 1342 px inference height
+clips at the bottom. The strict strategy explicitly supports that case and
+rejects horizontal overflow or a degenerate crop. Next: resolve registered
+profiles and immutable approved daily revisions through `SettingsService`,
+then wire the strategy and frozen cycle identity into the worker before
+exposing editable Settings. Do not activate the strict path in isolation.
+Software regression at this milestone: 22 daily strategy cases, 200 full
+suite passes, no failures or skips.
+
 ## Prior evidence
 
 Starting head: `7f031789e8a4b11b9ddd61e14737b4177a4b41eb` on `main`;

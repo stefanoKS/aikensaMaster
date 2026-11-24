@@ -6,6 +6,7 @@ import pygame
 import yaml
 from PIL import Image, ImageDraw, ImageFont
 
+from aikensa.core.inspection.daily import DailyReferenceSpec, measure_reference
 from aikensa.core.scripts.img_processing.img_processing import map_keypoint_xcrop_to_original
 
 
@@ -32,10 +33,6 @@ def debug_images_enabled():
     return bool(part_spec.get("debug_save_images", False))
 
 
-def debug_mode_enabled():
-    return bool(part_spec.get("debug_mode", False))
-
-
 def partcheck(image, keypoint_results, crop_offset=(0, 0)):
     measuredPitch = []
     resultPitch = []
@@ -50,18 +47,16 @@ def partcheck(image, keypoint_results, crop_offset=(0, 0)):
         crop_offset=crop_offset,
         image_width=image.shape[1],
     )
+    measurement = measure_reference(
+        tuple(detected_points), DailyReferenceSpec(pitchSpec, pitchTolerance, pixelMultiplier)
+    )
 
-    if len(detected_points) < 2:
+    if measurement.actual_mm is None:
         print_status += "基準点検出不良\n"
     else:
         left_point, right_point = detected_points[0], detected_points[-1]
-        measured_length = calclength(left_point, right_point) * pixelMultiplier
-        rounded_measurement = round(measured_length, 1)
-        is_ok = abs(pitchSpec - rounded_measurement) <= pitchTolerance
-        if is_ok and debug_mode_enabled():
-            rounded_measurement = round(pitchSpec, 1)
-
-        measuredPitch.append(rounded_measurement)
+        is_ok = measurement.status == "OK"
+        measuredPitch.append(measurement.actual_mm)
         resultPitch = [0]
 
         cv2.circle(image, left_point, 18, (10, 10, 255), 4)
