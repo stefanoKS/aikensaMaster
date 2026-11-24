@@ -1,5 +1,41 @@
 # Agent handover
 
+## Phase 3C
+
+Started with clean local and remote `428e16d654d6320460bf8cad9fe8a2915bbb1489`.
+Independent software baseline: compilation and 237 tests PASS.
+Tracked template: **6791×3638 W×H**; shared requested camera size: **3072×2048**
+per camera, not a hardware observation. Legacy calibration builds a
+**1358×727** scaled canvas, formerly resized to **905×485** then fitted
+into a **733×485** label. Qt was already aspect fitting rather than
+cutting published pixels. The new **1840×605** label fits the full
+**1358×727** publication into **1130×605** offscreen at DPR 1.0. Native
+warps still discard projected content outside the fixed production canvas;
+actual machine overflow is unknown until measured.
+
+The merge page now fits **1920×1080**. Its one-shot full-coverage view and
+export report native bounds, per-side overflow and projected overlap.
+The normal merge and Settings still receive only the calibration canvas.
+Both native source dimensions and applied geometry are recorded in the
+diagnostic. Diagnostics never replace the approved calibration. On-demand
+traces use W×H; NumPy shapes use H×W×channels. Daily ROI approval verifies
+the current saved camera and geometry inputs against the captured proof.
+Synthetic capture used 320×240 and 400×300 sources, a 600×400 fixed
+canvas, and a 120×80 publication. Its translated homographies reported
+30 px left overflow for Camera 1 and 150 px right for Camera 2. A separate
+marker fixture recovered both horizontally out-of-bounds marks in the
+diagnostic while preserving the fixed merge.
+Final software checks: 246 tests passed with no failures or skips.
+
+Rotation conventions were not changed: normal calibration merge relies on
+the SDK stream orientation after native remap, whereas native inspection
+applies software 180° rotation after remap when SDK rotation is off. In
+addition, the scaled paths use different rectification/downsampling order
+and independently saved matrices. Synthetic tests verify representative
+native marker positions and scaled coordinate conversion, not equivalence
+of the commissioned machine. Do not change the transforms based on the
+diagnostic alone.
+
 ## Phase 3B
 
 Local and remote started at clean `6f488af813acb192dc65ae572e3afe7ff8956448`.

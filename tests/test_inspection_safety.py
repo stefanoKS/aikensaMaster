@@ -110,10 +110,13 @@ def test_part_registry_covers_the_inspection_widgets():
 
 
 def test_cam2_widget_offset_is_composed_not_patched_into_h02():
-    source = THREADS["inspection"].read_text(encoding="utf-8")
-    assert "compose_into_base" in source
-    assert "adjusted[0, 2] +=" not in source
-    assert "adjusted[1, 2] +=" not in source
+    import numpy as np
+    from aikensa.core.geometry.merge_diagnostic import inspection_cam2_transform
+    from aikensa.core.geometry.transforms import translation_matrix
+
+    base = np.array([[1., 0., 8.], [0., 1., 9.], [.1, .2, 1.]])
+    adjusted = inspection_cam2_transform(base, (3, -2), None)
+    np.testing.assert_allclose(adjusted, translation_matrix(3, -2) @ base)
 
 
 def test_warp_template_mask_is_built_in_source_coordinates():

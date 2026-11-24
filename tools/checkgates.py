@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 GATES = {
     "CG-BASELINE": (("compileall", "-q", "aikensa", "tests", "tools"), "Source syntax only."),
     "CG-CAMERA": (("pytest", "tests/test_camera_lifecycle.py"), "Fake cameras, no IC4 qualification."),
-    "CG-GEOMETRY": (("pytest", "tests/test_geometry.py", "tests/test_calibration_and_revisions.py"),
+    "CG-GEOMETRY": (("pytest", "tests/test_geometry.py", "tests/test_merge_coverage.py", "tests/test_calibration_and_revisions.py"),
                     "Synthetic matrices; legacy production fallback coverage incomplete."),
     "CG-CONFIGURATION": (("pytest", "tests/test_daily_inspection.py", "tests/test_machine_configuration.py"),
                           "Daily overrides and legacy configuration; shared production schema pending."),

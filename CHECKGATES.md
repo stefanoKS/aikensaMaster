@@ -116,6 +116,20 @@ machine PASS.
 - Registered alternate model activation and physical qualification are
   **NOT TESTED**. The deployed daily pose model is read-only in this editor.
 
+## Merge display and projected coverage (Phase 3C)
+
+- `CG-UI` verifies a 1920×1080 merge page without scrollbars or overlapping
+  controls and confirms both edge markers survive Qt scaling.
+- `CG-GEOMETRY` verifies finite, bounded native footprints, overflow, and
+  a separate full-coverage render that cannot change the fixed merge.
+  `CG-CAMERA` exercises a real worker export with fake cameras and checks
+  that the saved calibration files do not change.
+- `CG-DAILY` rejects a changed ROI approval after its reference capture
+  becomes obsolete. Existing approved v1/v2/v3 configurations stay valid.
+- `AIKENSA_TRACE_MERGE=1` logs dimension changes only. Actual camera
+  footprint, full/scaled calibration parity on the machine, and Windows
+  DPI are **NOT TESTED**. See the [commissioning steps](docs/settings/hardware_checklist.md).
+
 ## IC4 camera configuration (CG-20)
 
 - With no injected capture factory, `CameraService.acquire()` forwards the

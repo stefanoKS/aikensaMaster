@@ -723,6 +723,57 @@ def test_workers_build_maps_at_each_source_frame_size(
         np.testing.assert_array_equal(actual, expected)
 
 
+def test_merge_worker_exports_one_capture_without_changing_calibration(
+    qapp, settings, monkeypatch, tmp_path, worker_modules, camera_geometry,
+):
+    import json
+    from PyQt5.QtCore import QThread
+
+    module, _ = worker_modules
+    service, sizes, _ = camera_geometry
+    settings.repository.save_homography(0, np.array([[1., 0., -30.], [0., 1., 0.], [0., 0., 1.]]))
+    settings.repository.save_homography(1, np.array([[1., 0., 350.], [0., 1., 0.], [0., 0., 1.]]))
+    paths = [settings.paths.homography_file(i, scaled=scaled) for i in range(2) for scaled in (False, True)]
+    before = [path.read_bytes() for path in paths]
+    worker = module.CalibrationThread.__new__(module.CalibrationThread)
+    QThread.__init__(worker)
+    worker.calib_config = module.CalibrationConfig(widget=3, coverage_request=(1, None, True))
+    worker.frame_width, worker.frame_height = sizes[0]
+    worker.scale_factor = 5
+    worker.running = True
+    worker.settings = settings
+    worker.camera_service = service
+    worker.camera_stream = CameraStream(service, CameraRole.CALIBRATION)
+    for name in ("H1_high", "H2_high", "H1_high_scaled", "H2_high_scaled"):
+        setattr(worker, name, None)
+    cv_read = module.cv2.imread
+    monkeypatch.setattr(module.cv2, "imread", lambda _: np.zeros((400, 600, 3), np.uint8))
+    monkeypatch.chdir(tmp_path)
+    published, diagnostics = [], []
+    worker.CamMergeAll.connect(lambda image, size: published.append((image.size(), size)))
+
+    def received(serial, image, report):
+        diagnostics.append((serial, image, report))
+        worker.running = False
+
+    worker.mergeCoverageSignal.connect(received)
+    worker.run()
+    assert len(diagnostics) == 1 and diagnostics[0][0] == 1
+    assert not diagnostics[0][1].isNull()
+    assert published[0][0].width() == 120 and published[0][0].height() == 80
+    assert published[0][1].width() == 600 and published[0][1].height() == 400
+    results = list((settings.paths.root / "aikensa/diagnostic_results").iterdir())
+    assert len(results) == 1
+    payload = json.loads((results[0] / "report.json").read_text(encoding="utf-8"))
+    assert payload["coverage"]["footprints"][0]["overflow"] == pytest.approx([30, 0, 0, 0])
+    assert payload["coverage"]["footprints"][1]["overflow"] == pytest.approx([0, 150, 0, 0])
+    assert payload["image_sizes_wh"]["camera1_native"] == [320, 240]
+    assert payload["image_sizes_wh"]["camera2_native"] == [400, 300]
+    assert cv_read(str(results[0] / "fixed_merge.png")).shape[:2] == (400, 600)
+    assert [path.read_bytes() for path in paths] == before
+    assert not (tmp_path / "combinedImagev2.png").exists()
+
+
 @pytest.mark.parametrize("widget", [17, 18])
 @pytest.mark.parametrize("problem", ["crop", "remap", "warp"])
 def test_production_geometry_failure_skips_cycle_and_worker_recovers(
@@ -900,6 +951,8 @@ def test_daily_settings_change_drives_real_worker_and_rolls_back(
         position: [0, 0, 6528, 0, 6528, 431, 0, 431] for position in (21, 22, 23)
     }
     worker.widget_h2_offsets = {}
+    worker._load_widget_crop_points = Mock()
+    worker._load_widget_h2_offsets = Mock()
     worker.widget_dir_map = {}
     worker.inspection_widget_indices = [21, 22, 23]
     worker.inspection_widget_katabu = []
@@ -1093,6 +1146,12 @@ def test_daily_settings_change_drives_real_worker_and_rolls_back(
     assert "基準画像で確認" in page.dailyDraftLabel.text()
     drafts(controller, capture_only=True)
     screenshot("04-prepared-image-and-roi")
+    # A valid old capture is not approval evidence after a calibration change.
+    settings.repository.save_homography(0, np.array([[1., 0., 1.], [0., 1., 0.], [0., 0., 1.]]))
+    page.dailySaveButton.click()
+    assert "基準画像で確認" in page.dailyDraftLabel.text()
+    assert settings.load_daily_configuration().revision_id == "shared-defaults"
+    settings.repository.save_homography(0, np.eye(3))
     drafts(controller, missing_model=True)
     screenshot("05-model-unavailable")
     drafts(controller)

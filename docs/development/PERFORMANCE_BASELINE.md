@@ -24,3 +24,8 @@ Phase 3B performs a one-shot prepared capture only on a Settings request;
 the Settings-only worker does not initialize production result storage.
 Native preparation/inference latency, memory and live preview throughput
 remain **NOT TESTED** as performance metrics.
+
+Phase 3C removes the calibration merge's extra 1358×727 to 905×485 resize
+and the continuous `combinedImagev2.png` write. Full-coverage rendering
+and diagnostic encoding run only on request. End-to-end CPU, GUI and
+camera throughput on a commissioned machine remain **NOT TESTED**.

@@ -7,6 +7,7 @@ from sympy import fu
 import yaml
 import time
 import logging
+from pathlib import Path
 
 from PyQt5.QtCore import QSize, QThread, pyqtSignal, pyqtSlot, Qt, QTimer
 from PyQt5.QtGui import QImage, QPixmap
@@ -17,6 +18,9 @@ from aikensa.core.camera.placeholder import make_camera_placeholder
 from aikensa.core.camera.registry import get_camera_service
 from aikensa.core.settings.service import SettingsService
 from aikensa.core.geometry.pipeline import GeometryPipeline, UncalibratedError
+from aikensa.core.geometry.coverage import analyze_merge_coverage, render_merge_coverage
+from aikensa.core.geometry.merge_diagnostic import export_merge_diagnostic, inspection_cam2_transform
+from aikensa.core.inspection.daily_identity import daily_geometry_digest
 from aikensa.core.scripts.img_processing.cameracalibrate import detectCharucoBoard, detectCharucoBoard_scaledImage, calculatecameramatrix, calculatecameramatrix_scaledImage, warpTwoImages, calculateHomography_template, warpTwoImages_template
 from aikensa.core.scripts.img_processing.arucoplanarize import planarize_image_wide, planarize_image_narrow
 from dataclasses import dataclass, field
@@ -61,6 +65,7 @@ class CalibrationConfig:
     delPlanarize: bool = False
 
     HDRes: bool = False
+    coverage_request: tuple[int, int | None, bool] | None = None
 
 class CalibrationThread(QThread):
 
@@ -68,6 +73,7 @@ class CalibrationThread(QThread):
     CamMerge1 = pyqtSignal(QImage)
     CamMerge2 = pyqtSignal(QImage)
     CamMergeAll = pyqtSignal(QImage, QSize)
+    mergeCoverageSignal = pyqtSignal(int, QImage, str)
     cameraErrorSignal = pyqtSignal(str)
 
     def __init__(self, calib_config: CalibrationConfig = None):
@@ -342,6 +348,7 @@ class CalibrationThread(QThread):
             
             if page == 3:
                 if not self._capture_merge_calibration_frames():
+                    self._reject_coverage_request("カメラ画像を取得できません。")
                     self.msleep(100)
                     continue
                 if not self.running or page != self.calib_config.widget:
@@ -363,6 +370,7 @@ class CalibrationThread(QThread):
                         signal.emit(self.convertQImage(self.downSampling(frame, 246, 163)).copy())
                     self.CamMergeAll.emit(QImage(), QSize())
                     self._report_merge_geometry(str(exc))
+                    self._reject_coverage_request(str(exc))
                     self.msleep(100)
                     continue
                 self._report_merge_geometry("")
@@ -471,8 +479,6 @@ class CalibrationThread(QThread):
                 else:
                     self.combinedImage_high_scaled = self.homography_blank_canvas_scaled
 
-                cv2.imwrite("combinedImagev2.png", self.combinedImage)
-
                 if self.calib_config.savePlanarize is True:
                     self.calib_config.savePlanarize = False
                     if any(matrix is None for matrix in (self.H1, self.H2, self.H1_scaled, self.H2_scaled)):
@@ -555,28 +561,124 @@ class CalibrationThread(QThread):
                 #     self.combinedImage_scaled = cv2.warpPerspective(self.combinedImage_scaled, self.planarizeTransform_scaled, (int(self.homography_size[1]/self.scale_factor), int(self.homography_size[0]/self.scale_factor)))
 
 
-                # self.combinedImage = cv2.resize(self.combinedImage, (self.homography_size[1], int(self.homography_size[0]/1.26)))
-                self.combinedImage_scaled = cv2.resize(self.combinedImage_scaled, (int(self.homography_size[1]/(self.scale_factor*1.5)), int(self.homography_size[0]/(self.scale_factor*1.5))))
-                self.combinedImage_high_scaled = cv2.resize(self.combinedImage_high_scaled, (int(self.homography_size[1]/(self.scale_factor*1.5)), int(self.homography_size[0]/(self.scale_factor*1.5))))
-                
-
                 self.mergeframe1_downsampled = self.downSampling(self.mergeframe1, 246, 163)
                 self.mergeframe2_downsampled = self.downSampling(self.mergeframe2, 246, 163)
 
                 if self.mergeframe1_downsampled is not None:
-                    self.CamMerge1.emit(self.convertQImage(self.mergeframe1_downsampled))
+                    self.CamMerge1.emit(self.convertQImage(self.mergeframe1_downsampled).copy())
                 if self.mergeframe2_downsampled is not None:
-                    self.CamMerge2.emit(self.convertQImage(self.mergeframe2_downsampled))
-                if self.combinedImage_scaled is not None:
+                    self.CamMerge2.emit(self.convertQImage(self.mergeframe2_downsampled).copy())
+                if self.H1_scaled is not None and self.H2_scaled is not None:
+                    if os.environ.get("AIKENSA_TRACE_MERGE") == "1":
+                        trace = tuple((frame.shape[1], frame.shape[0]) for frame in (
+                            *frames, self.mergeframe1, self.mergeframe2, self.mergeframe1_scaled,
+                            self.mergeframe2_scaled, self.combinedImage, self.combinedImage_scaled,
+                        ))
+                        if trace != getattr(self, "_merge_dimension_trace", None):
+                            self._merge_dimension_trace = trace
+                            logging.getLogger(__name__).warning(
+                                "Merge worker W×H: native=%s corrected=%s scaled source=%s fixed=%s published=%s",
+                                trace[:2], trace[2:4], trace[4:6], trace[6], trace[7],
+                            )
+                    published = cv2.cvtColor(self.combinedImage_scaled, cv2.COLOR_BGR2RGB)
                     self.CamMergeAll.emit(
-                        self.convertQImage(self.combinedImage_scaled).copy(),
+                        self.convertQImage(published).copy(),
                         QSize(self.homography_size[1], self.homography_size[0]),
                     )
+                else:
+                    self.CamMergeAll.emit(QImage(), QSize())
+                request = self.calib_config.coverage_request
+                if request is not None:
+                    self.calib_config.coverage_request = None
+                    self._provide_merge_coverage(request, frames)
 
             #wait for 5ms
             # self.msleep(2)
             
         print(f"Camera {self.calib_config.cameraID} released.")
+
+    def _reject_coverage_request(self, message):
+        request = self.calib_config.coverage_request
+        if request is not None:
+            self.calib_config.coverage_request = None
+            self.mergeCoverageSignal.emit(request[0], QImage(), message)
+
+    def _provide_merge_coverage(self, request, native_frames):
+        serial, widget, save = request
+        try:
+            corrected = (self.mergeframe1, self.mergeframe2)
+            matrices = (self.H1, self.H2)
+            canvas = (self.homography_size[1], self.homography_size[0])
+            crop_points = None
+            rotation = None
+            if widget is not None:
+                repository = self.settings.repository
+                default = repository.shared_widget_defaults().get(widget)
+                if default is None or default.crop is None or self.H2 is None:
+                    raise ValueError("検査範囲またはホモグラフィが未設定です。")
+                override = repository.load_widget_adjustments().get(widget)
+                alignment = override if override and (override.cam2_offset_x_px or override.cam2_offset_y_px) else default
+                matrices = (self.H1, inspection_cam2_transform(
+                    self.H2, (alignment.cam2_offset_x_px, alignment.cam2_offset_y_px),
+                    repository.load_global_alignment(),
+                ))
+                x, y, w, h = default.crop.as_tuple()
+                if not (0 <= x < x + w <= canvas[0] and 0 <= y < y + h <= canvas[1]):
+                    raise ValueError("検査切り出し範囲が既存マージ範囲の外にあります。")
+                crop_points = (x, y, x + w, y, x + w, y + h, x, y + h)
+                if not self.ic4_rotate_180:
+                    rotation = cv2.ROTATE_180
+                    corrected = tuple(cv2.rotate(frame, rotation) for frame in corrected)
+            sizes = tuple((frame.shape[1], frame.shape[0]) for frame in corrected)
+            coverage = analyze_merge_coverage(sizes, matrices, canvas)
+            image = render_merge_coverage(corrected, matrices, coverage, crop_points)
+            lines = [
+                f"診断スナップショット / {'校正マージ' if widget is None else f'検査位置 {widget}'} / "
+                f"既存 {canvas[0]}×{canvas[1]} (黄) / 検査切り出し (緑) / 重なり {coverage.overlap_px2:.0f} px²",
+                "Cam 1: 水色 / Cam 2: ピンク / 左・右・上・下は既存キャンバス外の画素数",
+            ]
+            for camera, footprint in enumerate(coverage.footprints, 1):
+                bounds = ", ".join(f"{value:.1f}" for value in footprint.bounds)
+                overflow = ", ".join(f"{value:.1f}" for value in footprint.overflow)
+                lines.append(f"Cam {camera}: ({bounds}) / 範囲外 左・右・上・下: {overflow} px")
+            if save:
+                fixed = self.homography_blank_canvas
+                for frame, matrix in zip(corrected, matrices):
+                    fixed = warpTwoImages_template(fixed, frame, matrix)
+                images = {
+                    "camera1_native": native_frames[0], "camera2_native": native_frames[1],
+                    "camera1_corrected": self.mergeframe1, "camera2_corrected": self.mergeframe2,
+                    "fixed_merge": fixed, "published_calibration_preview": self.combinedImage_scaled,
+                    "full_coverage": image,
+                }
+                if crop_points:
+                    images["inspection_crop"] = fixed[y:y + h, x:x + w]
+                cameras = []
+                configured, _ = self.settings.repository.load_camera_settings()
+                for index in range(2):
+                    handle = self.camera_service.handle(index)
+                    hw = configured.hardware_for(index)
+                    cameras.append({
+                        "serial": handle.serial if handle else None,
+                        "requested_size_wh": [hw.width_px, hw.height_px],
+                        "configured_rotate_180": hw.rotate_180,
+                        "readback": handle.readback if handle else {},
+                    })
+                digest = daily_geometry_digest(
+                    self._merge_geometry.intrinsics, tuple(frame.shape for frame in native_frames),
+                    matrices, crop_points, self.homography_blank_canvas.shape, rotation,
+                )
+                path = export_merge_diagnostic(
+                    self.settings.paths.root / "aikensa/diagnostic_results", images, coverage,
+                    {"widget": widget, "cameras": cameras, "geometry_digest": digest,
+                     "settings_revision": self.settings.revisions.active_revision_id(),
+                     "daily_revision": self.settings.daily_revisions.active_revision_id()},
+                )
+                lines.append(f"保存: {path.name}")
+            rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            self.mergeCoverageSignal.emit(serial, self.convertQImage(rgb).copy(), "\n".join(lines))
+        except (ValueError, cv2.error, OSError) as exc:
+            self.mergeCoverageSignal.emit(serial, QImage(), f"診断できません: {exc}")
 
     def _persist_planarize(self, name: str, matrix) -> bool:
         """Save a planarisation transform only when ArUco detection succeeded."""

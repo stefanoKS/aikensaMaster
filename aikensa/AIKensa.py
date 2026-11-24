@@ -3,6 +3,7 @@ import cv2
 import sys
 import yaml
 import os
+import logging
 import json
 import traceback
 import faulthandler
@@ -204,6 +205,7 @@ class AIKensa(QMainWindow):
         self.calibration_thread.CamMerge1.connect(self._setMergeFrame1)
         self.calibration_thread.CamMerge2.connect(self._setMergeFrame2)
         self.calibration_thread.CamMergeAll.connect(self._setMergeFrameAll)
+        self.calibration_thread.mergeCoverageSignal.connect(self._show_merge_coverage)
         self.calibration_thread.cameraErrorSignal.connect(self._show_camera_error)
 
         self.inspection_thread.partCam.connect(self._setPartFrame)
@@ -271,6 +273,19 @@ class AIKensa(QMainWindow):
         cameraCalibration1_widget = self.stackedWidget.widget(1)
         cameraCalibration2_widget = self.stackedWidget.widget(2)
         mergeCamera_widget = self.stackedWidget.widget(3)
+        self._merge_coverage_serial = 0
+        self._merge_dimension_trace = None
+        self._merge_coverage_button = mergeCamera_widget.findChild(QPushButton, "mergeCoverageButton")
+        self._merge_capture_button = mergeCamera_widget.findChild(QPushButton, "mergeCaptureButton")
+        self._merge_profile = mergeCamera_widget.findChild(QComboBox, "mergeCoverageProfile")
+        self._merge_report = mergeCamera_widget.findChild(QLabel, "mergeCoverageReport")
+        self._merge_profile.addItem("校正マージ（調整なし）", None)
+        for index, name in ((17, "808387UA1A"), (18, "828447UA0A"), (21, "点検位置1"),
+                            (22, "点検位置2"), (23, "点検位置3")):
+            self._merge_profile.addItem(name, index)
+        self._merge_coverage_button.toggled.connect(self._toggle_merge_coverage)
+        self._merge_capture_button.clicked.connect(lambda: self._request_merge_coverage(save=True))
+        self._merge_profile.currentIndexChanged.connect(self._refresh_merge_coverage)
 
         cameraCalibration1_button = main_widget.findChild(QPushButton, "camcalibrationbutton1")
         cameraCalibration2_button = main_widget.findChild(QPushButton, "camcalibrationbutton2")
@@ -519,10 +534,15 @@ class AIKensa(QMainWindow):
 
     def _activate_inspection_preview(self, index):
         self._preview_epoch += 1
+        if index != 3:
+            self._merge_coverage_button.setChecked(False)
+            self.calibration_thread.calib_config.coverage_request = None
         self.inspection_thread.inspection_config.preview_target = (index, self._preview_epoch)
-        if index == self.settings_widget_index:
+        if index in (1, 2, 3, self.settings_widget_index):
             self.inspection_thread.inspection_config.widget = 0
             self.inspection_thread.inspection_config.doInspection = False
+        if index == self.settings_widget_index:
+            self.calibration_thread.calib_config.widget = 0
         self._render_equipment_preview(index)
 
     def _update_equipment_preview(self, sequence, state):
@@ -1611,11 +1631,56 @@ class AIKensa(QMainWindow):
     def _setMergeFrameAll(self, image, full_size):
         widget = self.stackedWidget.widget(3)
         label = widget.findChild(QLabel, "camMergeAll")
-        display_image(label, image)
+        if not self._merge_coverage_button.isChecked():
+            display_image(label, image)
+            if image.isNull():
+                label.setText("結合画像なし：カメラと校正を確認してください。")
+            elif os.environ.get("AIKENSA_TRACE_MERGE") == "1":
+                pixmap = label.pixmap()
+                if pixmap is not None:
+                    trace = (full_size, image.size(), label.contentsRect().size(), pixmap.size(),
+                             label.devicePixelRatioF(), self.geometry())
+                    if trace != self._merge_dimension_trace:
+                        self._merge_dimension_trace = trace
+                        logging.getLogger(__name__).warning(
+                            "Merge Qt: native=%s published=%s label logical=%s pixmap=%s DPR=%s window logical=%s",
+                            *trace,
+                        )
         # Live preview for 全体微調整 / 品番別設定 (no-op while the page is hidden).
         controller = getattr(self, "settings_controller", None)
         if controller is not None:
             controller.set_preview_qimage(image, full_size)
+
+    def _toggle_merge_coverage(self, enabled):
+        self._merge_coverage_serial += 1
+        self.calibration_thread.calib_config.coverage_request = None
+        if enabled:
+            self._request_merge_coverage()
+        else:
+            self._merge_report.setText("既存マージ範囲（校正用）")
+            self.stackedWidget.widget(3).findChild(QLabel, "camMergeAll").setText("結合画像を取得中…")
+
+    def _refresh_merge_coverage(self, _index):
+        if self._merge_coverage_button.isChecked():
+            self._request_merge_coverage()
+
+    def _request_merge_coverage(self, *, save=False):
+        self._merge_coverage_serial += 1
+        self._merge_report.setText("診断用の画像を取得中…")
+        self.calibration_thread.calib_config.coverage_request = (
+            self._merge_coverage_serial, self._merge_profile.currentData(), save,
+        )
+
+    def _show_merge_coverage(self, serial, image, message):
+        if self.stackedWidget.currentIndex() != 3 or serial != self._merge_coverage_serial:
+            return
+        self._merge_report.setText(message)
+        if self._merge_coverage_button.isChecked():
+            label = self.stackedWidget.widget(3).findChild(QLabel, "camMergeAll")
+            if image.isNull():
+                label.setText("全カメラ範囲を表示できません。")
+            else:
+                display_image(label, image)
 
     def _setPartFrame(self, image):
         if self._equipment_preview.readiness is not PreviewReadiness.READY:

@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from aikensa.core.inspection.daily import DailyFailure, DailyInspectionError
+from aikensa.core.settings.paths import AppPaths
 
 
 def _file_stamp(path: Path) -> tuple[int, ...]:
@@ -55,3 +56,31 @@ def daily_geometry_digest(intrinsics, source_shapes, homographies, crop, canvas_
         "software_rotation": software_rotation,
     }
     return sha256(json.dumps(payload, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()).hexdigest()
+
+
+def daily_geometry_files_digest(paths: AppPaths) -> str:
+    """Identify the saved inputs backing a daily reference capture."""
+    files = [
+        paths.cam_id_file(), paths.cam_config_file(),
+        paths.global_alignment_file(), paths.widget_adjustments_file(),
+        paths.runtime_adjustments_dir / "calibration_metadata.yaml",
+        paths.root / "aikensa/core/config/part_registry.yaml",
+    ]
+    for index in range(2):
+        files.extend((
+            paths.calibration_file(index), paths.calibration_scaled_file(index),
+            paths.homography_file(index), paths.homography_file(index, scaled=True),
+        ))
+    template = paths.root / "aikensa/core/tools/homography_template/homography_template_border.png"
+    try:
+        template_stamp = _file_stamp(template)
+    except FileNotFoundError:
+        template_stamp = None
+    records = [("native-remap-rotate-warp-crop-v1", template_stamp)]
+    for path in files:
+        try:
+            digest = sha256(path.read_bytes()).hexdigest()
+        except FileNotFoundError:
+            digest = None
+        records.append((str(path.relative_to(paths.root)), digest))
+    return sha256(json.dumps(records, separators=(",", ":")).encode()).hexdigest()

@@ -1,6 +1,13 @@
 # Milestones
 
-## Active sequence — Phase 3B
+## Active sequence — Phase 3C
+
+1. Verify the fixed merge page, native footprint projection and diagnostics
+   without modifying production transforms or the measurement canvas.
+2. Commission native and scaled coverage, rotation and daily ROI on hardware
+   before changing any approved geometry.
+
+## Phase 3B (historical)
 
 1. Baseline: software PASS (233 tests at `6f488af`).
 2. Daily Settings: v3 common/position overrides, prepared-image capture,

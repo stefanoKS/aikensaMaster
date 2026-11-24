@@ -15,6 +15,7 @@ failure, never a fallback to another inspector.
 | Results and GUI | Legacy signals/counters/persistence and `AIKensa` | Route one qualified result to presentation, counters and storage. An equipment failure must not count as an inspection. |
 | Inspection preview | `EquipmentPreview` and the active Qt page | Publish availability changes once; replay the current diagnostic upon page entry. Tag live images with page activation and equipment sequence. Do not feed rendered diagnostics into the worker's image buffers. |
 | Daily Settings measurement | One-shot draft request queued to the inspection worker | Use the same native prepared image, ROI and strategy as actual daily inspection; return only diagnostics, never pass through the result lifecycle. |
+| Merge coverage | One-shot request to the calibration worker | Analyze native footprints and render their union separately. The normal preview, Settings preview, calibration saves, and production inference must not use the diagnostic canvas. |
 
 Existing paths remain active until a replacement is verified for that
 profile. See the [migration status](./MIGRATION_STATUS.md) for the handoff.

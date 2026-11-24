@@ -7,6 +7,7 @@ from yaml import YAMLError
 
 from aikensa.core.inspection.daily import DailyInspectionError
 from aikensa.core.inspection.daily_draft import DailyDraftRequest
+from aikensa.core.inspection.daily_identity import daily_geometry_files_digest
 from aikensa.core.settings.daily_config import DAILY_COMMON_FIELDS, DAILY_COMMON_SCOPE, DAILY_DEFAULT_REVISION, DailyConfiguration
 from aikensa.gui.page_viewport import display_image
 from aikensa.core.settings.revisions import RevisionError
@@ -41,7 +42,7 @@ class DailyInspectionSettingsPage(QWidget):
         self._inherit = set()
         self._generation = 0
         self._pending = None
-        self._verified_rois = set()
+        self._verified_rois = {}
         self.submit_draft = None
         self.dailyPositionCombo.currentIndexChanged.connect(self._select_position)
         self.dailyValidateButton.clicked.connect(self._validate)
@@ -230,11 +231,11 @@ class DailyInspectionSettingsPage(QWidget):
         try:
             operator, reason = self._approval_details()
             overrides, difference, candidate = self._build_draft()
-            for old, new in zip(self.active.profiles, candidate.profiles):
-                if old.roi != new.roi and (new.widget_id, new.roi) not in self._verified_rois:
-                    raise ValueError(f"点検位置{new.widget_id - 20}の検出範囲を基準画像で確認してください。")
+            changed_rois = [new for old, new in zip(self.active.profiles, candidate.profiles) if old.roi != new.roi]
+            self._check_roi_provenance(changed_rois)
             if not confirm_change(self, "日常点検設定の承認", f"次回点検から適用されます。\n{difference}"):
                 return
+            self._check_roi_provenance(changed_rois)
             self.settings.save_daily_configuration(
                 overrides, expected_revision=self.active.revision_id, operator=operator, reason=reason,
             )
@@ -243,6 +244,15 @@ class DailyInspectionSettingsPage(QWidget):
             return
         self._reload()
         self.on_saved("daily_inspection")
+
+    def _check_roi_provenance(self, profiles):
+        if not profiles:
+            return
+        current = daily_geometry_files_digest(self.settings.paths)
+        for profile in profiles:
+            proof = self._verified_rois.get((profile.profile_id, profile.roi))
+            if proof is None or proof[0] != current:
+                raise ValueError(f"点検位置{profile.widget_id - 20}の検出範囲を基準画像で確認してください。")
 
     def can_leave(self):
         if not self._forms:
@@ -336,7 +346,11 @@ class DailyInspectionSettingsPage(QWidget):
             return
         if result.full_image is not None:
             profile = result.request.profile
-            self._verified_rois.add((profile.widget_id, profile.roi))
+            if result.geometry_digest and result.geometry_files_digest and result.effective_bounds:
+                self._verified_rois[(profile.profile_id, profile.roi)] = (
+                    result.geometry_files_digest, result.geometry_digest,
+                    result.effective_bounds, result.full_image.shape[:2], result.request.request_id,
+                )
             self._show_draft_state()
         scope = f"点検位置{result.request.profile.widget_id - 20}"
         title = "設定テスト結果（記録なし）" if result.request.measure else "基準画像（緑: 実効範囲）"

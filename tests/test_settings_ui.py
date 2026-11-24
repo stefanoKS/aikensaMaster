@@ -297,6 +297,7 @@ def application_window(qapp, settings, monkeypatch):
         modelErrorSignal = pyqtSignal(str)
         dailyResultSignal = pyqtSignal(object, object)
         dailyDraftSignal = pyqtSignal(object)
+        mergeCoverageSignal = pyqtSignal(int, object, str)
         inspectionPreviewSignal = pyqtSignal(int, int, int, object)
         equipmentPreviewSignal = pyqtSignal(int, object)
 
@@ -526,6 +527,79 @@ def _capture_preview_evidence(window, name):
         # QMainWindow's central stack adds no outer frame to the 1920x1080 page.
         assert (capture.width(), capture.height()) == (1920, 1080)
         assert capture.save(str(Path(output) / f"{name}.png"))
+
+
+def test_calibration_merge_page_fits_complete_normal_and_diagnostic_images(qapp, application_window):
+    from PyQt5.QtCore import QSize, Qt
+    from PyQt5.QtGui import QColor, QImage
+    from PyQt5.QtWidgets import QComboBox, QLabel, QPushButton, QScrollBar
+
+    window = application_window
+    window.resize(1920, 1080)
+    window.show()
+    window.inspection_thread.inspection_config.widget = 17
+    window.inspection_thread.inspection_config.doInspection = True
+    window.stackedWidget.setCurrentIndex(3)
+    qapp.processEvents()
+    page = window.stackedWidget.currentWidget()
+    label = page.findChild(QLabel, "camMergeAll")
+    canvas = page.centralWidget()
+    assert page.size() == QSize(1920, 1080)
+    assert window.inspection_thread.inspection_config.widget == 0
+    assert window.inspection_thread.inspection_config.doInspection is False
+    assert not any(bar.isVisible() for bar in page.findChildren(QScrollBar))
+    for control in canvas.findChildren((QLabel, QPushButton, QComboBox)):
+        assert canvas.rect().contains(control.geometry()), control.objectName()
+        if control is not label:
+            assert not control.geometry().intersects(label.geometry()), control.objectName()
+
+    empty = QImage()
+    camera1 = window.calibration_thread
+    from aikensa.core.camera.placeholder import make_camera_placeholder
+
+    for index, show in ((0, window._setMergeFrame1), (1, window._setMergeFrame2)):
+        pixels = make_camera_placeholder(index, 300, 200)
+        show(QImage(pixels.data, 300, 200, pixels.strides[0], QImage.Format_RGB888).copy())
+    window._setMergeFrameAll(empty, QSize())
+    _capture_preview_evidence(window, "01-merge-unavailable")
+
+    image = QImage(1358, 727, QImage.Format_RGB888)
+    image.fill(QColor("#3b5965"))
+    for y in range(727):
+        for x in (*range(12), *range(1346, 1358)):
+            image.setPixelColor(x, y, QColor("red" if x < 12 else "blue"))
+    window._setMergeFrameAll(image, QSize(6791, 3638))
+    pixmap = label.pixmap()
+    assert label.contentsRect().size() == QSize(1840, 605)
+    assert pixmap.size() == QSize(1130, 605)
+    assert pixmap.size() == image.size().scaled(label.contentsRect().size(), Qt.KeepAspectRatio)
+    assert pixmap.toImage().pixelColor(0, 30) == QColor("red")
+    assert pixmap.toImage().pixelColor(pixmap.width() - 1, 30) == QColor("blue")
+    _capture_preview_evidence(window, "02-merge-full-image-fit")
+
+    from aikensa.core.geometry.coverage import analyze_merge_coverage, render_merge_coverage
+    from tests.test_merge_coverage import overflow_fixture
+
+    frames, matrices, size = overflow_fixture()
+    report = analyze_merge_coverage(((100, 60), (100, 60)), matrices, size)
+    coverage = render_merge_coverage(frames, matrices, report, (10, 15, 170, 15, 170, 52, 10, 52))
+    diagnostic = QImage(coverage.data, coverage.shape[1], coverage.shape[0], coverage.strides[0], QImage.Format_BGR888)
+    page.findChild(QPushButton, "mergeCoverageButton").click()
+    request = camera1.calib_config.coverage_request
+    assert request[1:] == (None, False)
+    camera1.mergeCoverageSignal.emit(request[0], diagnostic, "左右に 20 px / 既存範囲 (黄) / 切り出し (緑)")
+    key = label.pixmap().cacheKey()
+    window._setMergeFrameAll(image, QSize(6791, 3638))
+    assert label.pixmap().cacheKey() == key
+    page.findChild(QComboBox, "mergeCoverageProfile").setCurrentIndex(1)
+    product_request = camera1.calib_config.coverage_request
+    assert product_request[1:] == (17, False)
+    camera1.mergeCoverageSignal.emit(product_request[0], diagnostic, "Widget 17 / 既存範囲 (黄) / 切り出し (緑)")
+    _capture_preview_evidence(window, "03-merge-diagnostic-coverage")
+    window.calibration_thread.calib_config.widget = 3
+    window.stackedWidget.setCurrentIndex(window.settings_widget_index)
+    assert window.calibration_thread.calib_config.widget == 0
+    assert window.calibration_thread.calib_config.coverage_request is None
 
 
 def test_daily_navigation_replays_equipment_preview_without_a_new_fault(qapp, application_window):

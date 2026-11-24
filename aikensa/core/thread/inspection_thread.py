@@ -22,7 +22,8 @@ from aikensa.core.camera.registry import get_camera_service
 from aikensa.core.settings.service import SettingsService
 from aikensa.core.scripts.img_processing.cameracalibrate import warpTwoImages_template
 from aikensa.core.geometry.pipeline import GeometryPipeline, UncalibratedError
-from aikensa.core.geometry.transforms import compose_into_base, is_valid_homography, rotation_about_pivot, translation_matrix
+from aikensa.core.geometry.transforms import is_valid_homography
+from aikensa.core.geometry.merge_diagnostic import inspection_cam2_transform
 from dataclasses import dataclass, field
 from typing import List
 
@@ -42,7 +43,7 @@ from queue import Empty, Full, Queue
 
 from aikensa.core.inspection.daily import DailyFailure, DailyInspectionError, DailyInspectionStrategy
 from aikensa.core.inspection.daily_draft import DailyDraftRequest, DailyDraftResult, run_daily_draft
-from aikensa.core.inspection.daily_identity import DailyModelArtifact, daily_geometry_digest
+from aikensa.core.inspection.daily_identity import DailyModelArtifact, daily_geometry_digest, daily_geometry_files_digest
 from aikensa.core.inspection.daily_recording import DailyCycle, legacy_row, write_daily_result
 from aikensa.core.inspection.daily_session import DailyPositionState, DailyPositionUpdate, RecordingState
 from aikensa.core.settings.revisions import RevisionError
@@ -590,10 +591,8 @@ class InspectionThread(QThread):
 
                     if self.combinedImage_scaled is not None:
                         preview_width, preview_height = self._get_partcam_preview_size()
-                        self.combinedImage_scaled = self.downSampling(
-                            self.combinedImage_scaled,
-                            width=preview_width,
-                            height=preview_height,
+                        self.combinedImage_scaled = self._resize_with_aspect_pad(
+                            self.combinedImage_scaled, preview_width, preview_height,
                         )
 
                     if self.combinedImage_scaled is not None:
@@ -749,7 +748,7 @@ class InspectionThread(QThread):
                                         play_ng_sound()
 
 
-                            self.emitImages[0] = self.downSampling(self.InspectionImages[0], width=1791, height=428)
+                            self.emitImages[0] = self._resize_with_aspect_pad(self.InspectionImages[0], 1791, 428)
                             self.partCam.emit(self.convertQImage(self.emitImages[0]))
                             if self.inspection_config.widget in [5, 7, 9, 11]:
                                 self.partKatabuR.emit(self.convertQImage(self.InspectionImagesKatabu[0]))
@@ -836,7 +835,7 @@ class InspectionThread(QThread):
                                         self.inspection_config.today_numofPart[self.inspection_config.widget][1] += 1
                                         play_ng_sound()
 
-                            self.emitImages[0] = self.downSampling(self.InspectionImages[0], width=1791, height=428)
+                            self.emitImages[0] = self._resize_with_aspect_pad(self.InspectionImages[0], 1791, 428)
                             self.partCam.emit(self.convertQImage(self.emitImages[0]))
 
                             self.today_numofPart_signal.emit(self.inspection_config.today_numofPart)
@@ -2256,7 +2255,10 @@ class InspectionThread(QThread):
     def _run_daily_draft(self, request: DailyDraftRequest) -> DailyDraftResult:
         profile = request.profile
         try:
+            saved_geometry = daily_geometry_files_digest(self.settings.paths)
             self._load_geometry_from_settings()
+            self._load_widget_crop_points()
+            self._load_widget_h2_offsets()
             if not self._capture_inspection_frames():
                 return DailyDraftResult(request, self._camera_diagnostic[0] or "カメラ画像を取得できません。")
             self.mergeframe1_scaled = self.downSampling(self.mergeframe1, self.scaled_width, self.scaled_height)
@@ -2265,9 +2267,14 @@ class InspectionThread(QThread):
                 return DailyDraftResult(request, self._camera_diagnostic[0])
             if not all(is_valid_homography(matrix) for matrix in (self.H1_scaled, self.H2_scaled)):
                 raise UncalibratedError("縮小ホモグラフィ")
-            raw = self._prepare_daily_reference(profile.widget_id)
+            geometry = []
+            raw = self._prepare_daily_reference(profile.widget_id, geometry_callback=geometry.append)
+            if saved_geometry != daily_geometry_files_digest(self.settings.paths):
+                return DailyDraftResult(request, "基準画像の取得中に校正設定が変わりました。再取得してください。")
             model = self._daily_model_for_profile(profile) if request.measure else None
-            return run_daily_draft(request, raw, model)
+            return run_daily_draft(
+                request, raw, model, geometry_digest=geometry[0], geometry_files_digest=saved_geometry,
+            )
         except DailyInspectionError as exc:
             return DailyDraftResult(request, f"{exc.category.value}: {exc}")
         except (UncalibratedError, cv2.error, OSError, ValueError, yaml.YAMLError) as exc:
@@ -2349,7 +2356,7 @@ class InspectionThread(QThread):
                 local = RecordingState.FAILED
             outcome = DailyPositionState.RECORDING_FAILED
             details = f"{exc} / {result.status} / {details}"
-        preview = self.downSampling(annotated, width=1791, height=131)
+        preview = self._resize_with_aspect_pad(annotated, 1791, 131)
         preview = cv2.cvtColor(preview, cv2.COLOR_BGR2RGB)
         self.dailyResultSignal.emit(DailyPositionUpdate(
             widget, session_id, cycle_id, attempt_sequence, outcome, details,
@@ -3702,18 +3709,6 @@ class InspectionThread(QThread):
         except Exception:
             return h2_matrix
 
-        dx, dy = self.widget_h2_offsets.get(wid, (0.0, 0.0))
-        rotation_deg = 0.0
-
-        global_alignment = getattr(self, "global_alignment", None)
-        if global_alignment is not None:
-            dx += float(global_alignment.cam2_x_px)
-            dy += float(global_alignment.cam2_y_px)
-            rotation_deg += float(global_alignment.cam2_rotation_deg)
-
-        if dx == 0.0 and dy == 0.0 and rotation_deg == 0.0:
-            return h2_matrix
-
         sf = 1.0
         if scaled:
             sf = float(self.scale_factor) if getattr(self, "scale_factor", 0) else 1.0
@@ -3722,15 +3717,10 @@ class InspectionThread(QThread):
 
         canvas = self.H2
         height, width = (canvas.shape[0], canvas.shape[1]) if canvas is not None else (0, 0)
-        scaled_h = height / sf if height else 0
-        scaled_w = width / sf if width else 0
-
-        transforms = []
-        if rotation_deg:
-            pivot = (scaled_w / 2.0 if scaled else width / 2.0, scaled_h / 2.0 if scaled else height / 2.0)
-            transforms.append(rotation_about_pivot(rotation_deg, pivot))
-        transforms.append(translation_matrix(dx / sf, dy / sf))
-        return compose_into_base(h2_matrix, transforms)
+        return inspection_cam2_transform(
+            h2_matrix, self.widget_h2_offsets.get(wid, (0.0, 0.0)),
+            getattr(self, "global_alignment", None), scale=sf, pivot=(width / (2 * sf), height / (2 * sf)),
+        )
 
     def _get_crop_points_for_widget(self, widget_id, scaled=False):
         pts = self.widget_crop_points.get(int(widget_id))
@@ -4077,6 +4067,14 @@ class InspectionThread(QThread):
             return _fallback()
 
         combined_bgr = combined
+        if os.environ.get("AIKENSA_TRACE_MERGE") == "1":
+            trace = (widget_id, local_blank_canvas.shape[1::-1], combined_bgr.shape[1::-1], crop_points)
+            if trace != getattr(self, "_inspection_crop_trace", None):
+                self._inspection_crop_trace = trace
+                logging.getLogger(__name__).warning(
+                    "Inspection geometry W×H: widget=%s native canvas=%s prepared=%s crop points=%s",
+                    *trace,
+                )
         if geometry_callback is not None:
             geometry_callback(daily_geometry_digest(
                 self._full_geometry.intrinsics, (frame1.shape, frame2.shape), (h1, h2),
@@ -4113,7 +4111,7 @@ class InspectionThread(QThread):
                 )
 
             w, h = preview_size
-            self.emitImages[idx] = self.downSampling(self.InspectionImages[idx], width=w, height=h)
+            self.emitImages[idx] = self._resize_with_aspect_pad(self.InspectionImages[idx], w, h)
             self.partCam.emit(self.convertQImage(self.emitImages[idx]))
         except Exception as e:
             print(f"[finalize] preview emit failed: {e}")

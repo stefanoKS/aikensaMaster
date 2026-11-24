@@ -29,10 +29,14 @@ class DailyDraftResult:
     full_image: np.ndarray | None = None
     cropped_image: np.ndarray | None = None
     measurement: DailyMeasurement | None = None
+    geometry_digest: str | None = None
+    geometry_files_digest: str | None = None
+    effective_bounds: tuple[int, int, int, int] | None = None
 
 
 def run_daily_draft(
-    request: DailyDraftRequest, raw: np.ndarray, model: Callable | None,
+    request: DailyDraftRequest, raw: np.ndarray, model: Callable | None, *,
+    geometry_digest: str | None = None, geometry_files_digest: str | None = None,
 ) -> DailyDraftResult:
     roi = request.profile.roi
     height, width = raw.shape[:2]
@@ -65,4 +69,7 @@ def run_daily_draft(
                 f"\n{measurement.status} / 実測 {actual} / "
                 f"基準 {profile.reference.nominal_mm:g} ± {profile.reference.tolerance_mm:g} mm{difference}"
             )
-    return DailyDraftResult(request, message, full, crop, measurement)
+    return DailyDraftResult(
+        request, message, full, crop, measurement,
+        geometry_digest, geometry_files_digest, (x0, y0, x1, y1),
+    )

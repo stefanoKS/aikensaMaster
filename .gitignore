@@ -199,6 +199,7 @@ resultmergeframe1.png
 resultmergeframe2.png
 scaled_combined_image.png
 debug_crops/**
+/aikensa/diagnostic_results/
 # ===========================================================================
 # AIKensaMaster - machine-specific configuration (NEVER commit)
 # ===========================================================================
