@@ -190,3 +190,53 @@ def test_daily_recording_is_idempotent_and_failed_images_do_not_create_a_result(
         assert len(list(root.rglob("*.png"))) == 2
     finally:
         con.close()
+
+
+def test_current_daily_session_rejects_replaced_attempts_and_old_configurations(daily_settings):
+    from dataclasses import replace
+    from aikensa.core.inspection.daily_session import DailyPositionState as State
+    from aikensa.core.inspection.daily_session import DailyPositionUpdate, DailySession, RecordingState
+
+    settings = daily_settings
+    config = settings.load_daily_configuration()
+    session = DailySession("current")
+    assert "未完了" in session.summary
+    completed = {}
+
+    for widget in (21, 22, 23):
+        attempt = DailyPositionUpdate(widget, "current", f"cycle-{widget}", State.INSPECTING)
+        assert session.apply(attempt)
+        completed[widget] = replace(
+            attempt, state=State.OK, profile=config.profile_for_widget(widget),
+            judgment="OK", local=RecordingState.RECORDED,
+        )
+        assert session.apply(completed[widget])
+        assert ("全位置OK" in session.summary) == (widget == 23)
+
+    retry = replace(completed[22], cycle_id="retry", state=State.INSPECTING, profile=None)
+    assert session.apply(retry)
+    assert "全位置OK" not in session.summary and "点検中" in session.summary
+    assert not session.apply(completed[22])
+    assert not session.apply(replace(retry, session_id="old"))
+    assert session.apply(replace(retry, state=State.NG, judgment="NG"))
+    assert "全位置実施・NGあり" in session.summary
+
+    assert session.apply(replace(retry, cycle_id="retry-2"))
+    session.interrupt("camera disconnected")
+    assert session.positions[22].state is State.EQUIPMENT_ERROR
+    assert not session.apply(replace(completed[22], cycle_id="retry-2"))
+
+    assert session.apply(replace(retry, cycle_id="retry-3"))
+    assert session.apply(replace(retry, cycle_id="retry-3", state=State.RECORDING_FAILED, local=RecordingState.RECORDED,
+                                 remote=RecordingState.FAILED))
+    assert "記録失敗" in session.summary and "全位置OK" not in session.summary
+
+    assert session.apply(replace(retry, cycle_id="retry-4"))
+    settings.save_daily_configuration(
+        {"dailyTenken_02": {"tolerance_mm": 2}}, expected_revision=config.revision_id,
+    )
+    updated = settings.load_daily_configuration()
+    session.update_configuration({profile.widget_id: profile for profile in updated.profiles})
+    assert session.apply(replace(completed[22], cycle_id="retry-4"))
+    assert session.positions[22].state is State.REINSPECTION_REQUIRED
+    assert session.positions[21].state is session.positions[23].state is State.OK

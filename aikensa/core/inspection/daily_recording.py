@@ -25,9 +25,12 @@ class DailyCycle:
     today_counts: tuple[int, int]
 
     @classmethod
-    def begin(cls, profile, revision_id, session_id, operator, current_counts, today_counts):
+    def begin(
+        cls, profile, revision_id, session_id, operator, current_counts, today_counts,
+        *, cycle_id=None, timestamp=None,
+    ):
         return cls(
-            profile, revision_id, session_id, operator, uuid4().hex, datetime.now(),
+            profile, revision_id, session_id, operator, cycle_id or uuid4().hex, timestamp or datetime.now(),
             tuple(current_counts), tuple(today_counts),
         )
 

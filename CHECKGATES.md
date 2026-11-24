@@ -67,6 +67,15 @@ machine PASS.
 - Actual reconnect, orientation and the physical Windows display remain
   **NOT TESTED**.
 
+## Daily session state (CG-P3-20)
+
+- `tests/test_daily_inspection.py` and `tests/test_settings_ui.py` exercise
+  incomplete sessions, reinspection, recording and equipment failure,
+  and rejection of replaced attempts and prior-session events.
+- A reference configuration change invalidates affected current positions.
+  Completed historical data and the legacy product interlock policy are
+  unchanged; equipment diagnostics take priority over daily judgments.
+
 ## IC4 camera configuration (CG-20)
 
 - With no injected capture factory, `CameraService.acquire()` forwards the

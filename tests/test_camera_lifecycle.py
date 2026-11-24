@@ -732,6 +732,7 @@ def test_daily_settings_change_drives_real_worker_and_rolls_back(
     import sqlite3
 
     from PyQt5.QtCore import QThread
+    from aikensa.core.inspection.daily_session import DailyPositionState, RecordingState
     from aikensa.core.settings.service import SettingsService
     from aikensa.gui.settings_pages import SettingsController
     from aikensa.gui.settings_pages import daily_inspection_settings_page
@@ -785,9 +786,9 @@ def test_daily_settings_change_drives_real_worker_and_rolls_back(
     live_previews = []
     worker.inspectionPreviewSignal.connect(lambda *event: live_previews.append(event))
 
-    def on_result(widget, _session, image, status):
-        signals.append((widget, image, status))
-        if status != "点検中":
+    def on_result(update, image):
+        signals.append((update, image))
+        if update.state is not DailyPositionState.INSPECTING:
             worker.running = False
 
     worker.dailyResultSignal.connect(on_result)
@@ -818,8 +819,10 @@ def test_daily_settings_change_drives_real_worker_and_rolls_back(
         assert len(signals) == 2
         assert live_previews and live_previews[0][:2] == (widget, 8)
         assert not live_previews[0][3].isNull()
-        assert signals[0][0] == signals[1][0] == widget
-        assert signals[1][1].width() == 1791 and signals[1][2].startswith(f"{expected_status} /")
+        assert signals[0][0].widget == signals[1][0].widget == widget
+        assert signals[0][0].cycle_id == signals[1][0].cycle_id
+        assert signals[1][1].width() == 1791 and signals[1][0].state.name == expected_status
+        assert signals[1][0].local is RecordingState.RECORDED
         root = tmp_path / "aikensa/inspection_results"
         con = sqlite3.connect(root / "database_results.db")
         try:

@@ -20,6 +20,17 @@ with no failures/skips; seven screenshots at 1920×1080.
 Physical cameras and Windows display remain NOT TESTED. Next: structured
 daily session outcomes, including reinspection invalidation.
 
+CG-P3-20: daily positions now track typed attempt and recording states.
+Starting a new attempt immediately drops the old all-pass summary.
+An equipment interruption, local/remote recording failure, obsolete
+configuration, or old session/cycle cannot appear as a current pass.
+The session compares effective profile values rather than invalidating
+unaffected positions merely because another position's revision changed.
+Existing local and remote persistence mechanisms are unchanged; MySQL
+retry, reconciliation and live equipment timing still require later gates.
+Software regression: 221 passed, including 28 daily checkgate tests, no
+failures or skips.
+
 ## Phase 2
 
 Local and remote `main` started at `c8d486874a8ff633135a4c54a48b1cf179be588b`

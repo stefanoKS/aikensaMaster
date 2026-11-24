@@ -33,6 +33,9 @@ from aikensa.core.settings.service import SettingsService
 from aikensa.gui.settings_pages import SettingsController
 from aikensa.gui.page_viewport import display_image, page_content
 from aikensa.core.camera.preview_state import EquipmentPreview, PreviewReadiness
+from aikensa.core.inspection.daily import DailyInspectionError
+from aikensa.core.inspection.daily_session import DAILY_POSITIONS, DailyPositionState, DailySession
+from aikensa.core.settings.revisions import RevisionError
 from aikensa.gui.inspection_preview import display_equipment_preview
 
 
@@ -468,8 +471,7 @@ class AIKensa(QMainWindow):
 
         # Keep the camera preview out of production when the machine is not ready.
         self.inspection_thread.cameraErrorSignal.connect(self._show_camera_error)
-        self._daily_status = {}
-        self._daily_session_id = ""
+        self._daily_session = DailySession("")
         self.inspection_thread.dailyResultSignal.connect(self._show_daily_result)
         self._equipment_preview = EquipmentPreview()
         self._equipment_sequence = 0
@@ -480,41 +482,38 @@ class AIKensa(QMainWindow):
         self.stackedWidget.currentChanged.connect(self._activate_inspection_preview)
 
     def _reset_daily_status(self):
-        self._daily_status.clear()
-        self._daily_session_id = uuid4().hex
-        self.inspection_thread.inspection_config.daily_session_id = self._daily_session_id
-        for index in (21, 22, 23):
+        self._daily_session = DailySession(uuid4().hex)
+        self.inspection_thread.inspection_config.daily_session_id = self._daily_session.session_id
+        for index in DAILY_POSITIONS:
             page = self.stackedWidget.widget(index)
             page.statusBar().showMessage(f"点検位置{index - 20}: 未点検")
             label = page.findChild(QLabel, "framePart")
             if label:
                 display_equipment_preview(label, self._equipment_preview)
 
-    def _show_daily_result(self, index, session_id, image, status):
-        if index not in (21, 22, 23) or session_id != self._daily_session_id:
+    def _show_daily_result(self, update, image):
+        if not self._daily_session.apply(update):
             return
-        if status != "点検中":
-            self._daily_status[index] = status
-        summary = " / ".join(
-            f"{position - 20}: {self._daily_status.get(position, '未点検').partition(' / ')[0].partition(':')[0]}"
-            for position in (21, 22, 23)
-        )
-        completed = [message for message in self._daily_status.values() if message.startswith(("OK /", "NG /"))]
-        if len(completed) == 3:
-            session_status = "全位置OK" if all(message.startswith("OK /") for message in completed) else "全位置実施・NGあり"
-        elif self._daily_status:
-            session_status = "一部実施・NGあり" if any(message.startswith("NG /") for message in completed) else "一部実施"
-        else:
-            session_status = "未完了"
-        page = self.stackedWidget.widget(index)
-        for position in (21, 22, 23):
-            message = status if position == index else self._daily_status.get(position, "未点検")
-            self.stackedWidget.widget(position).statusBar().showMessage(
-                self._equipment_preview.message or f"{message}    ({session_status} / {summary})"
-            )
-        label = page.findChild(QLabel, "framePart")
-        if label and not image.isNull() and self._equipment_preview.readiness is PreviewReadiness.READY:
+        self._update_daily_status_bars()
+        current = self._daily_session.positions[update.widget]
+        label = self.stackedWidget.widget(update.widget).findChild(QLabel, "framePart")
+        if not label:
+            return
+        if image.isNull() or current.state is DailyPositionState.REINSPECTION_REQUIRED:
+            display_equipment_preview(label, self._equipment_preview)
+        elif self._equipment_preview.readiness is PreviewReadiness.READY:
             display_image(label, image)
+
+    def _daily_position_message(self, index):
+        update = self._daily_session.positions.get(index)
+        position = update.message if update else f"点検位置{index - 20}: 未点検"
+        if self._equipment_preview.readiness is not PreviewReadiness.READY:
+            return self._equipment_preview.message or "カメラ・校正を確認中…"
+        return f"{position}    ({self._daily_session.summary})"
+
+    def _update_daily_status_bars(self):
+        for position in DAILY_POSITIONS:
+            self.stackedWidget.widget(position).statusBar().showMessage(self._daily_position_message(position))
 
     def _activate_inspection_preview(self, index):
         self._preview_epoch += 1
@@ -526,6 +525,10 @@ class AIKensa(QMainWindow):
             return
         self._equipment_sequence = sequence
         self._equipment_preview = state
+        if state.readiness is not PreviewReadiness.READY:
+            self._daily_session.interrupt(state.message or "点検中に設備の準備状態が変わりました。")
+        if self.stackedWidget.currentIndex() in DAILY_POSITIONS:
+            self._update_daily_status_bars()
         self._render_equipment_preview(self.stackedWidget.currentIndex())
 
     def _render_equipment_preview(self, index):
@@ -538,10 +541,10 @@ class AIKensa(QMainWindow):
                 display_equipment_preview(label, self._equipment_preview)
             if self._equipment_preview.message:
                 page.statusBar().showMessage(self._equipment_preview.message)
+            elif index in DAILY_POSITIONS:
+                page.statusBar().showMessage(self._daily_position_message(index))
             elif self._inspection_model_error:
                 page.statusBar().showMessage(self._inspection_model_error)
-            elif index in (21, 22, 23):
-                page.statusBar().showMessage(self._daily_status.get(index, f"点検位置{index - 20}: 未点検"))
             else:
                 page.statusBar().clearMessage()
 
@@ -580,6 +583,19 @@ class AIKensa(QMainWindow):
 
     def _on_machine_settings_changed(self, what: str = ""):
         if what == "daily_inspection":
+            try:
+                config = self.settings_service.load_daily_configuration()
+            except (DailyInspectionError, RevisionError, OSError, ValueError, yaml.YAMLError):
+                traceback.print_exc()
+                profiles = {}
+            else:
+                profiles = {profile.widget_id: profile for profile in config.profiles}
+            invalidated = self._daily_session.update_configuration(profiles)
+            for index in invalidated:
+                label = self.stackedWidget.widget(index).findChild(QLabel, "framePart")
+                if label:
+                    display_equipment_preview(label, self._equipment_preview)
+            self._update_daily_status_bars()
             return
         if hasattr(self, "inspection_thread") and self.inspection_thread is not None:
             reload_adjustments = getattr(self.inspection_thread, "reload_adjustments", None)

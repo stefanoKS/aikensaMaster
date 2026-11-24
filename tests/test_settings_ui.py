@@ -293,7 +293,7 @@ def application_window(qapp, settings, monkeypatch):
     class Worker(QObject):
         cameraErrorSignal = pyqtSignal(str)
         modelErrorSignal = pyqtSignal(str)
-        dailyResultSignal = pyqtSignal(int, str, object, str)
+        dailyResultSignal = pyqtSignal(object, object)
         inspectionPreviewSignal = pyqtSignal(int, int, int, object)
         equipmentPreviewSignal = pyqtSignal(int, object)
 
@@ -419,22 +419,60 @@ def test_small_window_clips_fixed_pages_without_resizing(qapp, application_windo
     assert button.geometry().bottom() >= window.height()
 
 
+def _emit_daily_update(window, widget, state, image, *, cycle="cycle", details="", session_id=None):
+    from aikensa.core.inspection.daily_session import DailyPositionUpdate
+
+    if session_id is None:
+        session_id = window._daily_session.session_id
+    window.inspection_thread.dailyResultSignal.emit(
+        DailyPositionUpdate(widget, session_id, cycle, state, details), image,
+    )
+
+
 def test_daily_result_from_previous_position_is_not_rendered_on_active_position(application_window):
     from PyQt5.QtGui import QColor, QImage
     from PyQt5.QtWidgets import QLabel
     from aikensa.core.camera.preview_state import EquipmentPreview, PreviewReadiness
+    from aikensa.core.inspection.daily_session import DailyPositionState
 
     window = application_window
     window.stackedWidget.setCurrentIndex(22)
     window.inspection_thread.equipmentPreviewSignal.emit(1, EquipmentPreview(PreviewReadiness.READY))
     result = QImage(64, 32, QImage.Format_RGB888)
     result.fill(QColor("green"))
-    window.inspection_thread.dailyResultSignal.emit(21, window._daily_session_id, result, "OK / 実測値: 100.6 mm")
+    _emit_daily_update(window, 21, DailyPositionState.INSPECTING, QImage())
+    _emit_daily_update(window, 21, DailyPositionState.OK, result, details="実測値: 100.6 mm")
     first = window.stackedWidget.widget(21)
     second = window.stackedWidget.widget(22)
     assert not first.findChild(QLabel, "framePart").pixmap().isNull()
     assert "100.6" in first.statusBar().currentMessage()
     assert "100.6" not in second.statusBar().currentMessage()
+
+
+def test_daily_session_reinspection_clears_all_pass_and_reentry_rejects_old_result(application_window):
+    from PyQt5.QtGui import QImage
+    from PyQt5.QtWidgets import QPushButton
+    from aikensa.core.camera.preview_state import EquipmentPreview, PreviewReadiness
+    from aikensa.core.inspection.daily_session import DailyPositionState as State
+
+    window = application_window
+    menu = window.stackedWidget.widget(0)
+    menu.findChild(QPushButton, "dailytenkenbutton").click()
+    window.inspection_thread.equipmentPreviewSignal.emit(1, EquipmentPreview(PreviewReadiness.READY))
+    third = window.stackedWidget.widget(23)
+    for position in (21, 22, 23):
+        _emit_daily_update(window, position, State.INSPECTING, QImage())
+        _emit_daily_update(window, position, State.OK, QImage())
+        assert ("全位置OK" in third.statusBar().currentMessage()) == (position == 23)
+    _emit_daily_update(window, 22, State.INSPECTING, QImage(), cycle="retry")
+    assert "全位置OK" not in third.statusBar().currentMessage()
+    assert "点検中" in third.statusBar().currentMessage()
+    old_session = window._daily_session.session_id
+    window.stackedWidget.currentWidget().findChild(QPushButton, "mainmenubutton").click()
+    menu.findChild(QPushButton, "dailytenkenbutton").click()
+    _emit_daily_update(window, 22, State.OK, QImage(), cycle="retry", session_id=old_session)
+    assert "全位置OK" not in third.statusBar().currentMessage()
+    assert "未点検" in third.statusBar().currentMessage()
 
 
 def _capture_preview_evidence(window, name):
@@ -496,6 +534,7 @@ def test_equipment_preview_distinguishes_recovery_and_rejects_stale_frames(
     from PyQt5.QtWidgets import QLabel, QPushButton
     from aikensa.core.camera.preview_state import EquipmentPreview, PreviewReadiness
     from aikensa.gui import inspection_preview
+    from aikensa.core.inspection.daily_session import DailyPositionState
 
     rendered = []
     original = inspection_preview.make_camera_placeholder
@@ -517,7 +556,8 @@ def test_equipment_preview_distinguishes_recovery_and_rejects_stale_frames(
     worker.equipmentPreviewSignal.emit(1, ready)
     valid = QImage(1791, 131, QImage.Format_RGB888)
     valid.fill(QColor("#146239"))
-    worker.dailyResultSignal.emit(21, window._daily_session_id, valid, "OK / 実測値: 100.6 mm")
+    _emit_daily_update(window, 21, DailyPositionState.INSPECTING, QImage())
+    _emit_daily_update(window, 21, DailyPositionState.OK, valid, details="実測値: 100.6 mm")
     assert label.pixmap() is not None
 
     state = EquipmentPreview(PreviewReadiness.CAMERA_UNAVAILABLE, missing, "カメラ画像取得エラー")

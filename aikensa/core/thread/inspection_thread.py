@@ -41,6 +41,7 @@ from uuid import uuid4
 
 from aikensa.core.inspection.daily import DailyFailure, DailyInspectionError, DailyInspectionStrategy
 from aikensa.core.inspection.daily_recording import DailyCycle, legacy_row, write_daily_result
+from aikensa.core.inspection.daily_session import DailyPositionState, DailyPositionUpdate, RecordingState
 from aikensa.core.settings.revisions import RevisionError
 
 # LEGACY: Keep old imports for backward compatibility during transition
@@ -145,7 +146,7 @@ class InspectionThread(QThread):
 
     # Emitted when the configured cameras cannot provide a production image source.
     cameraErrorSignal = pyqtSignal(str)
-    dailyResultSignal = pyqtSignal(int, str, QImage, str)
+    dailyResultSignal = pyqtSignal(object, QImage)
     inspectionPreviewSignal = pyqtSignal(int, int, int, QImage)
     equipmentPreviewSignal = pyqtSignal(int, object)
 
@@ -2209,12 +2210,16 @@ class InspectionThread(QThread):
         current_counts = tuple(config.current_numofPart[widget])
         today_counts = tuple(config.today_numofPart[widget])
         session_id = config.daily_session_id or self._daily_session_id
-        self.dailyResultSignal.emit(widget, session_id, QImage(), "点検中")
+        cycle_id, timestamp = uuid4().hex, datetime.now()
+        self.dailyResultSignal.emit(
+            DailyPositionUpdate(widget, session_id, cycle_id, DailyPositionState.INSPECTING), QImage(),
+        )
         try:
             active = self.settings.load_daily_configuration()
             profile = active.profile_for_widget(widget)
             cycle = DailyCycle.begin(
                 profile, active.revision_id, session_id, operator, current_counts, today_counts,
+                cycle_id=cycle_id, timestamp=timestamp,
             )
             raw, _ = self._build_inspection_image(
                 planarize_transform=self.planarizeTransform_wide,
@@ -2230,7 +2235,9 @@ class InspectionThread(QThread):
                 exc.category.value if isinstance(exc, DailyInspectionError)
                 else ("CALIBRATION_ERROR" if isinstance(exc, UncalibratedError) else "CONFIGURATION_ERROR")
             )
-            self.dailyResultSignal.emit(widget, session_id, QImage(), f"設備異常 ({category}): {exc}")
+            self.dailyResultSignal.emit(DailyPositionUpdate(
+                widget, session_id, cycle_id, DailyPositionState.EQUIPMENT_ERROR, f"{category}: {exc}",
+            ), QImage())
             return False
 
         if NICHIJOU_TENKEN_debug_images_enabled():
@@ -2251,19 +2258,32 @@ class InspectionThread(QThread):
             for point in result.endpoints:
                 cv2.circle(annotated, point, 18, color, 4)
         annotated = draw_daily_status(annotated, result.status, measurement)
-        status = f"{result.status} / {details} / {cycle.timestamp:%H:%M:%S}"
+        details = f"{details} / {cycle.timestamp:%H:%M:%S}"
+        outcome = DailyPositionState.OK if result.status == "OK" else DailyPositionState.NG
         fresh_record = False
+        local, remote = RecordingState.NOT_ATTEMPTED, RecordingState.NOT_ATTEMPTED
         try:
             fresh_record = write_daily_result(self.conn, Path("aikensa/inspection_results"), cycle, result, raw, annotated)
+            local = RecordingState.RECORDED
+            remote = RecordingState.NOT_CONFIGURED
             if fresh_record:
-                self._mirror_result_to_mysql(legacy_row(cycle, result), report_failure=True)
+                if self._mirror_result_to_mysql(legacy_row(cycle, result), report_failure=True):
+                    remote = RecordingState.RECORDED
         except (OSError, sqlite3.Error, cv2.error, mysql.connector.Error) as exc:
             logging.getLogger(__name__).exception("Daily result recording failed: %s", cycle.cycle_id)
-            status = f"記録失敗: {exc} / {status}"
+            if local is RecordingState.RECORDED:
+                remote = RecordingState.FAILED
+            else:
+                local = RecordingState.FAILED
+            outcome = DailyPositionState.RECORDING_FAILED
+            details = f"{exc} / {result.status} / {details}"
         preview = self.downSampling(annotated, width=1791, height=131)
         preview = cv2.cvtColor(preview, cv2.COLOR_BGR2RGB)
-        self.dailyResultSignal.emit(widget, session_id, self.convertQImage(preview).copy(), status)
-        if fresh_record and status.startswith(("OK /", "NG /")):
+        self.dailyResultSignal.emit(DailyPositionUpdate(
+            widget, session_id, cycle_id, outcome, details,
+            cycle.revision_id, profile, result.status, local, remote,
+        ), self.convertQImage(preview).copy())
+        if fresh_record and outcome in (DailyPositionState.OK, DailyPositionState.NG):
             (play_ok_sound if result.status == "OK" else play_ng_sound)()
         return True
 
@@ -2423,10 +2443,12 @@ class InspectionThread(QThread):
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ''', row)
                 self.mysql_conn.commit()
+                return True
             except Exception as e:
                 if report_failure:
                     raise
                 print(f"Error saving to MySQL database: {str(e)}")
+        return False
 
     def get_last_entry_currentnumofPart(self, part_name):
         self.cursor.execute('''
