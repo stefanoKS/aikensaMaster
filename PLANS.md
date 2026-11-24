@@ -8,3 +8,39 @@
 
 Milestone 3 is not implemented. Synthetic coordinator execution alone is not
 dynamic UI registration. Milestone 4 requires the actual machine.
+
+## Implementation sequence
+
+A baseline → B main menu → C camera safety → D Settings → E widget-17 strategy
+→ F registry → G worker dispatch → H results → I generic UI → K new-part
+integration → J legacy migrations → L executable gates → M documentation.
+Each change must pass targeted and applicable full software tests, preserve
+production configuration, and be committed independently. No incomplete
+migration is to be enabled.
+
+### A — Baseline (software PASS)
+
+- Local and remote `main` both started at `ebbf9d66d1ad8590b9a566258bd0650672cbc315`.
+- Offscreen suite in the `aikensamaster` Conda environment: 131 passed,
+  4 failed, 0 skipped. The failures were all menu tests for four standard
+  buttons removed in an existing local edit of `mainPage.ui`; the baseline
+  runner in Conda `base` separately lacked PyQt5 and pygame.
+- A tracked-only archive of the starting commit ran 134 passed, 1 failed,
+  0 skipped. `test_existing_repository_calibration_files_still_load` uses
+  local, untracked calibration files and fails in a fresh checkout.
+- `compileall` passed. No tracked production configuration differed from HEAD.
+- Starting sizes: `AIKensa.py` 1,735 lines, `inspection_thread.py` 4,168,
+  `calibration_thread.py` 740. The widget-17 behavior is recorded in
+  [CHECKGATES.md](./CHECKGATES.md#widget-17-baseline); parity tests passed.
+- Tracked menu canvas: 1920×1190, four standard controls at y=1100, and page 0
+  hosted in a scroll area. The local edit already reduced the canvas height
+  to 1080 but removed the four controls.
+- IC4 has a dummy fallback. Its placeholder renderer is separate from the
+  worker fallback, and existing tests do not establish disconnect safety
+  across both worker loops.
+- Measured offscreen minimum size hints: Settings hub 525×220; camera page
+  1362×1006. The hub scrolls internally rather than propagating that camera
+  page minimum to the window.
+
+Next: B, restore the controls within the 1920×1080 unscrolled menu. Physical
+machine qualification is **NOT TESTED**.

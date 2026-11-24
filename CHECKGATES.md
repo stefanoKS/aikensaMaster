@@ -1,5 +1,27 @@
 # Inspection strategy checkgates
 
+## Gate IDs and status
+
+Use **PASS**, **FAIL**, **BLOCKED**, or **NOT TESTED**. Track software and
+physical-machine qualification separately; a software PASS does not confer a
+machine PASS.
+
+| ID | Software gate |
+|---|---|
+| A | Reproduce the baseline; document rules and preserve machine configuration |
+| B | 1920×1080 unscrolled main menu; legacy indices and fullscreen preserved |
+| C | Camera placeholders, fail-closed acquisition, calibration and reconnect |
+| D | Consistent, usable Settings; unchanged configuration behavior |
+| E | Data-driven widget-17 strategy with original behavior |
+| F | Authoritative part registry and validation |
+| G | Generic worker dispatch with explicit failures |
+| H | One result, presentation, counters and persistence |
+| I | Generic part navigation and presentation |
+| J | Verified incremental legacy strategy migrations |
+| K | Complete new-part integration with no central product-specific edits |
+| L | Executable software checkgates |
+| M | Readability and operator/developer documentation |
+
 ## Requirements
 
 - Preserve widget 17 inference parameters, partcheck outputs, tolerances,
