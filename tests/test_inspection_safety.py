@@ -116,12 +116,6 @@ def test_cam2_widget_offset_is_composed_not_patched_into_h02():
     assert "adjusted[1, 2] +=" not in source
 
 
-def test_inspection_blocks_uncalibrated_merge():
-    source = THREADS["inspection"].read_text(encoding="utf-8")
-    assert "self.H1_scaled is None or self.H2_scaled is None" in source
-    assert "ホモグラフィが未計算" in source
-
-
 def test_warp_template_mask_is_built_in_source_coordinates():
     from aikensa.core.scripts.img_processing import cameracalibrate
 

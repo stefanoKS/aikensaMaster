@@ -558,3 +558,157 @@ def test_calibration_run_drops_invalid_frames_and_save_requests(
         assert not worker.calib_config.calculateCamMatrix
         assert len(previews) == 1 and previews[0][0] == page - 1
         assert not previews[0][1].isNull()
+
+
+@pytest.fixture()
+def camera_geometry(settings):
+    sizes = ((320, 240), (400, 300))
+    cameras, _ = settings.repository.load_camera_settings()
+    for index, (width, height) in enumerate(sizes):
+        cameras.assignment(index).serial = f"SN-{index}"
+        hardware = cameras.hardware_for(index)
+        hardware.width_px, hardware.height_px = width, height
+    settings.repository.save_camera_settings(cameras)
+    matrices = [np.array([[50.0 + i, 0, 32], [0, 50, 24], [0, 0, 1]]) for i in (0, 1)]
+    for index, matrix in enumerate(matrices):
+        settings.repository.save_intrinsic(index, matrix, np.zeros(5))
+        settings.repository.save_intrinsic(index, matrix, np.zeros(5), scaled=True)
+        settings.repository.save_homography(index, np.eye(3))
+        settings.repository.save_homography(index, np.eye(3), scaled=True)
+
+    def capture_factory(identifier, **kwargs):
+        index = int(identifier[-1])
+        kwargs["width"], kwargs["height"] = sizes[index]
+        return FakeCapture(identifier, **kwargs)
+
+    return CameraService(settings, capture_factory=capture_factory), sizes, matrices
+
+
+@pytest.mark.parametrize("widget", [17, 22])
+@pytest.mark.parametrize("problem", [
+    "missing_cam1", "missing_cam2", "scaled", "homography", "scaled_homography",
+    "invalid_matrix", "invalid_distortion", "acquired_size",
+])
+def test_inspection_run_blocks_cycle_and_record_on_geometry_error(
+    qapp, settings, monkeypatch, tmp_path, worker_modules, camera_geometry, widget, problem,
+):
+    from unittest.mock import Mock
+    from PyQt5.QtCore import QThread
+
+    service, _, _ = camera_geometry
+    if problem == "missing_cam1":
+        settings.paths.calibration_file(0).unlink()
+    elif problem == "missing_cam2":
+        settings.paths.calibration_file(1).unlink()
+    elif problem == "scaled":
+        settings.paths.calibration_scaled_file(0).unlink()
+    elif problem in ("homography", "scaled_homography"):
+        settings.paths.homography_file(0, scaled=(problem == "scaled_homography")).write_text(
+            "[[1, 0, 0], [0, 0, 0], [0, 0, 1]]", encoding="utf-8"
+        )
+    elif problem == "acquired_size":
+        cameras, _ = settings.repository.load_camera_settings()
+        cameras.hardware_for(0).width_px += 4
+        settings.repository.save_camera_settings(cameras)
+        settings.record_calibration_metadata(0)
+    else:
+        import yaml
+
+        path = settings.paths.calibration_file(0)
+        payload = yaml.safe_load(path.read_text(encoding="utf-8"))
+        if problem == "invalid_matrix":
+            payload["camera_matrix"][0][0] = -1
+        else:
+            payload["distortion_coefficients"] = [0.0]
+        path.write_text(yaml.safe_dump(payload), encoding="utf-8")
+    _, module = worker_modules
+    worker = module.InspectionThread.__new__(module.InspectionThread)
+    QThread.__init__(worker)
+    worker.inspection_config = module.InspectionConfig(widget=widget, doInspection=True)
+    original_counts = [counts.copy() for counts in worker.inspection_config.current_numofPart]
+    worker.settings = settings
+    worker.camera_service = service
+    worker.camera_stream = CameraStream(service, CameraRole.INSPECTION)
+    worker._camera_diagnostic = ("", ())
+    worker.running = True
+    worker._last_color_debug_ts = float("inf")
+    worker._color_debug_interval_sec = 1
+    worker.scaled_width = worker.scaled_height = 8
+    worker.widget_dir_map = {}
+    worker.inspection_widget_indices = [widget]
+    worker.initialize_model = Mock()
+    worker._check_date_rollover = Mock()
+    worker._begin_inspection_cycle = Mock()
+    worker.msleep = lambda _: setattr(worker, "running", False)
+    for name in ("mysqlHost", "mysqlID", "mysqlPassword", "mysqlHostPort"):
+        setattr(worker, name, None)
+    errors = []
+    worker.cameraErrorSignal.connect(errors.append)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(module.cv2, "imread", lambda _: np.zeros((40, 40, 3), np.uint8))
+
+    worker.run()
+    try:
+        worker._begin_inspection_cycle.assert_not_called()
+        assert not worker.inspection_config.doInspection
+        assert worker.inspection_config.current_numofPart == original_counts
+        assert len(errors) == 1 and errors[0]
+        assert worker.conn.execute("SELECT count(*) FROM inspection_results").fetchone() == (0,)
+    finally:
+        worker.conn.close()
+
+
+@pytest.mark.parametrize("role", [CameraRole.CALIBRATION, CameraRole.INSPECTION])
+def test_workers_build_maps_at_each_source_frame_size(
+    qapp, settings, monkeypatch, worker_modules, camera_geometry, role,
+):
+    from PyQt5.QtCore import QThread
+
+    service, sizes, matrices = camera_geometry
+    calibration, inspection = worker_modules
+    module = calibration if role is CameraRole.CALIBRATION else inspection
+    calls = []
+    orig = module.cv2.initUndistortRectifyMap
+
+    def capture_maps(matrix, coeffs, rotation, new_matrix, size, dtype):
+        calls.append((matrix.copy(), size))
+        return orig(matrix, coeffs, rotation, new_matrix, size, dtype)
+
+    monkeypatch.setattr(module.cv2, "initUndistortRectifyMap", capture_maps)
+    if role is CameraRole.CALIBRATION:
+        worker = module.CalibrationThread.__new__(module.CalibrationThread)
+        QThread.__init__(worker)
+        worker.calib_config = module.CalibrationConfig(widget=3, calculateHomo_cam1=True)
+        worker._persist_homography = lambda *_args, **_kwargs: False
+        for name in ("H1_high", "H2_high", "H1_high_scaled", "H2_high_scaled"):
+            setattr(worker, name, None)
+        worker.frame_width, worker.frame_height = sizes[0]
+        worker.scale_factor = 5
+        worker.running = True
+        worker.CamMergeAll.connect(lambda *_: setattr(worker, "running", False))
+        monkeypatch.setattr(module.cv2, "imread", lambda _: np.zeros((40, 40, 3), np.uint8))
+        monkeypatch.setattr(module, "calculateHomography_template", lambda *_: (None, None))
+    else:
+        worker = module.InspectionThread.__new__(module.InspectionThread)
+        QThread.__init__(worker)
+        worker.inspection_config = module.InspectionConfig(widget=17)
+        worker._camera_diagnostic = ("", ())
+        worker.homography_size = (40, 40)
+        worker.homography_size_scaled = (8, 8)
+    worker.settings = settings
+    worker.camera_service = service
+    worker.camera_stream = CameraStream(service, role)
+    if role is CameraRole.CALIBRATION:
+        worker.run()
+    else:
+        try:
+            worker._load_geometry_from_settings()
+            assert worker._capture_inspection_frames()
+            worker.mergeframe1_scaled = worker.downSampling(worker.mergeframe1, 8, 8)
+            worker.mergeframe2_scaled = worker.downSampling(worker.mergeframe2, 8, 8)
+            assert worker._prepare_camera_maps(), worker._camera_diagnostic
+        finally:
+            worker.release_all_camera()
+    assert [size for _, size in calls[:2]] == list(sizes)
+    for (actual, _), expected in zip(calls, matrices):
+        np.testing.assert_array_equal(actual, expected)

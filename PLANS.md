@@ -4,7 +4,8 @@
 
 1. CG-P2-00: current main menu and baseline reconciled (software PASS:
    161 tests; machine NOT TESTED).
-2. CG-P2-10: independently validate camera geometry in both workers.
+2. CG-P2-10: independent native rectification and trigger guards implemented;
+   production crop/high-homography fail-closed coverage remains open.
 3. CG-P2-20 through CG-P2-50: typed configuration, daily strategy, three-position
    workflow, and editable Settings with restart and rollback evidence.
 4. CG-P2-60 through CG-P2-80: production migration and preview work, after the

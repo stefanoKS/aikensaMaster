@@ -66,6 +66,19 @@ machine PASS.
 - Regression checks: `tests/test_camera_lifecycle.py`. Device acceptance
   of the requested values and physical frame orientation are separate gates.
 
+## Camera rectification (CG-P2-10, partial)
+
+- `tests/test_camera_lifecycle.py` exercises unequal native camera sizes and
+  distinct intrinsics in both workers. Full maps use each source's own
+  dimensions. Preview maps use the established common downsample dimensions.
+- Missing or invalid intrinsics, incompatible acquired dimensions and
+  missing/invalid homographies block accepted triggers (widgets 17 and 22)
+  and leave product counters and the inspection database untouched.
+- Pair timing is host receive skew, not hardware synchronization. Legacy
+  profiles without calibration metadata cannot be checked against an
+  original calibration resolution. Production crop and high-homography
+  preparation failures and physical orientation remain open checks.
+
 ## Commands
 
 ```sh

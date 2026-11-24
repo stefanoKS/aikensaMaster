@@ -16,6 +16,7 @@ from aikensa.core.camera.camera_service import CameraRole, CameraStream
 from aikensa.core.camera.placeholder import make_camera_placeholder
 from aikensa.core.camera.registry import get_camera_service
 from aikensa.core.settings.service import SettingsService
+from aikensa.core.geometry.pipeline import GeometryPipeline, UncalibratedError
 from aikensa.core.scripts.img_processing.cameracalibrate import detectCharucoBoard, detectCharucoBoard_scaledImage, calculatecameramatrix, calculatecameramatrix_scaledImage, warpTwoImages, calculateHomography_template, warpTwoImages_template
 from aikensa.core.scripts.img_processing.arucoplanarize import planarize_image_wide, planarize_image_narrow
 from dataclasses import dataclass, field
@@ -183,8 +184,6 @@ class CalibrationThread(QThread):
         if message != self._camera_diagnostic:
             if not message:
                 self._load_calibration_data_from_settings()
-                for index in range(2):
-                    self.calib_config.mapCalculated[index] = False
             self._camera_diagnostic = message
             self.cameraErrorSignal.emit(message)
 
@@ -277,6 +276,9 @@ class CalibrationThread(QThread):
                 self._camera_diagnostic = ""
                 cameras, _issues = self.settings.repository.load_camera_settings()
                 self.ic4_rotate_180 = cameras.rotate_180_global
+                if page == 3:
+                    self._merge_geometry_diagnostic = ""
+                    self._load_calibration_data_from_settings()
             if page not in (1, 2, 3):
                 self.calib_config.cameraID = -1
                 self.msleep(50)
@@ -345,26 +347,25 @@ class CalibrationThread(QThread):
                 if not self.running or page != self.calib_config.widget:
                     continue
 
-                #Calculate all map from calibration matrix for 5 cameras, thus i in range(1, 6)
-                for i in range(0, 2):
-                    if self.calib_config.mapCalculated[i] is False:
-                        if os.path.exists(self._save_dir + f"Calibration_camera_{i}.yaml"):
-                            try:
-                                camera_matrix, dist_coeffs = self.load_matrix_from_yaml(self._save_dir + f"Calibration_camera_{i}.yaml")
-                            except ValueError as e:
-                                print(f"[Calibration] Camera {i}: {e}")
-                                continue
-                            # Precompute the undistort and rectify map for faster processing
-                            h, w = self.mergeframe1.shape[:2] #use mergeframe1 as reference
-                            self.calib_config.map1[i], self.calib_config.map2[i] = cv2.initUndistortRectifyMap(camera_matrix, dist_coeffs, None, camera_matrix, (w, h), cv2.CV_16SC2)
-                            print(f"map1 and map2 value is calculated")
-                            self.calib_config.mapCalculated[i] = True
-                            print(f"Calibration map is calculated for Camera {i}")
-
-                if all(self.calib_config.mapCalculated[i] for i in range(0, 2)):
-                    # print("All calibration maps are calculated.")
-                    self.mergeframe1 = cv2.remap(self.mergeframe1, self.calib_config.map1[0], self.calib_config.map2[0], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-                    self.mergeframe2 = cv2.remap(self.mergeframe2, self.calib_config.map1[1], self.calib_config.map2[1], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+                frames = (self.mergeframe1, self.mergeframe2)
+                try:
+                    self.mergeframe1, self.mergeframe2 = (
+                        self._merge_geometry.undistort(frame, index)
+                        for index, frame in enumerate(frames)
+                    )
+                except UncalibratedError as exc:
+                    for flag in (
+                        "calculateHomo_cam1", "calculateHomo_cam2", "calculateHomo_cam1_high",
+                        "calculateHomo_cam2_high", "savePlanarize", "savePlanarizeHigh",
+                    ):
+                        setattr(self.calib_config, flag, False)
+                    for frame, signal in zip(frames, (self.CamMerge1, self.CamMerge2)):
+                        signal.emit(self.convertQImage(self.downSampling(frame, 246, 163)).copy())
+                    self.CamMergeAll.emit(QImage(), QSize())
+                    self._report_merge_geometry(str(exc))
+                    self.msleep(100)
+                    continue
+                self._report_merge_geometry("")
 
                 # self.mergeframe1 = cv2.cvtColor(self.mergeframe1, cv2.COLOR_BGR2RGB)
                 # self.mergeframe2 = cv2.cvtColor(self.mergeframe2, cv2.COLOR_BGR2RGB)
@@ -622,14 +623,11 @@ class CalibrationThread(QThread):
         plausible-looking identity transform.
         """
 
-        try:
-            self.settings.bootstrap()
-        except Exception as e:  # pragma: no cover - defensive
-            print(f"[Calibration] settings bootstrap failed: {e}")
-
+        snapshot = self.settings.load_snapshot()
+        self._merge_geometry = GeometryPipeline.from_snapshot(snapshot, self.homography_size)
         repository = self.settings.repository
         for camera_index, suffix in ((0, "1"), (1, "2")):
-            full = repository.load_homography(camera_index)
+            full = snapshot.homographies[camera_index]
             scaled = repository.load_homography(camera_index, scaled=True)
             setattr(self, f"homography_matrix{suffix}", None if full.matrix is None else full.matrix.tolist())
             setattr(self, f"H{suffix}", None if full.matrix is None else full.matrix)
@@ -648,6 +646,11 @@ class CalibrationThread(QThread):
         ):
             matrix, _state = repository.load_planarize_transform(name)
             setattr(self, attr, matrix)
+
+    def _report_merge_geometry(self, message):
+        if message != getattr(self, "_merge_geometry_diagnostic", ""):
+            self._merge_geometry_diagnostic = message
+            self.cameraErrorSignal.emit(message)
 
     def convertQImage(self, image):
         # Convert resized cv2 image to QImage

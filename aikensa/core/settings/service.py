@@ -232,15 +232,22 @@ class SettingsService:
             record.get("height_px"),
             record.get("rotate_180"),
         )
+        width, height, _rotation = recorded
+        if type(width) is int and type(height) is int and width > 0 and height > 0:
+            intrinsic.width_px, intrinsic.height_px = width, height
         current = (hw.width_px, hw.height_px, bool(hw.rotate_180))
-        if all(value is not None for value in recorded) and tuple(recorded) != current:
+        serial = record.get("serial")
+        if (
+            (all(value is not None for value in recorded) and recorded != current)
+            or (serial and serial != cameras.assignment(index).normalized_serial())
+        ):
             intrinsic.state = CalibrationState.INCOMPATIBLE
             issues.append(
                 ValidationIssue(
                     Severity.ERROR,
                     f"camera{index}.calibration",
                     intrinsic.state.label_ja
-                    + f": カメラ{index + 1} の解像度/向きが校正時と異なります。再校正してください。",
+                    + f": カメラ{index + 1} の割当・解像度・向きを確認し、再校正してください。",
                 )
             )
         return intrinsic, issues

@@ -21,7 +21,8 @@ from aikensa.core.camera.placeholder import make_camera_placeholder
 from aikensa.core.camera.registry import get_camera_service
 from aikensa.core.settings.service import SettingsService
 from aikensa.core.scripts.img_processing.cameracalibrate import warpTwoImages_template
-from aikensa.core.geometry.transforms import compose_into_base, rotation_about_pivot, translation_matrix
+from aikensa.core.geometry.pipeline import GeometryPipeline, UncalibratedError
+from aikensa.core.geometry.transforms import compose_into_base, is_valid_homography, rotation_about_pivot, translation_matrix
 from dataclasses import dataclass, field
 from typing import List
 
@@ -260,6 +261,33 @@ class InspectionThread(QThread):
         self.mergeframe1, self.mergeframe2 = first.image, second.image
         return True
 
+    def _prepare_camera_maps(self):
+        config = self.inspection_config
+        try:
+            full = self._full_geometry.pair_rectification_maps((self.mergeframe1, self.mergeframe2))
+            scaled = self._scaled_geometry.pair_rectification_maps(
+                (self.mergeframe1_scaled, self.mergeframe2_scaled)
+            )
+            if not all(is_valid_homography(matrix) for matrix in (self.H1, self.H2)):
+                raise UncalibratedError("全解像度のホモグラフィ")
+        except UncalibratedError as exc:
+            config.mapCalculated[:2] = [False, False]
+            for maps in (config.map1, config.map2, config.map1_downscaled, config.map2_downscaled):
+                maps[:2] = [None, None]
+            self.combinedImage_scaled = None
+            self._inspection_start_image = None
+            config.doInspection = False
+            message = str(exc)
+            if self._camera_diagnostic[0] != message:
+                self._camera_diagnostic = (message, ())
+                self.cameraErrorSignal.emit(message)
+            return False
+        for index, ((map1, map2), (preview1, preview2)) in enumerate(zip(full, scaled)):
+            config.map1[index], config.map2[index] = map1, map2
+            config.map1_downscaled[index], config.map2_downscaled[index] = preview1, preview2
+            config.mapCalculated[index] = True
+        return True
+
     def run(self):
         try:
             self._run_inspection()
@@ -401,31 +429,11 @@ class InspectionThread(QThread):
                 self.mergeframe1_scaled = self.downSampling(self.mergeframe1, self.scaled_width, self.scaled_height)
                 self.mergeframe2_scaled = self.downSampling(self.mergeframe2, self.scaled_width, self.scaled_height)
 
-                if self.inspection_config.mapCalculated[1] is False:  # Only checking the first camera for efficiency
-                    for i in range(0, 2): #Make sure to check the camID
-                        calib_file = self._save_dir + f"Calibration_camera_{i}.yaml"
-                        if os.path.exists(calib_file):
-                            camera_matrix, dist_coeffs = self.load_matrix_from_yaml(calib_file)
-                            h, w = self.mergeframe1.shape[:2]
-                            self.inspection_config.map1[i], self.inspection_config.map2[i] = cv2.initUndistortRectifyMap(
-                                camera_matrix, dist_coeffs, None, camera_matrix, (w, h), cv2.CV_16SC2
-                            )
-                            self.inspection_config.mapCalculated[i] = True
-                            print(f"Calibration map calculated for Camera {i}")
+                if not self._prepare_camera_maps():
+                    self.msleep(100)
+                    continue
 
-                            scaled_file = self._save_dir + f"Calibration_camera_scaled_{i}.yaml"
-
-                            if os.path.exists(scaled_file):
-                                camera_matrix, dist_coeffs = self.load_matrix_from_yaml(scaled_file)
-                                h, w = self.mergeframe1_scaled.shape[:2]
-                                self.inspection_config.map1_downscaled[i], self.inspection_config.map2_downscaled[i] = cv2.initUndistortRectifyMap(
-                                    camera_matrix, dist_coeffs, None, camera_matrix, (w, h), cv2.CV_16SC2
-                                )
-                                print(f"Downscaled calibration map calculated for Camera {i}")
-                            else:
-                                print(f"Error: Scaled calibration file {scaled_file} does not exist.")
-
-                if self.inspection_config.mapCalculated[1] is True: #Just checking the first camera to reduce loop time
+                if all(self.inspection_config.mapCalculated[:2]):
 
                     has_downscaled_maps = all(v is not None for v in [
                         self.inspection_config.map1_downscaled[0],
@@ -451,7 +459,7 @@ class InspectionThread(QThread):
                         )
 
                     if self.inspection_config.widget in self.inspection_widget_indices: # no need to emit katabu
-                        if self.H1_scaled is None or self.H2_scaled is None:
+                        if not all(is_valid_homography(matrix) for matrix in (self.H1_scaled, self.H2_scaled)):
                             # Uncalibrated machine: report it instead of warping with
                             # placeholder geometry (which used to crash in OpenCV).
                             message = "ホモグラフィが未計算です。校正を実行してください。"
@@ -1330,7 +1338,7 @@ class InspectionThread(QThread):
                             self.emit = self.combinedImage_scaled
                             self._emit_kensa_status(x_offset=-200, y_offset=-100, fallback_shape=(137, 1791, 3))
 
-                            if not self.inspection_config.mapCalculated[1]:
+                            if not all(self.inspection_config.mapCalculated[:2]):
                                 continue
 
                             if any(v is None for v in [
@@ -1447,7 +1455,7 @@ class InspectionThread(QThread):
                             self.emit = self.combinedImage_scaled
                             self._emit_kensa_status(x_offset=-200, y_offset=-100, fallback_shape=(137, 1791, 3))
 
-                            if not self.inspection_config.mapCalculated[1]:
+                            if not all(self.inspection_config.mapCalculated[:2]):
                                 continue
 
                             if any(v is None for v in [
@@ -1554,7 +1562,7 @@ class InspectionThread(QThread):
                             self.emit = self.combinedImage_scaled
                             self._emit_kensa_status(x_offset=-200, y_offset=-100, fallback_shape=(137, 1791, 3))
 
-                            if not self.inspection_config.mapCalculated[1]:
+                            if not all(self.inspection_config.mapCalculated[:2]):
                                 continue
 
                             if any(v is None for v in [
@@ -1659,7 +1667,7 @@ class InspectionThread(QThread):
                             self.emit = self.combinedImage_scaled
                             self._emit_kensa_status(x_offset=-200, y_offset=-100, fallback_shape=(137, 1791, 3))
 
-                            if not self.inspection_config.mapCalculated[1]:
+                            if not all(self.inspection_config.mapCalculated[:2]):
                                 continue
 
                             if any(v is None for v in [
@@ -1763,7 +1771,7 @@ class InspectionThread(QThread):
                             self.emit = self.combinedImage_scaled
                             self._emit_kensa_status(x_offset=-200, y_offset=-100, fallback_shape=(137, 1791, 3))
 
-                            if not self.inspection_config.mapCalculated[1]:
+                            if not all(self.inspection_config.mapCalculated[:2]):
                                 continue
 
                             if any(v is None for v in [
@@ -1874,7 +1882,7 @@ class InspectionThread(QThread):
                             self.emit = self.combinedImage_scaled
                             self._emit_kensa_status(x_offset=-200, y_offset=-100, fallback_shape=(137, 1791, 3))
 
-                            if not self.inspection_config.mapCalculated[1]:
+                            if not all(self.inspection_config.mapCalculated[:2]):
                                 continue
 
                             if any(v is None for v in [
@@ -1977,7 +1985,7 @@ class InspectionThread(QThread):
                             self.emit = self.combinedImage_scaled
                             self._emit_kensa_status(x_offset=-200, y_offset=-100, fallback_shape=(137, 1791, 3))
 
-                            if not self.inspection_config.mapCalculated[1]:
+                            if not all(self.inspection_config.mapCalculated[:2]):
                                 continue
 
                             if any(v is None for v in [
@@ -3355,14 +3363,16 @@ class InspectionThread(QThread):
         "not calibrated" instead of warping with an invented matrix.
         """
 
-        try:
-            self.settings.bootstrap()
-        except Exception as e:  # pragma: no cover - defensive
-            print(f"[Inspection] settings bootstrap failed: {e}")
-
         repository = self.settings.repository
+        snapshot = self.settings.load_snapshot()
+        self.ic4_rotate_180 = snapshot.cameras.rotate_180_global
+        self._full_geometry = GeometryPipeline.from_snapshot(snapshot, self.homography_size)
+        self._scaled_geometry = GeometryPipeline(
+            self.homography_size_scaled,
+            intrinsics={i: repository.load_intrinsic(i, scaled=True) for i in (0, 1)},
+        )
         for camera_index, suffix in ((0, "1"), (1, "2")):
-            full = repository.load_homography(camera_index)
+            full = snapshot.homographies[camera_index]
             scaled = repository.load_homography(camera_index, scaled=True)
             setattr(self, f"homography_matrix{suffix}", None if full.matrix is None else full.matrix.tolist())
             setattr(self, f"H{suffix}", None if full.matrix is None else full.matrix)

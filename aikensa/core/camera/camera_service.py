@@ -365,11 +365,12 @@ class CameraStream:
 
     def read_pair(self) -> Tuple[Optional[RealCameraFrame], Optional[RealCameraFrame]]:
         first, second = self.read(0), self.read(1)
-        if first is not None and second is not None and (
-            second.received_at - first.received_at > _MAX_PAIR_AGE
-        ):
-            self.errors[0] = "カメラ1 の画像が古すぎます。接続・FPS 設定を確認してください。"
-            first = None
+        if first is not None and second is not None:
+            receive_skew = second.received_at - first.received_at
+            LOGGER.debug("%s camera pair receive skew: %.3f ms", self.role.value, receive_skew * 1000)
+            if receive_skew > _MAX_PAIR_AGE:
+                self.errors[0] = "カメラ1 の画像が古すぎます。接続・FPS 設定を確認してください。"
+                first = None
         return first, second
 
     def close(self) -> None:

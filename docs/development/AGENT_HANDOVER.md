@@ -8,7 +8,18 @@ passed `compileall`; the initial offscreen suite had 159 passes and two
 failures, both expecting buttons intentionally removed in `c8d4868`.
 CG-P2-00 reconciles those expectations without changing Designer files or
 machine configuration. Software PASS: 60 Qt tests and 161 full-suite tests,
-zero failures or skips. Next: CG-P2-10, camera map dimensions and readiness.
+zero failures or skips.
+
+CG-P2-10 now uses each camera's native frame dimensions and validated
+intrinsics in both workers. Inspection checks both cameras' full and scaled
+maps and homographies before accepting a cycle. A failed merge-calibration
+map leaves raw camera previews available but prevents calibration saves.
+Software tests use distinct intrinsics at 320×240 and 400×300 with fake
+cameras and isolated persistence; full regression: 178 passed, no failures or
+skips. No production capture, transform order or
+machine configuration files were changed. Gate remains partial: move
+production crop/high-homography and late preparation errors out of the
+legacy black-image fallback; verify transform parity and reconnect metadata.
 
 ## Prior evidence
 

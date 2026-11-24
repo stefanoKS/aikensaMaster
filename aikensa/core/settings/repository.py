@@ -340,8 +340,11 @@ class SettingsRepository:
     # ------------------------------------------------------------------
     # Intrinsic calibration
     # ------------------------------------------------------------------
-    def load_intrinsic(self, camera_index: int) -> IntrinsicCalibration:
-        path = self.paths.calibration_file(camera_index)
+    def load_intrinsic(self, camera_index: int, *, scaled: bool = False) -> IntrinsicCalibration:
+        path = (
+            self.paths.calibration_scaled_file(camera_index) if scaled
+            else self.paths.calibration_file(camera_index)
+        )
         calibration = IntrinsicCalibration(camera_index=camera_index, source_path=str(path))
         data, error = read_yaml_result(path)
 

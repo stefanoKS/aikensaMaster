@@ -30,6 +30,7 @@ from aikensa.core.geometry.transforms import (
     warp_with_mask,
 )
 from aikensa.core.settings.schema import (
+    CalibrationState,
     CropRect,
     GlobalAlignment,
     HomographyCalibration,
@@ -37,6 +38,7 @@ from aikensa.core.settings.schema import (
     MachineSettingsSnapshot,
     WidgetAlignment,
 )
+from aikensa.core.settings.validator import validate_camera_matrix, validate_distortion_coefficients
 
 LOGGER = logging.getLogger(__name__)
 
@@ -126,25 +128,54 @@ class GeometryPipeline:
             return cached
 
         intrinsic = self.intrinsics[camera_index]
+        if intrinsic.state in (CalibrationState.INVALID, CalibrationState.INCOMPATIBLE):
+            raise UncalibratedError(f"内部パラメータ（{intrinsic.state.label_ja}・再校正が必要）", camera_index)
+        if (
+            intrinsic.width_px is not None and intrinsic.height_px is not None
+            and image_size != (intrinsic.width_px, intrinsic.height_px)
+        ):
+            raise UncalibratedError("実画像と校正時の解像度が一致しないため、内部パラメータ", camera_index)
+        if (
+            validate_camera_matrix(intrinsic.camera_matrix, "camera_matrix")
+            or validate_distortion_coefficients(intrinsic.distortion_coefficients, "distortion_coefficients")
+        ):
+            raise UncalibratedError("内部パラメータ（不正）", camera_index)
         camera_matrix = np.asarray(intrinsic.camera_matrix, dtype=np.float64)
         dist_coeffs = np.asarray(intrinsic.distortion_coefficients, dtype=np.float64)
         # Shape the distortion coefficients the way OpenCV expects (1, N).
         dist_coeffs = dist_coeffs.reshape(1, -1)
 
         width, height = int(image_size[0]), int(image_size[1])
-        map1, map2 = cv2.initUndistortRectifyMap(
-            camera_matrix, dist_coeffs, None, camera_matrix, (width, height), cv2.CV_16SC2
-        )
+        try:
+            map1, map2 = cv2.initUndistortRectifyMap(
+                camera_matrix, dist_coeffs, None, camera_matrix, (width, height), cv2.CV_16SC2
+            )
+        except cv2.error as exc:
+            raise UncalibratedError("内部補正マップ", camera_index) from exc
+        if any(m is None or m.shape[:2] != (height, width) for m in (map1, map2)):
+            raise UncalibratedError("内部補正マップ", camera_index)
         self._rectification_maps[key] = (map1, map2)
         return map1, map2
+
+    def pair_rectification_maps(
+        self, frames: Tuple[np.ndarray, np.ndarray]
+    ) -> Tuple[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]:
+        first, second = frames
+        return (
+            self.rectification_maps(0, (first.shape[1], first.shape[0])),
+            self.rectification_maps(1, (second.shape[1], second.shape[0])),
+        )
 
     def undistort(self, frame: np.ndarray, camera_index: int) -> np.ndarray:
         if frame is None:
             raise ValueError("frame is None")
         map1, map2 = self.rectification_maps(camera_index, (frame.shape[1], frame.shape[0]))
-        return cv2.remap(
-            frame, map1, map2, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT
-        )
+        try:
+            return cv2.remap(
+                frame, map1, map2, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT
+            )
+        except cv2.error as exc:
+            raise UncalibratedError("内部補正処理", camera_index) from exc
 
     # ------------------------------------------------------------------
     # Stage 2: effective homography
