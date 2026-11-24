@@ -114,3 +114,13 @@ Gates E–M and physical qualification have not been executed.
   offscreen Qt screenshots of the menu, calibration merge, production,
   clip-picking, Katabu, clip selection and all three daily positions.
 - Physical display and hardware operation are **NOT TESTED**.
+
+### WP2 — Camera and calibration correctness (partial)
+
+- CG-20 software **PASS**: the IC4 opening path forwards the saved exposure
+  and gain alongside the other camera arguments. The readback display no
+  longer uses requested FPS/size or fallback zeroes when SDK values are
+  unavailable. Camera lifecycle suite: 28 passed.
+- Physical IC4 acceptance and measured image orientation are **NOT TESTED**.
+  CG-22 is next; CG-21, CG-23 and CG-24 still need the program-level evidence
+  described in the handover.

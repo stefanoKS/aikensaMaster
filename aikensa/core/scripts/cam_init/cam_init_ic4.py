@@ -360,6 +360,22 @@ class IC4Capture:
             frame = cv2.rotate(frame, cv2.ROTATE_180)
         return True, frame
 
+    def readback_settings(self) -> dict[str, int | float | None]:
+        """Return device-reported settings, without the defaults used by get()."""
+        try:
+            pm = self._grab.device_property_map
+        except ic4.IC4Exception as exc:
+            LOGGER.debug("IC4 settings readback unavailable: %s", exc)
+            return {}
+        return {
+            "width": _try_get_int(pm, (PID_WIDTH,)),
+            "height": _try_get_int(pm, (PID_HEIGHT,)),
+            "fps": _try_get_float(pm, (PID_ACQ_FRAME_RATE, PID_FRAME_RATE)),
+            "exposure_us": _try_get_float(pm, (PID_EXPOSURE_TIME,)),
+            "gain_db": _try_get_float(pm, (PID_GAIN,)),
+            "wb_temperature_k": _try_get_int(pm, (PID_WB_TEMP,)),
+        }
+
     def get(self, prop_id: int) -> float:
         pm = self._grab.device_property_map
         if prop_id == self._W:

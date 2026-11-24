@@ -205,7 +205,7 @@ class CameraService:
                 role=role,
                 serial=str(identifier),
                 is_placeholder=placeholder,
-                readback=self._readback(capture),
+                readback={} if placeholder else self._readback(capture),
             )
             self._handles[index] = handle
             self._owners[index] = role
@@ -308,6 +308,8 @@ class CameraService:
             width=hardware.width_px,
             height=hardware.height_px,
             fps=hardware.fps,
+            exposure_us=hardware.exposure_us,
+            gain_db=hardware.gain_db,
             wb_temperature=hardware.wb_temperature_k,
             wb_ratio_r=hardware.wb_ratio_r,
             wb_ratio_g=hardware.wb_ratio_g,
@@ -317,6 +319,9 @@ class CameraService:
 
     @staticmethod
     def _readback(capture) -> Dict[str, object]:
+        readback_settings = getattr(capture, "readback_settings", None)
+        if callable(readback_settings):
+            return readback_settings()
         readback: Dict[str, object] = {}
         for name, prop in (
             ("width", getattr(capture, "_W", 3)),

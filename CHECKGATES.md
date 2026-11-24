@@ -48,6 +48,17 @@ machine PASS.
   screenshots; confirm the actual display separately on the machine.
 - Regression checks: `tests/test_settings_ui.py`.
 
+## IC4 camera configuration (CG-20)
+
+- With no injected capture factory, `CameraService.acquire()` forwards the
+  assigned serial, logical index, size, FPS, exposure, gain, white balance
+  and rotation to the IC4 helper.
+- Settings readback uses device-reported values, not requested dimensions
+  or fallback zeroes. Unavailable properties display `-`; measured zero
+  remains zero.
+- Regression checks: `tests/test_camera_lifecycle.py`. Device acceptance
+  of the requested values and physical frame orientation are separate gates.
+
 ## Commands
 
 ```sh

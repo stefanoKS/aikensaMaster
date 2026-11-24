@@ -224,6 +224,87 @@ def test_configured_settings_reach_the_capture(service, settings):
     assert handle.serial == "SERIAL-0"
 
 
+def test_saved_settings_reach_the_ic4_opening_helper(settings, monkeypatch):
+    import sys
+    from types import ModuleType
+    from unittest.mock import Mock
+
+    cameras, _ = settings.repository.load_camera_settings()
+    cameras.assignments[0].serial = "SERIAL-0"
+    cameras.assignments[1].serial = "SERIAL-1"
+    hardware = cameras.hardware_for(1)
+    hardware.width_px, hardware.height_px, hardware.fps = 2592, 1944, 9.0
+    hardware.exposure_us, hardware.gain_db = 12000.0, 4.5
+    hardware.wb_temperature_k = 5100
+    hardware.wb_ratio_r, hardware.wb_ratio_g, hardware.wb_ratio_b = 1.7, 1.1, 2.4
+    cameras.rotate_180_global = False
+    for index in (0, 1):
+        cameras.hardware_for(index).rotate_180 = False
+    settings.save_camera_settings(cameras)
+
+    name = "aikensa.core.scripts.cam_init.cam_init_ic4"
+    ic4_module = ModuleType(name)
+    capture = FakeCapture("SERIAL-1")
+    report = {"width": 2500, "exposure_us": 11950.0, "gain_db": None}
+    capture.readback_settings = Mock(return_value=report)
+    ic4_module.open_ic4_camera_or_placeholder = Mock(return_value=capture)
+    monkeypatch.setitem(sys.modules, name, ic4_module)
+
+    service = CameraService(settings)
+    handle = service.acquire(1, CameraRole.CAMERA_PREVIEW)
+    try:
+        ic4_module.open_ic4_camera_or_placeholder.assert_called_once_with(
+            "SERIAL-1", camera_index=1, width=2592, height=1944, fps=9.0,
+            exposure_us=12000.0, gain_db=4.5, wb_temperature=5100,
+            wb_ratio_r=1.7, wb_ratio_g=1.1, wb_ratio_b=2.4, rotate_180=False,
+        )
+        assert handle.readback == report
+    finally:
+        service.release(1, CameraRole.CAMERA_PREVIEW)
+
+
+def test_ic4_readback_keeps_unavailable_measurements_unknown(monkeypatch):
+    import importlib.util
+    import sys
+    from types import SimpleNamespace
+
+    from tests.conftest import REPO_ROOT
+
+    class SDKError(Exception):
+        pass
+
+    sdk = SimpleNamespace(
+        DeviceInfo=object, PropertyMap=object, IC4Exception=SDKError,
+        PropId=SimpleNamespace(WIDTH="width", HEIGHT="height", GAIN="gain", EXPOSURE_TIME="exposure"),
+        PixelFormat=SimpleNamespace(),
+    )
+    monkeypatch.setitem(sys.modules, "imagingcontrol4", sdk)
+    spec = importlib.util.spec_from_file_location(
+        "_test_ic4_readback", REPO_ROOT / "aikensa/core/scripts/cam_init/cam_init_ic4.py"
+    )
+    ic4_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ic4_module)
+
+    class Properties:
+        def get_value_int(self, name):
+            if name == "height":
+                return 1944
+            raise SDKError(name)
+
+        def get_value_float(self, name):
+            if name == "gain":
+                return 0.0
+            raise SDKError(name)
+
+    capture = ic4_module.IC4Capture.__new__(ic4_module.IC4Capture)
+    capture._grab = SimpleNamespace(device_property_map=Properties())
+    capture._w, capture._h, capture._fps = 2592, 1944, 9.0
+    assert capture.readback_settings() == {
+        "width": None, "height": 1944, "fps": None, "exposure_us": None,
+        "gain_db": 0.0, "wb_temperature_k": None,
+    }
+
+
 def test_repeated_switching_does_not_leak_handles(settings):
     write_serial(settings, {0: "SN-0", 1: "SN-1"})
     FakeCapture.instances.clear()
