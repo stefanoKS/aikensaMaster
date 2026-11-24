@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+import yaml
 
 from aikensa.core.settings.migration import (
     backup_machine_files,
@@ -13,7 +14,7 @@ from aikensa.core.settings.migration import (
 from aikensa.core.settings.schema import CalibrationState, GlobalAlignment
 from aikensa.core.settings.service import SettingsService
 from aikensa.core.settings.yaml_store import SettingsValidationError, read_yaml
-from tests.conftest import REPO_ROOT, write_serial
+from tests.conftest import write_serial
 
 
 # ---------------------------------------------------------------------------
@@ -98,19 +99,38 @@ def test_homography_save_rejects_none(settings, valid_homography):
     assert settings.paths.homography_file(0).read_text(encoding="utf-8") == before
 
 
-def test_existing_repository_calibration_files_still_load():
-    """The real machine files committed in the repository must stay readable."""
-
-    from aikensa.core.settings.paths import AppPaths
-
-    service = SettingsService(AppPaths(root=REPO_ROOT))
+def test_legacy_calibration_files_load_for_both_cameras(
+    settings, paths, valid_camera_matrix, valid_distortion, valid_homography
+):
+    """Read the legacy YAML formats without relying on operator files."""
     for index in (0, 1):
-        intrinsic = service.repository.load_intrinsic(index)
-        homography = service.repository.load_homography(index)
+        camera_matrix = valid_camera_matrix.copy()
+        camera_matrix[0, 2] += 10 * index
+        transform = valid_homography.copy()
+        transform[0, 2] += 25 * index
+        paths.calibration_file(index).write_text(
+            yaml.safe_dump({
+                "camera_matrix": camera_matrix.tolist(),
+                "distortion_coefficients": valid_distortion.tolist(),
+            }),
+            encoding="utf-8",
+        )
+        paths.homography_file(index).write_text(
+            yaml.safe_dump(transform.tolist()), encoding="utf-8"
+        )
+
+    for index in (0, 1):
+        intrinsic = settings.repository.load_intrinsic(index)
+        homography = settings.repository.load_homography(index)
         assert intrinsic.state is CalibrationState.READY
+        assert intrinsic.camera_matrix is not None
         assert intrinsic.camera_matrix.shape == (3, 3)
+        assert intrinsic.camera_matrix[0, 2] == valid_camera_matrix[0, 2] + 10 * index
+        np.testing.assert_allclose(intrinsic.distortion_coefficients, valid_distortion)
         assert homography.state is CalibrationState.READY
+        assert homography.matrix is not None
         assert homography.matrix.shape == (3, 3)
+        assert homography.matrix[0, 2] == valid_homography[0, 2] + 25 * index
 
 
 def test_scaled_calibration_filenames_are_preserved(settings, valid_camera_matrix, valid_distortion):

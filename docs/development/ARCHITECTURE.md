@@ -1,0 +1,18 @@
+# Inspection architecture
+
+Keep worker I/O and the inspection algorithm separate. A trigger selects an
+approved profile; the profile selects its strategy, models, geometry and
+measurement rules. A missing configuration or strategy is an equipment
+failure, never a fallback to another inspector.
+
+| Boundary | Existing implementation | Migration rule |
+|---|---|---|
+| Camera ownership and acquisition | `CameraService`, `CameraStream` | Pass only fresh, validated real frames to geometry. Placeholders are display-only. |
+| Geometry | `GeometryPipeline` and legacy worker paths | Prove equivalence before switching a profile. Preserve frame orientation, calibration, anchoring, crop coordinates and color spaces. |
+| Configuration | `SettingsService`, its repository and `RevisionManager` | Resolve and validate a coherent active revision; do not rewrite local operator files when introducing defaults. |
+| Profile registry | Settings registry and `PartInspectorRegistry` | Consolidate product identity, capabilities, and strategy selection without moving indices 0-49. |
+| Inspection | `InspectionCoordinator`, widget-17 strategy and legacy worker branches | Strategies consume prepared inputs and return measurements or an explicit failure; they own no Qt widgets. |
+| Results and GUI | Legacy signals/counters/persistence and `AIKensa` | Route one qualified result to presentation, counters and storage. An equipment failure must not count as an inspection. |
+
+Existing paths remain active until a replacement is verified for that
+profile. See the [migration status](./MIGRATION_STATUS.md) for the handoff.
