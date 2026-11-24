@@ -17,6 +17,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 from pathlib import Path
+from threading import Lock
 from typing import Callable, Dict, List, Mapping, Optional, Tuple
 
 import numpy as np
@@ -54,6 +55,7 @@ from aikensa.core.settings.yaml_store import (
 LOGGER = logging.getLogger(__name__)
 
 CALIBRATION_METADATA_FILENAME = "calibration_metadata.yaml"
+_DAILY_REVISION_LOCK = Lock()
 
 Listener = Callable[[str], None]
 
@@ -106,6 +108,12 @@ class SettingsService:
     def load_daily_defaults(self) -> DailyConfiguration:
         return self._load_daily_revision(DAILY_DEFAULT_REVISION)
 
+    def daily_inheritance_defaults(self, configuration: DailyConfiguration) -> DailyConfiguration:
+        return resolve_daily_config(
+            self.paths.root / "aikensa/core/config",
+            configuration.revision_id, configuration.revision_payload({}),
+        )
+
     def _load_daily_revision(self, revision_id: str) -> DailyConfiguration:
         if revision_id == DAILY_DEFAULT_REVISION:
             payload = {"schema_version": 1, "positions": {}}
@@ -123,35 +131,51 @@ class SettingsService:
         return Path("daily_inspection.yaml")
 
     def save_daily_configuration(
-        self, overrides: Mapping, *, expected_revision: str, operator: str = "",
+        self, overrides: Mapping, *, expected_revision: str, operator: str = "", reason: str = "",
     ) -> SettingsRevision:
-        current = self.load_daily_configuration()
-        if current.revision_id != expected_revision:
-            raise RevisionError("日常点検の設定が更新されました。読み込み直してください。")
-        payload = {"schema_version": 1, "positions": dict(overrides)}
-        candidate = resolve_daily_config(self.paths.root / "aikensa/core/config", "", payload)
-        if candidate.overrides == current.overrides:
-            raise RevisionError("日常点検の設定に変更がありません。")
-        changed = [
-            new.profile_id for old, new in zip(current.profiles, candidate.profiles)
-            if old.reference != new.reference
-            or dict(current.overrides).get(old.profile_id) != dict(candidate.overrides).get(new.profile_id)
-        ]
-        revision_id = self.daily_revisions.stage(
-            {self._daily_payload_path: payload}, operator=operator, changes=changed
-        )
-        revision = self.daily_revisions.activate(revision_id)
+        with _DAILY_REVISION_LOCK:
+            current = self.load_daily_configuration()
+            if current.revision_id != expected_revision:
+                raise RevisionError("日常点検の設定が更新されました。読み込み直してください。")
+            payload = current.revision_payload(overrides)
+            candidate = resolve_daily_config(self.paths.root / "aikensa/core/config", "", payload)
+            if candidate.overrides == current.overrides:
+                raise RevisionError("日常点検の設定に変更がありません。")
+            changed = [
+                f"{new.profile_id}: {old.reference} → {new.reference}"
+                for old, new in zip(current.profiles, candidate.profiles)
+                if old.reference != new.reference
+                or dict(current.overrides).get(old.profile_id) != dict(candidate.overrides).get(new.profile_id)
+            ]
+            revision_id = self.daily_revisions.stage(
+                {self._daily_payload_path: payload}, operator=operator, changes=changed,
+                note=f"{reason} (previous: {current.revision_id})",
+            )
+            revision = self.daily_revisions.activate(revision_id)
         self._notify("daily_inspection")
         return revision
 
-    def rollback_daily_configuration(self, revision_id: str, *, operator: str = "") -> SettingsRevision:
-        self._load_daily_revision(revision_id)
-        if revision_id == DAILY_DEFAULT_REVISION:
-            revision_id = self.daily_revisions.stage(
-                {self._daily_payload_path: {"schema_version": 1, "positions": {}}},
-                operator=operator, changes=("共通の初期設定に復元",),
+    def rollback_daily_configuration(
+        self, revision_id: str, *, operator: str = "", reason: str = "", expected_revision: Optional[str] = None,
+    ) -> SettingsRevision:
+        with _DAILY_REVISION_LOCK:
+            active_id = self.daily_revisions.active_revision_id(strict=True) or DAILY_DEFAULT_REVISION
+            if expected_revision is not None and active_id != expected_revision:
+                raise RevisionError("日常点検の設定が更新されました。読み込み直してください。")
+            restored = self._load_daily_revision(revision_id)
+            deployed = self.load_daily_defaults()
+            if any(
+                profile.model_path != deployed.profile_for_widget(profile.widget_id).model_path
+                for profile in restored.profiles
+            ):
+                raise RevisionError("復元先のAIモデルが現在の配備と異なります。現在の設定は変更されません。")
+            payload = restored.revision_payload(restored.editable_values())
+            new_id = self.daily_revisions.stage(
+                {self._daily_payload_path: payload}, operator=operator,
+                changes=(f"{revision_id} に復元",),
+                note=f"{reason} (previous: {active_id}; restored: {revision_id})",
             )
-        revision = self.daily_revisions.rollback(revision_id)
+            revision = self.daily_revisions.activate(new_id)
         self._notify("daily_inspection")
         return revision
 

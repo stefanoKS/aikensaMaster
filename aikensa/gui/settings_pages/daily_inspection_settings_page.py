@@ -1,6 +1,6 @@
 """Edit approved daily measurements using the existing Settings service."""
 
-from PyQt5.QtCore import QSignalBlocker
+from PyQt5.QtCore import QSignalBlocker, Qt
 from PyQt5.QtWidgets import QWidget
 from yaml import YAMLError
 
@@ -44,7 +44,7 @@ class DailyInspectionSettingsPage(QWidget):
         self._dirty = self._inherit = False
         try:
             self.active = self.settings.load_daily_configuration()
-            self.defaults = self.settings.load_daily_defaults()
+            self.defaults = self.settings.daily_inheritance_defaults(self.active)
         except _CONFIG_ERRORS as exc:
             self.active = None
             self.dailyRevisionLabel.setText("日常点検の有効な設定がありません。")
@@ -57,12 +57,13 @@ class DailyInspectionSettingsPage(QWidget):
             widget.setEnabled(enabled)
         with QSignalBlocker(self.dailyHistoryCombo):
             self.dailyHistoryCombo.clear()
-            self.dailyHistoryCombo.addItem("共通の初期設定", DAILY_DEFAULT_REVISION)
+            self.dailyHistoryCombo.addItem("現在配備されている共通設定", DAILY_DEFAULT_REVISION)
             for revision in self.settings.daily_revisions.list_revisions():
                 self.dailyHistoryCombo.addItem(
                     f"{revision.revision_id} / {revision.operator} / {', '.join(revision.changes)}",
                     revision.revision_id,
                 )
+                self.dailyHistoryCombo.setItemData(self.dailyHistoryCombo.count() - 1, revision.note, Qt.ToolTipRole)
         if enabled:
             with QSignalBlocker(self.dailyPositionCombo):
                 self.dailyPositionCombo.clear()
@@ -139,11 +140,12 @@ class DailyInspectionSettingsPage(QWidget):
 
     def _save(self):
         try:
+            operator, reason = self._approval_details()
             overrides, difference = self._build_draft()
             if not confirm_change(self, "日常点検設定の承認", f"次回点検から適用されます。\n{difference}"):
                 return
             self.settings.save_daily_configuration(
-                overrides, expected_revision=self.active.revision_id, operator=self.dailyOperatorEdit.text().strip(),
+                overrides, expected_revision=self.active.revision_id, operator=operator, reason=reason,
             )
         except _CONFIG_ERRORS as exc:
             self.dailyDraftLabel.setText(f"保存できません: {exc}")
@@ -153,12 +155,22 @@ class DailyInspectionSettingsPage(QWidget):
 
     def _rollback(self):
         revision = self.dailyHistoryCombo.currentData()
-        if not revision or not confirm_change(self, "日常点検の設定復元", f"現在の下書きを破棄し、{revision} に戻しますか？"):
-            return
         try:
-            self.settings.rollback_daily_configuration(revision, operator=self.dailyOperatorEdit.text().strip())
+            operator, reason = self._approval_details()
+            if not revision or not confirm_change(self, "日常点検の設定復元", f"現在の下書きを破棄し、{revision} に戻しますか？"):
+                return
+            self.settings.rollback_daily_configuration(
+                revision, operator=operator, reason=reason,
+                expected_revision=self.active.revision_id if self.active else None,
+            )
         except _CONFIG_ERRORS as exc:
             self.dailyDraftLabel.setText(f"復元できません: {exc}")
             return
         self._reload()
         self.on_saved("daily_inspection")
+
+    def _approval_details(self):
+        operator, reason = self.dailyOperatorEdit.text().strip(), self.dailyReasonEdit.text().strip()
+        if not operator or not reason:
+            raise ValueError("変更作業者と変更・復元理由を入力してください。")
+        return operator, reason

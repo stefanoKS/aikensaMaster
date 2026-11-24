@@ -43,6 +43,20 @@ preview use separate stages and are not production inference callers.
 Software regression: 229 passed, including 59 camera checks and 14
 production strategy checks; zero failures or skips.
 
+CG-P3-40 partial: approvals pin the resolved daily reference, profile ROI,
+inference size and model declaration in schema v2. Older v1 override-only
+revisions still resolve using the deployed defaults until re-approved;
+historical v1 values cannot be reconstructed after a deployment change.
+New SQLite results identify the effective daily profile with a digest.
+The name and reason fields are required in the approval/restore GUI.
+Restore creates an attributed new revision and rejects a historical
+model path that differs from the current deployment. In-process saves are
+serialized across Settings service instances; multiprocess writes are
+not supported. Backup of scoped history, model artifact and calibration
+identity, and full activation/reconciliation tests remain open.
+Software regression: 232 passed, including 42 configuration and 31 daily
+checks; no failures or skips.
+
 ## Phase 2
 
 Local and remote `main` started at `c8d486874a8ff633135a4c54a48b1cf179be588b`

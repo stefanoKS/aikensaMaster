@@ -915,6 +915,7 @@ def test_daily_settings_change_drives_real_worker_and_rolls_back(
         return [SimpleNamespace(keypoints=SimpleNamespace(xy=np.array([[[0, 1], [632, 4]]])))]
 
     worker.NICHIJOU_TENKEN_Model = infer
+    worker._loaded_daily_model_path = settings.load_daily_defaults().profile_for_widget(22).model_path
     signals = []
     live_previews = []
     worker.inspectionPreviewSignal.connect(lambda *event: live_previews.append(event))
@@ -961,7 +962,7 @@ def test_daily_settings_change_drives_real_worker_and_rolls_back(
         try:
             row = con.execute("""
                 SELECT i.partName, i.detected_pitch, i.status, m.profile_id, m.revision_id, m.actual_mm,
-                       m.raw_path, m.result_path
+                       m.raw_path, m.result_path, m.profile_digest
                 FROM inspection_results i JOIN daily_inspection_metadata m ON i.id = m.result_id
                 ORDER BY i.id DESC LIMIT 1
             """).fetchone()
@@ -969,11 +970,12 @@ def test_daily_settings_change_drives_real_worker_and_rolls_back(
             con.close()
         profile = f"dailyTenken_0{widget - 20}"
         assert row[:6] == (profile, "[101.4]", expected_status, profile, expected_revision, 101.4)
-        for name in row[6:]:
+        for name in row[6:8]:
             path = tmp_path / "aikensa/inspection_results" / name
             assert path.is_file() and path.parts[-5] == profile
         annotated = module.cv2.imdecode(np.fromfile(root / row[7], np.uint8), module.cv2.IMREAD_COLOR)
         assert annotated is not None and np.count_nonzero(annotated[:, :150]) > 0
+        assert row[8] == signals[1][0].profile.configuration_digest
 
     run_cycle(22, "NG", "shared-defaults")
     monkeypatch.setattr(daily_inspection_settings_page, "confirm_change", lambda *_: True)
@@ -983,6 +985,8 @@ def test_daily_settings_change_drives_real_worker_and_rolls_back(
     assert controller.settingsNavList.currentItem().text() == "日常点検設定"
     page.dailyPositionCombo.setCurrentIndex(1)
     page.dailyToleranceEdit.setText("2.0")
+    page.dailyOperatorEdit.setText("engineer")
+    page.dailyReasonEdit.setText("Verify synthetic CAD reference")
     page.dailyValidateButton.click()
     assert "下書きは有効" in page.dailyDraftLabel.text()
     run_cycle(22, "NG", "shared-defaults")

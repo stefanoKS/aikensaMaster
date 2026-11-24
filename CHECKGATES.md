@@ -87,6 +87,15 @@ machine PASS.
   30–34 reference a separate high-position Camera 2 homography and must not
   silently use the normal homography as a substitute.
 
+## Daily effective revisions (CG-P3-40, partial)
+
+- Daily tests cover pinned shared definitions, v1 compatibility, restarting,
+  historical versus deployed-default restore, changed model declaration
+  rejection, and competing approvals within one application process.
+- A result digest identifies the profile and daily strategy, not the
+  camera calibration or binary model artifact. Backup/restore of daily
+  history and multiprocess writers are not verified.
+
 ## IC4 camera configuration (CG-20)
 
 - With no injected capture factory, `CameraService.acquire()` forwards the

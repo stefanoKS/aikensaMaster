@@ -43,6 +43,7 @@ from aikensa.core.inspection.daily import DailyFailure, DailyInspectionError, Da
 from aikensa.core.inspection.daily_recording import DailyCycle, legacy_row, write_daily_result
 from aikensa.core.inspection.daily_session import DailyPositionState, DailyPositionUpdate, RecordingState
 from aikensa.core.settings.revisions import RevisionError
+from aikensa.core.settings.daily_config import DAILY_MODEL
 
 # LEGACY: Keep old imports for backward compatibility during transition
 from aikensa.core.config.parts.MMC.M_5A45.P828XXW0X0P_CTRPLR import partcheck as P828XXW0X0P_check
@@ -2203,6 +2204,11 @@ class InspectionThread(QThread):
         try:
             active = self.settings.load_daily_configuration()
             profile = active.profile_for_widget(widget)
+            model = getattr(self, profile.model_key, None)
+            if callable(model) and self._loaded_daily_model_path != profile.model_path:
+                raise DailyInspectionError(
+                    DailyFailure.MODEL_ERROR, "承認済みの日常点検モデルと読込済みのモデルが異なります。",
+                )
             cycle = DailyCycle.begin(
                 profile, active.revision_id, session_id, operator, current_counts, today_counts,
                 cycle_id=cycle_id, timestamp=timestamp,
@@ -2214,7 +2220,7 @@ class InspectionThread(QThread):
                 widget_id=widget, strict=True,
             )
             result = DailyInspectionStrategy().inspect(
-                raw, profile.reference, profile.roi, profile.inference, getattr(self, profile.model_key, None),
+                raw, profile.reference, profile.roi, profile.inference, model,
             )
         except (DailyInspectionError, UncalibratedError, RevisionError, OSError, yaml.YAMLError, ValueError) as exc:
             category = (
@@ -2826,6 +2832,7 @@ class InspectionThread(QThread):
 
     def initialize_model(self):
         print("Model Dummy Loaded")
+        self._loaded_daily_model_path = None
 
         config_path = "./aikensa/core/config/models.yaml"
 
@@ -2913,6 +2920,8 @@ class InspectionThread(QThread):
                 model = None
 
             setattr(self, attr_name, model)
+            if attr_name == DAILY_MODEL and model is not None:
+                self._loaded_daily_model_path = path
 
             if model is None:
                 missing.append(attr_name)

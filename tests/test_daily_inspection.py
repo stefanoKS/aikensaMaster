@@ -130,8 +130,91 @@ def test_daily_approval_persists_and_rolls_back_without_changing_other_positions
     assert restarted.revisions.active_revision_id() == original_adjustments
     restarted.rollback_daily_configuration(original.revision_id)
     assert restarted.load_daily_configuration().profiles == original.profiles
+    rollback = restarted.rollback_daily_configuration(approved.revision_id, operator="engineer", reason="confirm")
+    restored = restarted.load_daily_configuration()
+    assert restored.revision_id == rollback.revision_id != approved.revision_id
+    assert restored.profiles == updated.profiles
+    assert rollback.operator == "engineer" and "confirm" in rollback.note
+
+
+def test_daily_approved_effective_configuration_survives_shared_yaml_change(daily_settings):
+    import yaml
+
+    service = daily_settings
+    initial = service.load_daily_configuration()
+    approved = service.save_daily_configuration(
+        {"dailyTenken_02": {"tolerance_mm": 2}}, expected_revision=initial.revision_id,
+    )
+    effective = service.load_daily_configuration()
+    config_dir = service.paths.root / "aikensa/core/config"
+    path = config_dir / "parts_specifications.yaml"
+    specs = yaml.safe_load(path.read_text(encoding="utf-8"))
+    specs["parts"]["NICHIJOU_TENKEN"]["pitchSpec"] = 102.0
+    path.write_text(yaml.safe_dump(specs), encoding="utf-8")
+    restarted = SettingsService(service.paths)
+    assert restarted.load_daily_configuration() == effective
+    reverted = restarted.rollback_daily_configuration(initial.revision_id)
+    defaults = restarted.load_daily_configuration()
+    assert defaults.revision_id == reverted.revision_id
+    assert defaults.profile_for_widget(22).reference.nominal_mm == 102.0
+    assert defaults.profile_for_widget(22).configuration_digest != effective.profile_for_widget(22).configuration_digest
     restarted.rollback_daily_configuration(approved.revision_id)
-    assert restarted.load_daily_configuration() == updated
+    assert restarted.load_daily_configuration().profiles == effective.profiles
+
+    path = config_dir / "models.yaml"
+    models = yaml.safe_load(path.read_text(encoding="utf-8"))
+    models["models"]["NICHIJOU_TENKEN_Model"]["path"] = "./different.pt"
+    path.write_text(yaml.safe_dump(models), encoding="utf-8")
+    active = restarted.load_daily_configuration()
+    with pytest.raises(RevisionError, match="AIモデル"):
+        restarted.rollback_daily_configuration(approved.revision_id)
+    assert restarted.load_daily_configuration() == active
+
+
+def test_legacy_daily_revision_is_preserved_and_upgraded_on_approval(daily_settings):
+    from pathlib import Path
+
+    service = daily_settings
+    legacy = service.daily_revisions.stage({
+        Path("daily_inspection.yaml"): {
+            "schema_version": 1, "positions": {"dailyTenken_02": {"tolerance_mm": 1.7}},
+        },
+    })
+    service.daily_revisions.activate(legacy)
+    old = service.load_daily_configuration()
+    assert old.profile_for_widget(22).reference.tolerance_mm == 1.7
+    overrides = old.editable_values()
+    overrides["dailyTenken_03"] = {"tolerance_mm": 1.8}
+    approved = service.save_daily_configuration(overrides, expected_revision=legacy)
+    new = SettingsService(service.paths).load_daily_configuration()
+    assert new.revision_id == approved.revision_id
+    assert new.profile_for_widget(22) == old.profile_for_widget(22)
+    assert new.profile_for_widget(23).reference.tolerance_mm == 1.8
+    assert service.daily_revisions.staged_data(legacy)["daily_inspection.yaml"]["schema_version"] == 1
+
+
+def test_two_settings_services_cannot_both_approve_the_same_starting_revision(daily_settings):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+
+    paths = daily_settings.paths
+    original = daily_settings.load_daily_configuration()
+    ready = Barrier(2)
+
+    def approve(tolerance):
+        service = SettingsService(paths)
+        ready.wait(timeout=5)
+        try:
+            return service.save_daily_configuration(
+                {"dailyTenken_02": {"tolerance_mm": tolerance}}, expected_revision=original.revision_id,
+            ).revision_id
+        except RevisionError:
+            return None
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first, second = pool.map(approve, (2, 3))
+    assert (first is None) != (second is None)
+    assert daily_settings.load_daily_configuration().revision_id == (first or second)
 
 
 def test_invalid_or_failed_activation_leaves_previous_revision(daily_settings, monkeypatch):
