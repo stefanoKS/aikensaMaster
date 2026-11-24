@@ -23,11 +23,19 @@ EXPECTED_UI = {
     "settings_history.ui": "SettingsHistoryPage",
 }
 
-STANDARD_MENU_BUTTONS = {
+UNAVAILABLE_STANDARD_ROUTES = {
     "P82833W050Pbutton": 5,
     "P82832W040Pbutton": 6,
     "P82833W090Pbutton": 7,
     "P82832W080Pbutton": 8,
+}
+
+ACTIVE_MENU_ROUTES = {
+    "P82833W050PKENGEN_button": 9,
+    "P82833W050PCLIPSOUNYUUKI_button": 13,
+    "P808387UA1A_button": 17,
+    "P828447UA0A_button": 18,
+    "P658217UA0A_button": 31,
 }
 
 REQUIRED_OBJECTS = {
@@ -225,7 +233,7 @@ def test_inspection_designer_canvases_have_the_fixed_size():
 
 def test_main_menu_controls_fit_designer_canvas_without_overlap(qapp):
     from PyQt5.QtCore import QRect, QSize
-    from PyQt5.QtWidgets import QLabel, QMainWindow, QPushButton
+    from PyQt5.QtWidgets import QMainWindow, QPushButton
     from PyQt5.uic import loadUi
 
     page = QMainWindow()
@@ -235,11 +243,10 @@ def test_main_menu_controls_fit_designer_canvas_without_overlap(qapp):
     qapp.processEvents()
     canvas = page.centralWidget()
     controls = [
-        w for w in canvas.findChildren((QPushButton, QLabel))
-        if w.isVisibleTo(canvas) and w.text().strip()
+        w for w in canvas.findChildren(QPushButton) if w.isVisibleTo(canvas)
     ]
     for name in (
-        *STANDARD_MENU_BUTTONS, "settingsButton", "quitbutton", "dailytenkenbutton",
+        *ACTIVE_MENU_ROUTES, "settingsButton", "quitbutton", "dailytenkenbutton",
         "camcalibrationbutton1", "camcalibrationbutton2", "cameraMerge",
     ):
         button = canvas.findChild(QPushButton, name)
@@ -247,11 +254,10 @@ def test_main_menu_controls_fit_designer_canvas_without_overlap(qapp):
         assert button.isVisibleTo(canvas)
         rect = QRect(button.mapTo(canvas, button.rect().topLeft()), button.size())
         assert canvas.rect().contains(rect), name
-        if name in STANDARD_MENU_BUTTONS:
-            for other in controls:
-                if other is not button:
-                    other_rect = QRect(other.mapTo(canvas, other.rect().topLeft()), other.size())
-                    assert not rect.intersects(other_rect), (name, other.objectName())
+        for other in controls:
+            if other is not button:
+                other_rect = QRect(other.mapTo(canvas, other.rect().topLeft()), other.size())
+                assert not rect.intersects(other_rect), (name, other.objectName())
     page.close()
 
 
@@ -355,7 +361,10 @@ def test_application_window_switches_pages_without_hardware(qapp, application_wi
     assert window.geometry() == window.screen().geometry()
     main = window.stackedWidget.widget(0)
     assert window.settings_widget_index == 50
-    for name, index in STANDARD_MENU_BUTTONS.items():
+    for name, index in UNAVAILABLE_STANDARD_ROUTES.items():
+        assert main.findChild(QPushButton, name) is None
+        assert window.stackedWidget.widget(index).findChild(QPushButton, "InspectButton") is not None
+    for name, index in ACTIVE_MENU_ROUTES.items():
         window.stackedWidget.setCurrentIndex(0)
         main.findChild(QPushButton, name).click()
         assert window.stackedWidget.currentIndex() == index

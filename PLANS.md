@@ -1,5 +1,17 @@
 # Milestones
 
+## Active sequence — Phase 2
+
+1. CG-P2-00: current main menu and baseline reconciled (software PASS:
+   161 tests; machine NOT TESTED).
+2. CG-P2-10: independently validate camera geometry in both workers.
+3. CG-P2-20 through CG-P2-50: typed configuration, daily strategy, three-position
+   workflow, and editable Settings with restart and rollback evidence.
+4. CG-P2-60 through CG-P2-80: production migration and preview work, after the
+   daily workflow passes.
+
+The sections below are historical evidence, not a competing work order.
+
 The program's current work order and evidence are recorded in the
 [agent handover](./docs/development/AGENT_HANDOVER.md). WP0's clean-checkout
 fixture work and WP1's inspection page policy extend the historical gates

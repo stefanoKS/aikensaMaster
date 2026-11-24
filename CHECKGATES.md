@@ -48,6 +48,13 @@ machine PASS.
   screenshots; confirm the actual display separately on the machine.
 - Regression checks: `tests/test_settings_ui.py`.
 
+## Current main-menu policy (CG-P2-00)
+
+- The four standard routes to pages 5–8 are absent from the menu; their
+  Designer pages and slots remain intact.
+- Test active production, daily, calibration and Settings navigation; keep
+  the fixed-canvas, fullscreen and no-outer-scroll checks.
+
 ## IC4 camera configuration (CG-20)
 
 - With no injected capture factory, `CameraService.acquire()` forwards the

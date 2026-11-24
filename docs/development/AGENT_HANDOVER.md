@@ -1,5 +1,17 @@
 # Agent handover
 
+## Phase 2
+
+Local and remote `main` started at `c8d486874a8ff633135a4c54a48b1cf179be588b`
+with a clean tree. The `aikensamaster` Conda environment (Python 3.11.14)
+passed `compileall`; the initial offscreen suite had 159 passes and two
+failures, both expecting buttons intentionally removed in `c8d4868`.
+CG-P2-00 reconciles those expectations without changing Designer files or
+machine configuration. Software PASS: 60 Qt tests and 161 full-suite tests,
+zero failures or skips. Next: CG-P2-10, camera map dimensions and readiness.
+
+## Prior evidence
+
 Starting head: `7f031789e8a4b11b9ddd61e14737b4177a4b41eb` on `main`;
 verified against GitHub `main`.
 Ending implementation head: `121b2aaeb823768c3fbba8f8dc9f63f8f49e26f9`.

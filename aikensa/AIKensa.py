@@ -316,10 +316,6 @@ class AIKensa(QMainWindow):
         planarize_combined_high.clicked.connect(lambda: self._set_calib_params(self.calibration_thread, "savePlanarizeHigh", True))
         
         button_config = {
-            "P82833W050Pbutton": {"widget_index": 5, "inspection_param": 5},
-            "P82832W040Pbutton": {"widget_index": 6, "inspection_param": 6},
-            "P82833W090Pbutton": {"widget_index": 7, "inspection_param": 7},
-            "P82832W080Pbutton": {"widget_index": 8, "inspection_param": 8},
                "P82833W050PKENGEN_button": {"widget_index": 9, "inspection_param": 9},
                "P82832W080PKENGEN_button": {"widget_index": 10, "inspection_param": 10},
                "P82833W090PKENGEN_button": {"widget_index": 11, "inspection_param": 11},
