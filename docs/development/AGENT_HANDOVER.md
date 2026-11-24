@@ -60,8 +60,9 @@ Position 2 was NG at 1.0 mm (including with an unsaved 2.0 mm draft),
 OK at 2.0 mm after approval and after reloading the worker's Settings
 service, and NG after rollback. Positions 1 and 3 remained NG. The test
 checked SQLite metadata, images, frozen identity during a page change and
-an unchanged production counter. Separate Qt coverage checks daily
-navigation and position-specific presentation. `compileall` passed; the
+an unchanged production counter. It also renders the Japanese annotation
+with the tracked font and decodes the saved result PNG. Separate Qt coverage
+checks daily navigation and position-specific presentation. `compileall` passed; the
 full suite had 209 passes, no failures or skips.
 
 Next: qualify real camera orientation, daily targets, inference, MySQL and
@@ -76,6 +77,8 @@ wrapper. Baseline compilation, camera (47), geometry (35), configuration
 (38), daily (27), widget-17 parity (14), Settings/Qt (64), local recording
 (1), and full regression (212) passed. The groups overlap, and none of
 their elapsed times is an inspection performance benchmark.
+The baseline, daily and full regression gates also passed from a temporary
+archive containing only tracked sources.
 
 ## Prior evidence
 

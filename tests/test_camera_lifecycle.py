@@ -784,7 +784,12 @@ def test_daily_settings_change_drives_real_worker_and_rolls_back(
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(module.cv2, "imread", lambda _: np.zeros((50, 6550, 3), np.uint8))
     monkeypatch.setattr(module, "NICHIJOU_TENKEN_debug_images_enabled", lambda: False)
-    monkeypatch.setattr(module, "draw_daily_status", lambda image, *_: image)
+    from aikensa.core.config.parts import NICHIJOU_TENKEN
+
+    monkeypatch.setattr(
+        NICHIJOU_TENKEN, "kanjiFontPath",
+        str(REPO_ROOT / "aikensa/gui/resources/font/NotoSansJP-ExtraBold.ttf"),
+    )
     monkeypatch.setattr(module, "play_ok_sound", Mock())
     monkeypatch.setattr(module, "play_ng_sound", Mock())
     monkeypatch.setattr(module.time, "sleep", lambda _: None)
@@ -817,6 +822,8 @@ def test_daily_settings_change_drives_real_worker_and_rolls_back(
         for name in row[6:]:
             path = tmp_path / "aikensa/inspection_results" / name
             assert path.is_file() and path.parts[-5] == profile
+        annotated = module.cv2.imdecode(np.fromfile(root / row[7], np.uint8), module.cv2.IMREAD_COLOR)
+        assert annotated is not None and np.count_nonzero(annotated[:, :150]) > 0
 
     run_cycle(22, "NG", "shared-defaults")
     monkeypatch.setattr(daily_inspection_settings_page, "confirm_change", lambda *_: True)
