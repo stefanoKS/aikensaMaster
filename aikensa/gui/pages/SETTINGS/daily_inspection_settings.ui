@@ -2,9 +2,15 @@
 <ui version="4.0">
  <class>DailyInspectionSettingsPage</class>
  <widget class="QWidget" name="DailyInspectionSettingsPage">
+  <property name="styleSheet">
+   <string notr="true">QWidget#DailyInspectionSettingsPage { background-color: #25292d; }
+QLabel#dailyFullPreviewLabel, QLabel#dailyCropPreviewLabel { background-color: #1f2327; border: 1px solid #505a63; }
+QLabel#dailyTitleLabel, QLabel#dailyReferenceHeading { font-weight: bold; }</string>
+  </property>
   <layout class="QVBoxLayout" name="dailySettingsLayout">
    <item><widget class="QLabel" name="dailyTitleLabel"><property name="text"><string>日常点検設定</string></property></widget></item>
    <item><widget class="QLabel" name="dailyRevisionLabel"><property name="wordWrap"><bool>true</bool></property></widget></item>
+   <item><widget class="QLabel" name="dailyReferenceHeading"><property name="text"><string>測定条件（水平距離）</string></property></widget></item>
    <item>
     <layout class="QFormLayout" name="dailyReferenceForm">
      <item row="0" column="0"><widget class="QLabel" name="dailyPositionLabel"><property name="text"><string>点検位置</string></property></widget></item>
@@ -21,14 +27,58 @@
      <item row="5" column="1"><widget class="QLineEdit" name="dailyReasonEdit"/></item>
     </layout>
    </item>
+   <item><widget class="QLabel" name="dailyROILabel"><property name="text"><string>検出範囲（結合切り出し画像 / px）: X / Y / 幅 / 高さ</string></property></widget></item>
+   <item>
+    <layout class="QHBoxLayout" name="dailyROILayout">
+     <item><widget class="QLineEdit" name="dailyXEdit"><property name="accessibleName"><string>X [px]</string></property></widget></item>
+     <item><widget class="QLineEdit" name="dailyYEdit"><property name="accessibleName"><string>Y [px]</string></property></widget></item>
+     <item><widget class="QLineEdit" name="dailyWidthEdit"><property name="accessibleName"><string>幅 [px]</string></property></widget></item>
+     <item><widget class="QLineEdit" name="dailyHeightEdit"><property name="accessibleName"><string>高さ [px]</string></property></widget></item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QFormLayout" name="dailyInferenceForm">
+     <item row="0" column="0"><widget class="QLabel" name="dailyConfidenceLabel"><property name="text"><string>検出信頼度 [0–1]</string></property></widget></item>
+     <item row="0" column="1"><widget class="QLineEdit" name="dailyConfidenceEdit"/></item>
+     <item row="1" column="0"><widget class="QLabel" name="dailyImageSizeLabel"><property name="text"><string>推論画像サイズ [px]</string></property></widget></item>
+     <item row="1" column="1"><widget class="QLineEdit" name="dailyImageSizeEdit"/></item>
+    </layout>
+   </item>
+   <item><widget class="QCheckBox" name="dailyDiagnosticCheck"><property name="text"><string>診断画像を保存（実際の日常点検のみ）</string></property></widget></item>
    <item><widget class="QLabel" name="dailyProfileDetailsLabel"><property name="wordWrap"><bool>true</bool></property></widget></item>
    <item><widget class="QLabel" name="dailyDraftLabel"><property name="wordWrap"><bool>true</bool></property></widget></item>
+   <item>
+    <layout class="QHBoxLayout" name="dailyTestActions">
+     <item><widget class="QComboBox" name="dailyReferencePositionCombo"/></item>
+     <item><widget class="QPushButton" name="dailyCaptureButton"><property name="text"><string>基準画像を取得</string></property></widget></item>
+     <item><widget class="QPushButton" name="dailyTestButton"><property name="text"><string>設定テスト</string></property></widget></item>
+    </layout>
+   </item>
+   <item><widget class="QLabel" name="dailyTestResultLabel"><property name="wordWrap"><bool>true</bool></property><property name="text"><string>設定テスト結果: 未実施</string></property></widget></item>
+   <item>
+    <layout class="QHBoxLayout" name="dailyPreviewLayout">
+     <item>
+      <widget class="QLabel" name="dailyFullPreviewLabel">
+       <property name="minimumSize"><size><width>0</width><height>100</height></size></property>
+       <property name="alignment"><set>Qt::AlignCenter</set></property>
+       <property name="text"><string>全体画像（未取得）</string></property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="dailyCropPreviewLabel">
+       <property name="minimumSize"><size><width>0</width><height>100</height></size></property>
+       <property name="alignment"><set>Qt::AlignCenter</set></property>
+       <property name="text"><string>検出画像（未取得）</string></property>
+      </widget>
+     </item>
+    </layout>
+   </item>
    <item>
     <layout class="QHBoxLayout" name="dailyActions">
      <item><widget class="QPushButton" name="dailyValidateButton"><property name="text"><string>入力を検証</string></property></widget></item>
      <item><widget class="QPushButton" name="dailySaveButton"><property name="text"><string>承認して保存</string></property></widget></item>
      <item><widget class="QPushButton" name="dailyInheritButton"><property name="text"><string>共通値を使用</string></property></widget></item>
-     <item><widget class="QPushButton" name="dailyDiscardButton"><property name="text"><string>下書きを破棄</string></property></widget></item>
+     <item><widget class="QPushButton" name="dailyDiscardButton"><property name="text"><string>選択中の下書きを破棄</string></property></widget></item>
     </layout>
    </item>
    <item>

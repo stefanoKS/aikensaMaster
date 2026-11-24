@@ -462,6 +462,8 @@ class AIKensa(QMainWindow):
             on_settings_saved=self._on_machine_settings_changed,
         )
         self.settings_controller.setObjectName(self.SETTINGS_WIDGET_NAME)
+        self.settings_controller.daily_page.set_draft_submitter(self.inspection_thread.request_daily_draft)
+        self.inspection_thread.dailyDraftSignal.connect(self.settings_controller.daily_page.show_draft_result)
         self.settings_widget_index = self.stackedWidget.addWidget(self.settings_controller)
 
         main_widget = self.stackedWidget.widget(0)
@@ -518,6 +520,9 @@ class AIKensa(QMainWindow):
     def _activate_inspection_preview(self, index):
         self._preview_epoch += 1
         self.inspection_thread.inspection_config.preview_target = (index, self._preview_epoch)
+        if index == self.settings_widget_index:
+            self.inspection_thread.inspection_config.widget = 0
+            self.inspection_thread.inspection_config.doInspection = False
         self._render_equipment_preview(index)
 
     def _update_equipment_preview(self, sequence, state):
@@ -1686,6 +1691,8 @@ class AIKensa(QMainWindow):
         setattr(thread.calib_config, key, value)
 
     def _set_inspection_params(self, thread, key, value):
+        if key == "doInspection" and value is True and self.stackedWidget.currentIndex() == self.settings_widget_index:
+            return
         if key == "widget" and (value in (21, 22, 23) or thread.inspection_config.widget in (21, 22, 23)):
             thread.inspection_config.doInspection = False
         setattr(thread.inspection_config, key, value)

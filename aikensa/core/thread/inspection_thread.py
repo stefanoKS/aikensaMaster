@@ -38,8 +38,10 @@ from aikensa.core.inspection import (
 )
 from pathlib import Path
 from uuid import uuid4
+from queue import Empty, Full, Queue
 
 from aikensa.core.inspection.daily import DailyFailure, DailyInspectionError, DailyInspectionStrategy
+from aikensa.core.inspection.daily_draft import DailyDraftRequest, DailyDraftResult, run_daily_draft
 from aikensa.core.inspection.daily_recording import DailyCycle, legacy_row, write_daily_result
 from aikensa.core.inspection.daily_session import DailyPositionState, DailyPositionUpdate, RecordingState
 from aikensa.core.settings.revisions import RevisionError
@@ -56,7 +58,6 @@ from aikensa.core.config.parts.NISSAN.M_J42U.P828387YA6A_SEALRRDOORPARTINGRRSTEP
 from aikensa.core.config.parts.NISSAN.M_J42U.P828387YA1A_SEALRRDOORPARTINGLOCK import partcheck as P828387YA1A_check
 from aikensa.core.config.parts.NISSAN.M_J42U.P828387YA6A_SEALRRDOORPARTINGRRSTEP_KATABU_NASHI import partcheck as P828387YA6A_KATABU_NASHI_check
 from aikensa.core.config.parts.NISSAN.M_J42U.P658107Y0A_SEALASSYRADCORE import partcheck as P658107YA0A_check
-from aikensa.core.config.parts.NICHIJOU_TENKEN import debug_images_enabled as NICHIJOU_TENKEN_debug_images_enabled
 from aikensa.core.config.parts.P658207LE0A import debug_images_enabled as P658207LE0A_debug_images_enabled
 from aikensa.core.config.parts.P658207LE0A import partcheck as P658207LE0A_check
 from aikensa.core.config.parts.NICHIJOU_TENKEN import partcheck as dailyTenken
@@ -148,6 +149,7 @@ class InspectionThread(QThread):
     # Emitted when the configured cameras cannot provide a production image source.
     cameraErrorSignal = pyqtSignal(str)
     dailyResultSignal = pyqtSignal(object, QImage)
+    dailyDraftSignal = pyqtSignal(object)
     inspectionPreviewSignal = pyqtSignal(int, int, int, QImage)
     equipmentPreviewSignal = pyqtSignal(int, object)
 
@@ -156,6 +158,7 @@ class InspectionThread(QThread):
     def __init__(self, inspection_config: InspectionConfig = None):
         super(InspectionThread, self).__init__()
         self.running = True
+        self._daily_drafts = Queue(maxsize=1)
 
         # ---- Config ----
         self.inspection_config = inspection_config or InspectionConfig()
@@ -323,9 +326,7 @@ class InspectionThread(QThread):
         finally:
             self.release_all_camera()
 
-    def _run_inspection(self):
-        self._daily_session_id = uuid4().hex
-        #initialize the database
+    def _initialize_inspection_records(self):
         if not os.path.exists("./aikensa/inspection_results"):
             os.makedirs("./aikensa/inspection_results")
 
@@ -406,6 +407,12 @@ class InspectionThread(QThread):
             ''')
             self.mysql_conn.commit()
 
+        for key, value in self.widget_dir_map.items():
+            self.inspection_config.current_numofPart[key] = self.get_last_entry_currentnumofPart(value)
+            self.inspection_config.today_numofPart[key] = self.get_last_entry_total_numofPart(value)
+
+    def _run_inspection(self):
+        self._daily_session_id = uuid4().hex
         print("Inspection Thread Started")
         self.initialize_model()
         print("AI Models Initialized")
@@ -423,21 +430,45 @@ class InspectionThread(QThread):
         self.homography_template_scaled = cv2.resize(self.homography_template, (self.homography_template.shape[1]//5, self.homography_template.shape[0]//5), interpolation=cv2.INTER_LINEAR)
         self.homography_blank_canvas_scaled = cv2.resize(self.homography_blank_canvas, (self.homography_blank_canvas.shape[1]//5, self.homography_blank_canvas.shape[0]//5), interpolation=cv2.INTER_LINEAR)
 
-        for key, value in self.widget_dir_map.items():
-            self.inspection_config.current_numofPart[key] = self.get_last_entry_currentnumofPart(value)
-            self.inspection_config.today_numofPart[key] = self.get_last_entry_total_numofPart(value)
-
         self._load_geometry_from_settings()
+        records_ready = False
+        inspection_camera_active = False
 
         while self.running:
 
+            draft_queue = getattr(self, "_daily_drafts", None)
+            if draft_queue is not None:
+                try:
+                    request, target = draft_queue.get_nowait()
+                except Empty:
+                    pass
+                else:
+                    if self.inspection_config.preview_target == target and self.inspection_config.widget == 0:
+                        try:
+                            result = self._run_daily_draft(request)
+                        finally:
+                            self.release_all_camera()
+                            inspection_camera_active = False
+                    else:
+                        result = DailyDraftResult(request, "画面切替により設定テストを中止しました。")
+                    self.dailyDraftSignal.emit(result)
+                    continue
+
+            if self.inspection_config.widget <= 0:
+                self.inspection_config.cameraID = -1
+                if inspection_camera_active:
+                    self.release_all_camera()
+                    inspection_camera_active = False
+                self.msleep(25)
+                continue
+
+            if not records_ready:
+                self._initialize_inspection_records()
+                records_ready = True
             self._check_date_rollover()
 
-            if self.inspection_config.widget == 0:
-                self.inspection_config.cameraID = -1
-
             if self.inspection_config.widget > 0:
-
+                inspection_camera_active = True
                 if not self._capture_inspection_frames():
                     self.msleep(100)
                     continue
@@ -2191,6 +2222,52 @@ class InspectionThread(QThread):
     # Supporting methods
     # =========================
 
+    def request_daily_draft(self, request: DailyDraftRequest) -> bool:
+        """Queue work for the sole owner of the inspection cameras and models."""
+        if self.inspection_config.widget != 0:
+            return False
+        try:
+            self._daily_drafts.put_nowait((request, self.inspection_config.preview_target))
+        except Full:
+            return False
+        if not self.isRunning():
+            self.running = True
+            self.start()
+        return True
+
+    def _daily_model_for_profile(self, profile):
+        model = getattr(self, profile.model_key, None)
+        if (callable(model) and self._loaded_daily_model_path == profile.model_path
+                and getattr(model, "task", "pose") == "pose"):
+            return model
+        return None
+
+    def _prepare_daily_reference(self, widget, *, keep_raw=False):
+        raw, _ = self._build_inspection_image(
+            planarize_transform=self.planarizeTransform_wide,
+            planarize_size=self.wide_planarize,
+            h1=self.H1, h2=self.H2, blank_canvas=self.homography_blank_canvas,
+            widget_id=widget, strict=True, keep_raw=keep_raw,
+        )
+        return raw
+
+    def _run_daily_draft(self, request: DailyDraftRequest) -> DailyDraftResult:
+        profile = request.profile
+        try:
+            self._load_geometry_from_settings()
+            if not self._capture_inspection_frames():
+                return DailyDraftResult(request, self._camera_diagnostic[0] or "カメラ画像を取得できません。")
+            self.mergeframe1_scaled = self.downSampling(self.mergeframe1, self.scaled_width, self.scaled_height)
+            self.mergeframe2_scaled = self.downSampling(self.mergeframe2, self.scaled_width, self.scaled_height)
+            if not self._prepare_camera_maps():
+                return DailyDraftResult(request, self._camera_diagnostic[0])
+            if not all(is_valid_homography(matrix) for matrix in (self.H1_scaled, self.H2_scaled)):
+                raise UncalibratedError("縮小ホモグラフィ")
+            raw = self._prepare_daily_reference(profile.widget_id)
+            return run_daily_draft(request, raw, self._daily_model_for_profile(profile))
+        except (DailyInspectionError, UncalibratedError, cv2.error, OSError, ValueError, yaml.YAMLError) as exc:
+            return DailyDraftResult(request, str(exc))
+
     def _run_daily_cycle(self, widget):
         config = self.inspection_config
         operator = str(config.kensainNumber)
@@ -2204,25 +2281,20 @@ class InspectionThread(QThread):
         try:
             active = self.settings.load_daily_configuration()
             profile = active.profile_for_widget(widget)
-            model = getattr(self, profile.model_key, None)
-            if callable(model) and self._loaded_daily_model_path != profile.model_path:
+            model = self._daily_model_for_profile(profile)
+            if model is None:
                 raise DailyInspectionError(
-                    DailyFailure.MODEL_ERROR, "承認済みの日常点検モデルと読込済みのモデルが異なります。",
+                    DailyFailure.MODEL_ERROR, "承認済みの日常点検モデルが読込まれていません。",
                 )
             cycle = DailyCycle.begin(
                 profile, active.revision_id, session_id, operator, current_counts, today_counts,
                 cycle_id=cycle_id, timestamp=timestamp,
             )
-            raw, _ = self._build_inspection_image(
-                planarize_transform=self.planarizeTransform_wide,
-                planarize_size=self.wide_planarize,
-                h1=self.H1, h2=self.H2, blank_canvas=self.homography_blank_canvas,
-                widget_id=widget, strict=True,
-            )
+            raw = self._prepare_daily_reference(widget, keep_raw=True)
             result = DailyInspectionStrategy().inspect(
                 raw, profile.reference, profile.roi, profile.inference, model,
             )
-        except (DailyInspectionError, UncalibratedError, RevisionError, OSError, yaml.YAMLError, ValueError) as exc:
+        except (DailyInspectionError, UncalibratedError, RevisionError, cv2.error, OSError, yaml.YAMLError, ValueError) as exc:
             category = (
                 exc.category.value if isinstance(exc, DailyInspectionError)
                 else ("CALIBRATION_ERROR" if isinstance(exc, UncalibratedError) else "CONFIGURATION_ERROR")
@@ -2232,7 +2304,7 @@ class InspectionThread(QThread):
             ), QImage())
             return False
 
-        if NICHIJOU_TENKEN_debug_images_enabled():
+        if profile.save_diagnostic_images:
             try:
                 self.save_debug_image(profile.roi.crop(raw), "dailytenken_inference_crop", suffix=f"widget{widget}_idx0")
             except (OSError, cv2.error):
@@ -3827,6 +3899,7 @@ class InspectionThread(QThread):
             *,
             widget_id=None,
             strict=False,
+            keep_raw=True,
         ):
         """
         Build combined image from mergeframe1/2 using:
@@ -3983,7 +4056,8 @@ class InspectionThread(QThread):
 
         combined_bgr = combined
         # Keep a pristine copy for raw (nama) saving before partcheck draws on images.
-        self._inspection_start_image = combined_bgr.copy()
+        if keep_raw:
+            self._inspection_start_image = combined_bgr.copy()
         combined_rgb = cv2.cvtColor(combined_bgr, cv2.COLOR_BGR2RGB)
 
         return combined_bgr, combined_rgb

@@ -193,6 +193,63 @@ def test_legacy_daily_revision_is_preserved_and_upgraded_on_approval(daily_setti
     assert service.daily_revisions.staged_data(legacy)["daily_inspection.yaml"]["schema_version"] == 1
 
 
+def test_v2_daily_revision_and_common_inheritance_preserve_position_overrides(daily_settings):
+    import json
+    from pathlib import Path
+    from aikensa.core.settings.daily_config import DAILY_COMMON_SCOPE
+
+    service = daily_settings
+    current = service.load_daily_configuration()
+    legacy = service.daily_revisions.stage({
+        Path("daily_inspection.yaml"): {
+            "schema_version": 2,
+            "shared": {k: v for k, v in json.loads(current.shared_definition).items() if k != "save_diagnostic_images"},
+            "positions": {"dailyTenken_02": {"tolerance_mm": 1.7}},
+        },
+    })
+    service.daily_revisions.activate(legacy)
+    old = service.load_daily_configuration()
+    overrides = old.editable_values()
+    overrides[DAILY_COMMON_SCOPE] = {"tolerance_mm": 2.0, "confidence": 0.6, "save_diagnostic_images": False}
+    overrides["dailyTenken_02"]["width"] = 1000
+    candidate = service.preview_daily_configuration(old, overrides)
+    assert service.load_daily_configuration() == old
+    assert [p.reference.tolerance_mm for p in candidate.profiles] == [2.0, 1.7, 2.0]
+    assert [p.roi.x for p in candidate.profiles] == [0, 2100, 4200]
+    assert [p.roi.width for p in candidate.profiles] == [1890, 1000, 1890]
+    assert all(p.inference.confidence == 0.6 and not p.save_diagnostic_images for p in candidate.profiles)
+    with pytest.raises(DailyInspectionError):
+        service.preview_daily_configuration(old, {DAILY_COMMON_SCOPE: {"x": 25}})
+    with pytest.raises(DailyInspectionError):
+        service.preview_daily_configuration(old, {"dailyTenken_02": {"confidence": 1.1}})
+    approved = service.save_daily_configuration(overrides, expected_revision=legacy)
+    assert SettingsService(service.paths).load_daily_configuration().profiles == candidate.profiles
+    assert service.daily_revisions.staged_data(approved.revision_id)["daily_inspection.yaml"]["schema_version"] == 3
+
+
+def test_daily_draft_overlay_marks_same_region_that_reaches_inference(daily_settings):
+    from dataclasses import replace
+    from aikensa.core.inspection.daily_draft import DailyDraftRequest, run_daily_draft
+
+    settings = daily_settings.load_daily_configuration()
+    profile = settings.profile_for_widget(22)
+    profile = replace(profile, roi=replace(profile.roi, x=20, y=10, width=80, height=100))
+    raw = np.zeros((60, 120, 3), np.uint8)
+    raw[20, 30] = (50, 100, 125)
+
+    def model(source, **_):
+        assert source.shape == (50, 80, 3)
+        assert tuple(source[10, 10]) == (50, 100, 125)
+        np.testing.assert_array_equal(source, raw[10:60, 20:100])
+        return pose((5, 5), (75, 45))
+
+    result = run_daily_draft(DailyDraftRequest.create(profile, True), raw, model)
+    assert result.measurement.endpoints == ((25, 15), (95, 55))
+    assert "実効 (20, 10, 80, 50)" in result.message
+    assert tuple(result.full_image[35, 20]) == (40, 225, 60)
+    assert tuple(raw[35, 20]) == (0, 0, 0)
+
+
 def test_two_settings_services_cannot_both_approve_the_same_starting_revision(daily_settings):
     from concurrent.futures import ThreadPoolExecutor
     from threading import Barrier

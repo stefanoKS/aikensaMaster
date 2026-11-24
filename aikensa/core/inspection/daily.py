@@ -62,8 +62,7 @@ class DailyROI:
                 or min(self.x, self.y) < 0 or min(self.width, self.height) < 2):
             raise DailyInspectionError(DailyFailure.CONFIGURATION_ERROR, "日常点検の検出範囲が不正です。")
 
-    def crop(self, image: np.ndarray) -> np.ndarray:
-        height, width = image.shape[:2]
+    def effective_bounds(self, width: int, height: int) -> tuple[int, int, int, int]:
         right, bottom = self.x + self.width, self.y + self.height
         if self.allow_bottom_clip:
             bottom = min(bottom, height)
@@ -71,7 +70,11 @@ class DailyROI:
             raise DailyInspectionError(
                 DailyFailure.CALIBRATION_ERROR, "日常点検の検出範囲が結合画像に収まりません。"
             )
-        return np.ascontiguousarray(image[self.y:bottom, self.x:right]).copy()
+        return self.x, self.y, right, bottom
+
+    def crop(self, image: np.ndarray) -> np.ndarray:
+        x, y, right, bottom = self.effective_bounds(image.shape[1], image.shape[0])
+        return np.ascontiguousarray(image[y:bottom, x:right]).copy()
 
 
 @dataclass(frozen=True)

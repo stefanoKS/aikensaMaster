@@ -860,11 +860,15 @@ def test_daily_settings_change_drives_real_worker_and_rolls_back(
     qapp, settings, monkeypatch, tmp_path, worker_modules, camera_geometry,
 ):
     from shutil import copyfile
+    import os
+    from pathlib import Path
     from types import SimpleNamespace
     from unittest.mock import Mock
     import sqlite3
+    from queue import Queue
+    from threading import Event
 
-    from PyQt5.QtCore import QThread
+    from PyQt5.QtCore import QEventLoop, QThread, QTimer
     from aikensa.core.inspection.daily_session import DailyPositionState, RecordingState
     from aikensa.core.settings.service import SettingsService
     from aikensa.gui.settings_pages import SettingsController
@@ -890,9 +894,9 @@ def test_daily_settings_change_drives_real_worker_and_rolls_back(
     worker._color_debug_interval_sec = 1
     worker.scaled_width, worker.scaled_height = 80, 60
     worker.scale_factor = 5
-    worker.wide_planarize = (50, 6550)
+    worker.wide_planarize = (431, 6550)
     worker.widget_crop_points = {
-        position: [0, 0, 6528, 0, 6528, 50, 0, 50] for position in (21, 22, 23)
+        position: [0, 0, 6528, 0, 6528, 431, 0, 431] for position in (21, 22, 23)
     }
     worker.widget_h2_offsets = {}
     worker.widget_dir_map = {}
@@ -903,15 +907,18 @@ def test_daily_settings_change_drives_real_worker_and_rolls_back(
     worker.InspectionTimeStart = 0
     worker.InspectionWaitTime = 0
     worker.bool_keep_measurement = False
+    worker._daily_drafts = Queue(maxsize=1)
     worker._emit_kensa_status = Mock()
     worker.msleep = lambda _: setattr(worker, "running", False)
     for name in ("mysqlHost", "mysqlID", "mysqlPassword", "mysqlHostPort"):
         setattr(worker, name, None)
 
+    calls = []
+
     def infer(*, source, conf, imgsz, verbose):
-        assert source.shape == (50, 1890, 3)
-        assert (conf, imgsz, verbose) == (0.4, 1980, False)
-        worker.inspection_config.widget = 23
+        calls.append((source.shape, conf, imgsz, verbose, QThread.currentThread()))
+        if worker.inspection_config.widget > 0:
+            worker.inspection_config.widget = 23
         return [SimpleNamespace(keypoints=SimpleNamespace(xy=np.array([[[0, 1], [632, 4]]])))]
 
     worker.NICHIJOU_TENKEN_Model = infer
@@ -927,8 +934,8 @@ def test_daily_settings_change_drives_real_worker_and_rolls_back(
 
     worker.dailyResultSignal.connect(on_result)
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(module.cv2, "imread", lambda _: np.zeros((50, 6550, 3), np.uint8))
-    monkeypatch.setattr(module, "NICHIJOU_TENKEN_debug_images_enabled", lambda: False)
+    monkeypatch.setattr(module.cv2, "imread", lambda _: np.zeros((431, 6550, 3), np.uint8))
+    worker.save_debug_image = Mock()
     from aikensa.core.config.parts import NICHIJOU_TENKEN
 
     monkeypatch.setattr(
@@ -938,6 +945,73 @@ def test_daily_settings_change_drives_real_worker_and_rolls_back(
     monkeypatch.setattr(module, "play_ok_sound", Mock())
     monkeypatch.setattr(module, "play_ng_sound", Mock())
     monkeypatch.setattr(module.time, "sleep", lambda _: None)
+
+    def drafts(controller, *, missing_model=False, capture_only=False):
+        page = controller.daily_page
+        worker.inspection_config.widget = 0
+        worker.inspection_config.preview_target = (50, 10)
+        worker.inspection_config.doInspection = False
+        # No SQL, production outputs, or counters should be consulted by a cold draft-only worker.
+        worker._initialize_inspection_records = Mock(side_effect=AssertionError("draft touched ordinary records"))
+        session_events = len(signals)
+        debug_saves = worker.save_debug_image.call_count
+        counts = [entry.copy() for entry in worker.inspection_config.current_numofPart]
+        completed = Event()
+        loop = QEventLoop()
+        watchdog = QTimer()
+        watchdog.setSingleShot(True)
+        watchdog.timeout.connect(loop.quit)
+
+        def on_draft(result):
+            page.show_draft_result(result)
+            worker.running = False
+            completed.set()
+            loop.quit()
+
+        worker.dailyDraftSignal.connect(on_draft)
+        page.set_draft_submitter(worker.request_daily_draft)
+        original_model = worker.NICHIJOU_TENKEN_Model
+        if missing_model:
+            worker.NICHIJOU_TENKEN_Model = None
+        before_calls = len(calls)
+        try:
+            (page.dailyCaptureButton if capture_only else page.dailyTestButton).click()
+            watchdog.start(10000)
+            loop.exec_()
+            assert completed.is_set()
+            assert page.dailyFullPreviewLabel.pixmap() is not None
+            assert page.dailyCropPreviewLabel.pixmap() is not None
+            assert "実効 (2100, 0, 900, 431)" in page.dailyTestResultLabel.text()
+            if missing_model:
+                assert "MODEL_ERROR" in page.dailyTestResultLabel.text()
+            elif not capture_only:
+                assert "設定テスト結果（記録なし）" in page.dailyTestResultLabel.text()
+                assert "OK / 実測 101.4 mm" in page.dailyTestResultLabel.text()
+                assert calls[-1][:4] == ((431, 900, 3), 0.55, 1600, False)
+                assert calls[-1][4] is worker
+            if missing_model or capture_only:
+                assert len(calls) == before_calls
+            assert len(signals) == session_events
+            assert worker.save_debug_image.call_count == debug_saves
+            assert worker.inspection_config.current_numofPart == counts
+            worker._initialize_inspection_records.assert_not_called()
+        finally:
+            watchdog.stop()
+            worker.running = False
+            assert worker.wait(5000)
+            worker.dailyDraftSignal.disconnect(on_draft)
+            worker.NICHIJOU_TENKEN_Model = original_model
+            del worker._initialize_inspection_records
+
+    def screenshot(name):
+        destination = os.environ.get("AIKENSA_DAILY_SETTINGS_EVIDENCE")
+        if destination:
+            controller.resize(1920, 1080)
+            controller.show()
+            qapp.processEvents()
+            image = controller.grab()
+            assert (image.width(), image.height()) == (1920, 1080)
+            assert image.save(str(Path(destination) / f"{name}.png"))
 
     def run_cycle(widget, expected_status, expected_revision):
         worker.inspection_config.widget = widget
@@ -983,19 +1057,53 @@ def test_daily_settings_change_drives_real_worker_and_rolls_back(
     controller.select_page(6)
     page = controller.daily_page
     assert controller.settingsNavList.currentItem().text() == "日常点検設定"
+    page.dailyPositionCombo.setCurrentIndex(page.dailyPositionCombo.count() - 1)
+    screenshot("01-common-scope")
     page.dailyPositionCombo.setCurrentIndex(1)
+    screenshot("02-position-2")
     page.dailyToleranceEdit.setText("2.0")
+    page.dailyWidthEdit.setText("900")
+    page.dailyConfidenceEdit.setText("0.55")
+    page.dailyImageSizeEdit.setText("1600")
+    page.dailyDiagnosticCheck.setChecked(False)
     page.dailyOperatorEdit.setText("engineer")
     page.dailyReasonEdit.setText("Verify synthetic CAD reference")
+    page.dailyConfidenceEdit.setText("1.1")
+    page.dailyValidateButton.click()
+    assert "設定を確認" in page.dailyDraftLabel.text()
+    screenshot("03-invalid-confidence")
+    page.dailyConfidenceEdit.setText("0.55")
     page.dailyValidateButton.click()
     assert "下書きは有効" in page.dailyDraftLabel.text()
     run_cycle(22, "NG", "shared-defaults")
+    initial_images = sorted((tmp_path / "aikensa/inspection_results").rglob("*.png"))
+    with sqlite3.connect(tmp_path / "aikensa/inspection_results/database_results.db") as connection:
+        ordinary_results = connection.execute("SELECT count(*) FROM inspection_results").fetchone()
+    assert calls[-1][:4] == ((431, 1890, 3), 0.4, 1980, False)
+    page.dailySaveButton.click()
+    assert "基準画像で確認" in page.dailyDraftLabel.text()
+    drafts(controller, capture_only=True)
+    screenshot("04-prepared-image-and-roi")
+    drafts(controller, missing_model=True)
+    screenshot("05-model-unavailable")
+    drafts(controller)
+    screenshot("06-draft-measurement")
+    assert sorted((tmp_path / "aikensa/inspection_results").rglob("*.png")) == initial_images
+    with sqlite3.connect(tmp_path / "aikensa/inspection_results/database_results.db") as connection:
+        assert connection.execute("SELECT count(*) FROM inspection_results").fetchone() == ordinary_results
+    assert module.play_ok_sound.call_count == 0 and module.play_ng_sound.call_count == 2
     page.dailySaveButton.click()
     revision_id = settings.load_daily_configuration().revision_id
     assert revision_id != "shared-defaults" and revision_id in page.dailyRevisionLabel.text()
 
     for widget, expected in ((21, "NG"), (22, "OK"), (23, "NG")):
+        diagnostics = worker.save_debug_image.call_count
         run_cycle(widget, expected, revision_id)
+        assert calls[-1][:4] == (
+            ((431, 900, 3), 0.55, 1600, False) if widget == 22 else ((431, 1890, 3), 0.4, 1980, False)
+        )
+        assert worker.save_debug_image.call_count == diagnostics + int(widget != 22)
+    assert settings.load_daily_configuration().profile_for_widget(22).reference.mm_per_px == 0.1604477
     worker.settings = SettingsService(settings.paths)
     run_cycle(22, "OK", revision_id)
     page.dailyHistoryCombo.setCurrentIndex(0)

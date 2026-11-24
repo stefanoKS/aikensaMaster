@@ -1,6 +1,14 @@
 # Milestones
 
-## Active sequence — Phase 3
+## Active sequence — Phase 3B
+
+1. Baseline: software PASS (233 tests at `6f488af`).
+2. Daily Settings: v3 common/position overrides, prepared-image capture,
+   ROI verification, and worker-owned draft measurement software verified.
+3. Complete qualified model selection and artifact/geometry identity, then
+   continue legacy geometry, recording recovery and production migration.
+
+## Phase 3 (historical)
 
 1. Baseline and equipment preview across navigation: software PASS.
 2. Typed daily session state and reinspection: software PASS.

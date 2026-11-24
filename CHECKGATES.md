@@ -98,6 +98,20 @@ machine PASS.
   camera calibration or binary model artifact. Multiprocess writers are
   not verified.
 
+## Configurable daily inspection (CG-P3B-20/30/40, partial)
+
+- `CG-DAILY` executes the real Qt Settings controller and inspection worker
+  with fake cameras/models. It proves the displayed ROI uses the same native
+  bounds as inference and the draft never opens ordinary result storage,
+  emits daily results, changes counters, or saves images or sounds.
+- Approval tests cover v1/v2 migration, common inheritance, Position 2
+  isolation, restart, rollback and the model-unavailable draft path.
+- `CG-UI` checks active/draft separation, late response rejection, fixed
+  inspection pages and placeholders. Set `AIKENSA_DAILY_SETTINGS_EVIDENCE`
+  to an existing directory to collect offscreen Settings screenshots.
+- Registered alternate model activation and physical qualification are
+  **NOT TESTED**. The deployed daily pose model is read-only in this editor.
+
 ## IC4 camera configuration (CG-20)
 
 - With no injected capture factory, `CameraService.acquire()` forwards the

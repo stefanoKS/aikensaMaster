@@ -22,6 +22,7 @@ from typing import Callable, Dict, List, Mapping, Optional, Tuple
 import numpy as np
 
 from aikensa.core.settings.daily_config import (
+    DAILY_COMMON_SCOPE,
     DAILY_DEFAULT_REVISION,
     DailyConfiguration,
     resolve_daily_config,
@@ -106,10 +107,17 @@ class SettingsService:
     def load_daily_defaults(self) -> DailyConfiguration:
         return self._load_daily_revision(DAILY_DEFAULT_REVISION)
 
-    def daily_inheritance_defaults(self, configuration: DailyConfiguration) -> DailyConfiguration:
+    def daily_inheritance_defaults(
+        self, configuration: DailyConfiguration, *, include_common: bool = True,
+    ) -> DailyConfiguration:
+        overrides = configuration.editable_values()
+        inherited = {DAILY_COMMON_SCOPE: overrides.get(DAILY_COMMON_SCOPE, {})} if include_common else {}
+        return self.preview_daily_configuration(configuration, inherited)
+
+    def preview_daily_configuration(self, configuration: DailyConfiguration, overrides: Mapping) -> DailyConfiguration:
         return resolve_daily_config(
             self.paths.root / "aikensa/core/config",
-            configuration.revision_id, configuration.revision_payload({}),
+            configuration.revision_id, configuration.revision_payload(overrides),
         )
 
     def _load_daily_revision(self, revision_id: str) -> DailyConfiguration:
@@ -140,11 +148,15 @@ class SettingsService:
             if candidate.overrides == current.overrides:
                 raise RevisionError("日常点検の設定に変更がありません。")
             changed = [
-                f"{new.profile_id}: {old.reference} → {new.reference}"
+                f"{new.profile_id}: " + ", ".join(
+                    f"{key} {value} → {new.parameter_values()[key]}"
+                    for key, value in old.parameter_values().items() if new.parameter_values()[key] != value
+                )
                 for old, new in zip(current.profiles, candidate.profiles)
-                if old.reference != new.reference
-                or dict(current.overrides).get(old.profile_id) != dict(candidate.overrides).get(new.profile_id)
+                if old != new
             ]
+            if not changed:
+                changed = ["上書きの継承設定を更新（実効値は同じ）"]
             revision_id = self.daily_revisions.stage(
                 {self._daily_payload_path: payload}, operator=operator, changes=changed,
                 note=f"{reason} (previous: {current.revision_id})",

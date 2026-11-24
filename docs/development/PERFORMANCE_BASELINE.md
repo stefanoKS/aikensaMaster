@@ -19,3 +19,8 @@ Cyclomatic complexity, maintainability index, product-specific dispatch/signal
 counts, registry duplication, fixed-size array inventory, coverage and timed
 workload benchmarks are **NOT TESTED** for this baseline. Test suite elapsed
 time is not an inspection latency benchmark.
+
+Phase 3B performs a one-shot prepared capture only on a Settings request;
+the Settings-only worker does not initialize production result storage.
+Native preparation/inference latency, memory and live preview throughput
+remain **NOT TESTED** as performance metrics.

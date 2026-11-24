@@ -43,6 +43,8 @@ REQUIRED_OBJECTS = {
     "daily_inspection_settings.ui": [
         "dailyPositionCombo", "dailyNominalEdit", "dailyToleranceEdit", "dailyScaleEdit",
         "dailyValidateButton", "dailySaveButton", "dailyHistoryCombo", "dailyRollbackButton",
+        "dailyXEdit", "dailyWidthEdit", "dailyConfidenceEdit", "dailyImageSizeEdit",
+        "dailyDiagnosticCheck", "dailyCaptureButton", "dailyTestButton",
     ],
     "settings_main.ui": ["settingsNavList", "settingsContentStack", "backToMainButton"],
     "camera_settings.ui": [
@@ -294,6 +296,7 @@ def application_window(qapp, settings, monkeypatch):
         cameraErrorSignal = pyqtSignal(str)
         modelErrorSignal = pyqtSignal(str)
         dailyResultSignal = pyqtSignal(object, object)
+        dailyDraftSignal = pyqtSignal(object)
         inspectionPreviewSignal = pyqtSignal(int, int, int, object)
         equipmentPreviewSignal = pyqtSignal(int, object)
 
@@ -473,6 +476,38 @@ def test_daily_session_reinspection_clears_all_pass_and_reentry_rejects_old_resu
     _emit_daily_update(window, 22, State.OK, QImage(), cycle="retry", session_id=old_session)
     assert "全位置OK" not in third.statusBar().currentMessage()
     assert "未点検" in third.statusBar().currentMessage()
+
+
+def test_daily_settings_keeps_drafts_and_rejects_late_measurement(qapp, settings):
+    from shutil import copyfile
+    from aikensa.core.inspection.daily_draft import DailyDraftResult
+    from aikensa.gui.settings_pages import SettingsController
+
+    for name in ("part_registry.yaml", "parts_specifications.yaml", "models.yaml"):
+        copyfile(REPO_ROOT / "aikensa/core/config" / name, settings.paths.root / "aikensa/core/config" / name)
+    controller = SettingsController(settings)
+    controller.select_page(6)
+    page = controller.daily_page
+    requests = []
+    page.set_draft_submitter(lambda request: requests.append(request) or True)
+    page.dailyPositionCombo.setCurrentIndex(1)
+    page.dailyToleranceEdit.setText("2.0")
+    page.dailyTestButton.click()
+    assert len(requests) == 1 and not page.dailyTestButton.isEnabled()
+    page.dailyPositionCombo.setCurrentIndex(3)
+    assert not page.dailyXEdit.isEnabled()
+    page.dailyConfidenceEdit.setText("0.63")
+    controller.refresh_all()
+    assert page.dailyConfidenceEdit.text() == "0.63"
+    page.dailyPositionCombo.setCurrentIndex(1)
+    assert page.dailyToleranceEdit.text() == "2.0"
+    page.show_draft_result(DailyDraftResult(requests[0], "old measurement"))
+    assert page.dailyTestButton.isEnabled()
+    assert "old measurement" not in page.dailyTestResultLabel.text()
+    page.dailyValidateButton.click()
+    assert "点検位置1: 検出信頼度" in page.dailyDraftLabel.text()
+    assert "点検位置2: 許容差" in page.dailyDraftLabel.text()
+    assert settings.load_daily_configuration().profile_for_widget(22).reference.tolerance_mm == 1.0
 
 
 def _capture_preview_evidence(window, name):

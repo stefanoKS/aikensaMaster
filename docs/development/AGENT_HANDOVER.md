@@ -1,5 +1,31 @@
 # Agent handover
 
+## Phase 3B
+
+Local and remote started at clean `6f488af813acb192dc65ae572e3afe7ff8956448`.
+Independent Conda Python 3.11.14 baseline: compile PASS, 233 passed, no
+failures or skips. Daily Settings now edits reference length, tolerance,
+conversion, ROI X/Y/width/height, confidence, image size and diagnostic
+saving. Common and per-position drafts remain separate; ROI is position
+only. Schema v3 retains v1/v2 readability and their existing effective values.
+
+Reference capture and `設定テスト` share strict daily preparation and the
+worker-owned pose model. The visible overlay and inference crop use the
+same native bounds. The Settings-only worker path does not open the ordinary
+result database; draft requests cannot finish an inspection, save images or
+play sounds. Late draft results are discarded. The synthetic Position 2
+test measures 101.4 mm with both the default and edited region, stays NG
+until approval, then passes, survives restart and returns NG on rollback.
+The previous placeholder/navigation and production tests remain passing.
+Software: compilation PASS, 34 daily checks, 69 Qt checks, 236 full tests,
+no failures or skips.
+
+Model switching is not enabled: only the deployed daily pose model is
+registered for this workflow. Complete model artifact/geometry identity,
+legacy geometry and remote recovery before claiming the outstanding Phase
+3B gates. Physical cameras, PLC, GPU, Windows and workload performance
+remain NOT TESTED. No machine settings or production records were touched.
+
 ## Phase 3
 
 Started at clean `9cb91787b74d5c4ca812e637bd913774d1c8616e`, matching remote

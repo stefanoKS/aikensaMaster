@@ -133,6 +133,8 @@ class SettingsController(QWidget):
                 self.set_preview_qimage(self._preview_qimage, self._preview_full_size)
 
     def _go_back(self) -> None:
+        if not self.daily_page.can_leave():
+            return
         if self.on_back is not None:
             self.on_back()
 

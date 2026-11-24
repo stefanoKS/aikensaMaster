@@ -18,6 +18,8 @@
   and preserve its Designer object names.
 - Treat camera placeholders as display-only. Invalid, disconnected, or stale
   frames must not be used for inference or calibration or counted as products.
+- Run Settings draft measurements through the owning inspection worker, never
+  through ordinary recording, counters, sounds, or PLC completion.
 - Preserve local operator configuration, including camera assignments,
   calibrated dimensions, model parameters, and alignment. Use temporary
   configuration and databases plus fake hardware for automated tests.

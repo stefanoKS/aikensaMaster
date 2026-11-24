@@ -20,14 +20,15 @@ editable.
 | `pitchSpec` / 基準寸法 | `100.0` mm | Shared `parts_specifications.yaml`, `NICHIJOU_TENKEN` | Positive finite number, used after rounding the actual measurement | Per position |
 | `pitchTolerance` / 許容差 | `1.0` mm | Shared `NICHIJOU_TENKEN` | Nonnegative finite number, inclusive absolute difference | Per position |
 | `pixelMultiplier` / 画素換算係数 | `0.1604477` mm/px | Shared `NICHIJOU_TENKEN` | Positive finite number, horizontal extent only | Per position |
-| `inference_crop` / 検出範囲 | `[0, 0, 1890, 1342]`, `[2100, 0, 1890, 1342]`, `[4200, 0, 1890, 1342]` px | Per position in `part_registry.yaml` | Integer rectangle in native cropped merge coordinates. Legacy bottom clipping is required: the shared merge crop is 431 px high. | No |
+| `inference_crop` / 検出範囲 | `[0, 0, 1890, 1342]`, `[2100, 0, 1890, 1342]`, `[4200, 0, 1890, 1342]` px | Per position in `part_registry.yaml` | Integer rectangle in native cropped merge coordinates. Legacy bottom clipping is required: the shared merge crop is 431 px high. | Per position, verified against a prepared image |
 | `NICHIJOU_TENKEN_Model` / 使用AIモデル | YOLO pose | Shared `models.yaml` loader/weights; legacy worker assignment | Model must be present and callable | No |
-| `confidence` / 検出信頼度 | `0.4` | Shared legacy worker argument | Number in [0, 1] | No |
-| `keypoint_model_imgsz` / 推論画像サイズ | `1980` px | Per position in `part_registry.yaml` | Positive integer in supported strategy range | No |
-| `debug_save_images` / 診断画像保存 | `true` | Shared `NICHIJOU_TENKEN`; legacy worker | Diagnostic only; no effect on measurement | No |
+| `confidence` / 検出信頼度 | `0.4` | Shared legacy worker argument | Number in [0, 1] | Common or position |
+| `keypoint_model_imgsz` / 推論画像サイズ | `1980` px | Per position in `part_registry.yaml` | Positive integer in supported strategy range | Common or position |
+| `debug_save_images` / 診断画像保存 | `true` | Shared `NICHIJOU_TENKEN`, overridable in v3 | Diagnostic only; no effect on measurement | Common or position |
 
 Changes to the reference, tolerance, conversion, crop or inference affect
 judgment. The daily worker snapshots approved per-position overrides at the
-accepted trigger; unsaved drafts never apply. Crop and inference YAML remain
-reviewed deployment settings. `debug_mode` no longer substitutes nominal
+accepted trigger; unsaved drafts never apply. Reference fields accept common
+or position values, with the position taking precedence. Model assignment
+remains a deployment setting. `debug_mode` no longer substitutes nominal
 values for actual measurements.
