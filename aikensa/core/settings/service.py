@@ -17,7 +17,6 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 from pathlib import Path
-from threading import Lock
 from typing import Callable, Dict, List, Mapping, Optional, Tuple
 
 import numpy as np
@@ -29,7 +28,7 @@ from aikensa.core.settings.daily_config import (
 )
 from aikensa.core.settings.paths import AppPaths
 from aikensa.core.settings.repository import SettingsRepository
-from aikensa.core.settings.revisions import RevisionError, RevisionManager
+from aikensa.core.settings.revisions import DAILY_REVISION_LOCK, RevisionError, RevisionManager
 from aikensa.core.settings.schema import (
     CalibrationState,
     CameraSettings,
@@ -55,7 +54,6 @@ from aikensa.core.settings.yaml_store import (
 LOGGER = logging.getLogger(__name__)
 
 CALIBRATION_METADATA_FILENAME = "calibration_metadata.yaml"
-_DAILY_REVISION_LOCK = Lock()
 
 Listener = Callable[[str], None]
 
@@ -133,7 +131,7 @@ class SettingsService:
     def save_daily_configuration(
         self, overrides: Mapping, *, expected_revision: str, operator: str = "", reason: str = "",
     ) -> SettingsRevision:
-        with _DAILY_REVISION_LOCK:
+        with DAILY_REVISION_LOCK:
             current = self.load_daily_configuration()
             if current.revision_id != expected_revision:
                 raise RevisionError("日常点検の設定が更新されました。読み込み直してください。")
@@ -158,7 +156,7 @@ class SettingsService:
     def rollback_daily_configuration(
         self, revision_id: str, *, operator: str = "", reason: str = "", expected_revision: Optional[str] = None,
     ) -> SettingsRevision:
-        with _DAILY_REVISION_LOCK:
+        with DAILY_REVISION_LOCK:
             active_id = self.daily_revisions.active_revision_id(strict=True) or DAILY_DEFAULT_REVISION
             if expected_revision is not None and active_id != expected_revision:
                 raise RevisionError("日常点検の設定が更新されました。読み込み直してください。")

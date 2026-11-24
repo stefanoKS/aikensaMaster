@@ -22,6 +22,7 @@ import json
 import os
 import shutil
 import tempfile
+from threading import Lock
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -35,6 +36,7 @@ from aikensa.core.settings.yaml_store import to_plain
 
 _MANIFEST_NAME = "manifest.json"
 _ACTIVE_NAME = "active.json"
+DAILY_REVISION_LOCK = Lock()
 
 
 class RevisionError(RuntimeError):

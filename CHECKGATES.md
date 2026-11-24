@@ -92,9 +92,11 @@ machine PASS.
 - Daily tests cover pinned shared definitions, v1 compatibility, restarting,
   historical versus deployed-default restore, changed model declaration
   rejection, and competing approvals within one application process.
+- Daily approved history and the active pointer are backed up and restored
+  into a temporary replacement machine root, including rollback there.
 - A result digest identifies the profile and daily strategy, not the
-  camera calibration or binary model artifact. Backup/restore of daily
-  history and multiprocess writers are not verified.
+  camera calibration or binary model artifact. Multiprocess writers are
+  not verified.
 
 ## IC4 camera configuration (CG-20)
 

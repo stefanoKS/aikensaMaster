@@ -217,6 +217,32 @@ def test_two_settings_services_cannot_both_approve_the_same_starting_revision(da
     assert daily_settings.load_daily_configuration().revision_id == (first or second)
 
 
+def test_daily_backup_restores_active_revision_and_history_to_another_machine(daily_settings, tmp_path):
+    from aikensa.core.settings.migration import backup_machine_files, restore_machine_files
+    from aikensa.core.settings.paths import AppPaths
+
+    original = daily_settings.load_daily_configuration()
+    earlier = daily_settings.save_daily_configuration(
+        {"dailyTenken_02": {"tolerance_mm": 2.0}}, expected_revision=original.revision_id,
+    )
+    active = daily_settings.save_daily_configuration(
+        {"dailyTenken_02": {"tolerance_mm": 3.0}}, expected_revision=earlier.revision_id,
+    )
+    backup = backup_machine_files(daily_settings.paths, tmp_path / "backup")
+    assert backup.ok
+    replacement = AppPaths(root=tmp_path / "replacement")
+    shutil.copytree(
+        daily_settings.paths.root / "aikensa/core/config",
+        replacement.root / "aikensa/core/config", ignore=shutil.ignore_patterns("cam"),
+    )
+    restore_machine_files(replacement, backup.backup_dir)
+    restarted = SettingsService(replacement)
+    assert restarted.load_daily_configuration().revision_id == active.revision_id
+    assert restarted.load_daily_configuration().profile_for_widget(22).reference.tolerance_mm == 3.0
+    restarted.rollback_daily_configuration(earlier.revision_id)
+    assert restarted.load_daily_configuration().profile_for_widget(22).reference.tolerance_mm == 2.0
+
+
 def test_invalid_or_failed_activation_leaves_previous_revision(daily_settings, monkeypatch):
     settings = daily_settings
     previous = settings.load_daily_configuration()

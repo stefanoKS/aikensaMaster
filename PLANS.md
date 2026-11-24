@@ -6,7 +6,7 @@
 2. Typed daily session state and reinspection: software PASS.
 3. Harden production geometry (strict preparation verified for widgets
    17–18; other legacy families pending) and effective configuration
-   revisions (daily v2 approval verified; backup and artifact identity pending).
+   revisions (daily v2 approval and backup verified; artifact identity pending).
 4. Complete daily Settings and recording before production migration.
 
 ## Phase 2 (historical)

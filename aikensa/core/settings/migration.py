@@ -55,11 +55,21 @@ def _sha256(path: Path) -> str:
 def runtime_file_groups(paths: AppPaths) -> List[tuple[str, Path, Iterable[str]]]:
     """``(label, directory, filenames)`` for every machine-specific file."""
 
-    return [
+    groups: List[tuple[str, Path, Iterable[str]]] = [
         ("cam", paths.runtime_cam_dir, RUNTIME_CAM_FILES),
         ("camera", paths.runtime_camera_dir, RUNTIME_CAMERA_FILES),
         ("adjustments", paths.runtime_adjustments_dir, RUNTIME_ADJUSTMENT_FILES),
     ]
+    daily = paths.runtime_history_dir / "daily_inspection"
+    if daily.is_dir():
+        for revision in sorted(daily.iterdir()):
+            if revision.is_dir() and not revision.is_symlink() and (revision / "manifest.json").is_file():
+                groups.append((
+                    f"daily_inspection/{revision.name}", revision,
+                    ("manifest.json", "files/00_daily_inspection.yaml"),
+                ))
+        groups.append(("daily_inspection", daily, ("active.json",)))
+    return groups
 
 
 def collect_runtime_files(paths: AppPaths) -> List[Path]:
@@ -81,7 +91,13 @@ def backup_machine_files(
     reason: str = "manual",
 ) -> BackupResult:
     """Copy every machine-specific file outside the work tree and verify it."""
+    from aikensa.core.settings.revisions import DAILY_REVISION_LOCK
 
+    with DAILY_REVISION_LOCK:
+        return _backup_machine_files(paths, destination, reason=reason)
+
+
+def _backup_machine_files(paths: AppPaths, destination: Optional[Path], *, reason: str) -> BackupResult:
     root = Path(destination) if destination is not None else paths.backup_dir
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     backup_dir = root / f"{stamp}_{reason}"
@@ -96,8 +112,8 @@ def backup_machine_files(
             source = directory / name
             if not source.is_file():
                 continue
-            target_dir.mkdir(parents=True, exist_ok=True)
             target = target_dir / name
+            target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, target)
             digest = _sha256(target)
             entries.append(

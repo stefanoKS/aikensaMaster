@@ -52,9 +52,11 @@ The name and reason fields are required in the approval/restore GUI.
 Restore creates an attributed new revision and rejects a historical
 model path that differs from the current deployment. In-process saves are
 serialized across Settings service instances; multiprocess writes are
-not supported. Backup of scoped history, model artifact and calibration
-identity, and full activation/reconciliation tests remain open.
-Software regression: 232 passed, including 42 configuration and 31 daily
+not supported. The scoped history and active pointer are included in the
+existing machine backup; restart and rollback after restoring into a
+replacement root are tested. Model artifact and calibration identity, and
+full activation/reconciliation tests remain open.
+Software regression: 233 passed, including 43 configuration and 32 daily
 checks; no failures or skips.
 
 ## Phase 2
