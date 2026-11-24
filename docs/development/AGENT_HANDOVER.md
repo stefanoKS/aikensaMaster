@@ -2,13 +2,16 @@
 
 Starting head: `7f031789e8a4b11b9ddd61e14737b4177a4b41eb` on `main`;
 verified against GitHub `main`.
+Ending implementation head: `121b2aaeb823768c3fbba8f8dc9f63f8f49e26f9`.
+This handover has a separate documentation commit.
 
 | Package | Implementation | Software evidence | Machine |
 |---|---|---|---|
 | WP0 clean-checkout gate | SOFTWARE VERIFIED (`86f0a3c`) | PASS: 157 tests after replacing the local calibration dependency | NOT TESTED |
 | WP0 static metrics | IN PROGRESS | See the [baseline](./PERFORMANCE_BASELINE.md) for measured and missing metrics | Not applicable |
-| WP1 fixed inspection pages | SOFTWARE VERIFIED (commit `Host inspection pages directly on the fixed Designer canvas`) | PASS: 159 tests and `compileall` against tracked sources; nine Qt page captures reviewed | NOT TESTED |
-| WP2–WP11 | TODO for remaining program requirements | NOT TESTED as work packages | NOT TESTED |
+| WP1 fixed inspection pages | SOFTWARE VERIFIED (`f2885c7`) | PASS: 159 tests and `compileall` against tracked sources; nine Qt page captures reviewed | NOT TESTED |
+| WP2 camera and calibration | IN PROGRESS; CG-20 SOFTWARE VERIFIED (`121b2aa`) | PASS for CG-20: 28 camera tests, 161 tests and `compileall` against tracked sources overall | NOT TESTED |
+| WP3–WP11 | TODO for remaining program requirements | NOT TESTED as work packages | NOT TESTED |
 
 Baseline failures: clean tracked sources had 156 passing tests and one
 test requiring an untracked calibration file; the working copy had 155
@@ -19,11 +22,12 @@ central widget and a combo-box popup's hidden, framework-created scrollbars;
 the final check covers all populated pages and no outer wrapper.
 
 WP0 files: `tests/test_calibration_and_revisions.py`, hardware checklist,
-and the four development inventories linked in [PLANS.md](../../PLANS.md)
-and this directory. WP1 files: `AIKensa.py`, the shared page resolver,
+and the four development inventories. WP1 files: `AIKensa.py`, the shared page resolver,
 14 inspection Designer files, Qt regression tests, Designer guidance,
-repository rules, checkgates, plan and this handover. See `git show --stat`
-of the named commits for the exact file list.
+repository rules, checkgates, plan and this handover. CG-20 files:
+`camera_service.py`, `cam_init_ic4.py`, `test_camera_lifecycle.py`,
+camera assignment guidance, checkgates and [PLANS.md](../../PLANS.md).
+See `git show --stat` of the named commits for the exact file list.
 
 Invariants: slots 0-49 and Settings at 50; no inspection algorithm or
 approved product parameters changed; no writes to operator configuration,
@@ -31,8 +35,27 @@ production databases or hardware. Small logical displays may clip contents
 by design. The real display, calibration/geometry, daily results and
 trigger-to-record lifecycle still need qualification.
 
-Next: WP2 CG-20. Add a public-acquire regression test that patches
-`open_ic4_camera_or_placeholder` without using `capture_factory`. Save
-non-default camera settings in temporary storage and require every requested
-argument, including exposure and gain, at the real opening boundary.
-Confirm that requested settings and readback are independently represented.
+CG-20 repro: `CameraService.acquire()` called the real-path IC4 helper without
+the requested `exposure_us=12000.0` or `gain_db=4.5`. The regression patches
+that opening helper without injecting `capture_factory`. A second test
+verifies that an unavailable SDK value is not substituted with the requested
+size or a fallback zero, while a real measured gain of 0 is preserved.
+No cameras were opened in these tests.
+
+Final working-tree suite: **FAIL** (159 passed, 2 failed), both from the same
+pre-existing menu edit. Tracked-source candidate: **PASS** (161 passed,
+0 skipped). GitHub CI **NOT TESTED**; no tracked workflow was found.
+
+**Next: WP2 CG-22.** Add fake-frame worker regressions with different frame
+shapes per camera (e.g. 64×48 and 80×60) and different temporary calibration
+matrices. Capture the `cv2.initUndistortRectifyMap` arguments in both loops;
+prove camera 2 receives its own dimensions and calibration. Replace the
+inspection loop's single `mapCalculated[1]` gate with readiness of both
+required maps; check calibration metadata and fail closed if the approved
+merge geometry cannot support the acquired dimensions. In a missing-map
+test, assert that a trigger cannot reach inference, counters or persistence.
+Preserve the existing coordinate and rotation conventions; legacy workers
+still use the global rotation, and Settings does not persist a differing
+per-camera override. Do not change that behavior without an orientation
+parity test. CG-21 lifecycle gaps, CG-23 timestamps and CG-24 geometry
+unification remain open.

@@ -11,6 +11,10 @@ bare `except`, `Exception` and `BaseException`; signal counts include all
 | `aikensa/core/thread/inspection_thread.py` | 4089 | 3423 | 81 | `_run_inspection` (1940) | 54 | 38 |
 | `aikensa/core/thread/calibration_thread.py` | 696 | 571 | 19 | `_run_calibration` (334) | 4 | 5 |
 
+At `121b2aa`, both worker modules are unchanged. `AIKensa.py` has 1750
+physical lines and 1462 nonblank lines; `_setup_ui` has 249 lines. Its
+function, handler and signal counts are unchanged.
+
 Cyclomatic complexity, maintainability index, product-specific dispatch/signal
 counts, registry duplication, fixed-size array inventory, coverage and timed
 workload benchmarks are **NOT TESTED** for this baseline. Test suite elapsed
