@@ -23,6 +23,13 @@ EXPECTED_UI = {
     "settings_history.ui": "SettingsHistoryPage",
 }
 
+STANDARD_MENU_BUTTONS = {
+    "P82833W050Pbutton": 5,
+    "P82832W040Pbutton": 6,
+    "P82833W090Pbutton": 7,
+    "P82832W080Pbutton": 8,
+}
+
 REQUIRED_OBJECTS = {
     "settings_main.ui": ["settingsNavList", "settingsContentStack", "backToMainButton"],
     "camera_settings.ui": [
@@ -208,16 +215,14 @@ def test_legacy_pages_scroll_to_controls(qapp, size):
     paths = _ui_files_list()
     window = QMainWindow()
     stack = QStackedWidget()
-    for index in (0, 1, 6, 17):
+    for index in (1, 6, 17):
         page = QMainWindow()
         loadUi(str(REPO_ROOT / paths[index]), page)
         stack.addWidget(legacy_page_viewport(page))
     window.setCentralWidget(stack)
     window.resize(*size)
     window.show()
-    for index, name in enumerate(
-        ("P82832W080Pbutton", "calibCam", "mainmenubutton", "InspectButton")
-    ):
+    for index, name in enumerate(("calibCam", "mainmenubutton", "InspectButton")):
         stack.setCurrentIndex(index)
         qapp.processEvents()
         scroll = stack.currentWidget()
@@ -232,33 +237,36 @@ def test_legacy_pages_scroll_to_controls(qapp, size):
     window.close()
 
 
-def test_main_menu_four_buttons_are_distinct_and_scrollable(qapp):
-    from PyQt5.QtWidgets import QMainWindow, QPushButton
+def test_main_menu_controls_fit_designer_canvas_without_overlap(qapp):
+    from PyQt5.QtCore import QRect, QSize
+    from PyQt5.QtWidgets import QLabel, QMainWindow, QPushButton
     from PyQt5.uic import loadUi
-    from aikensa.gui.page_viewport import legacy_page_viewport
 
     page = QMainWindow()
     loadUi(str(REPO_ROOT / "aikensa/gui/mainPage.ui"), page)
-    scroll = legacy_page_viewport(page)
-    scroll.resize(1280, 720)
-    scroll.show()
+    assert page.size() == QSize(1920, 1080)
+    page.show()
     qapp.processEvents()
-    buttons = [
-        page.findChild(QPushButton, name)
-        for name in (
-            "P82833W050Pbutton", "P82833W090Pbutton",
-            "P82832W040Pbutton", "P82832W080Pbutton",
-        )
+    canvas = page.centralWidget()
+    controls = [
+        w for w in canvas.findChildren((QPushButton, QLabel))
+        if w.isVisibleTo(canvas) and w.text().strip()
     ]
-    for index, button in enumerate(buttons):
+    for name in (
+        *STANDARD_MENU_BUTTONS, "settingsButton", "quitbutton", "dailytenkenbutton",
+        "camcalibrationbutton1", "camcalibrationbutton2", "cameraMerge",
+    ):
+        button = canvas.findChild(QPushButton, name)
         assert button is not None
-        assert not any(button.geometry().intersects(other.geometry()) for other in buttons[:index])
-        scroll.ensureWidgetVisible(button, 0, 0)
-        qapp.processEvents()
-        position = button.mapTo(scroll.viewport(), button.rect().topLeft())
-        assert scroll.viewport().rect().contains(position)
-        assert scroll.viewport().rect().contains(position + button.rect().bottomRight())
-    scroll.close()
+        assert button.isVisibleTo(canvas)
+        rect = QRect(button.mapTo(canvas, button.rect().topLeft()), button.size())
+        assert canvas.rect().contains(rect), name
+        if name in STANDARD_MENU_BUTTONS:
+            for other in controls:
+                if other is not button:
+                    other_rect = QRect(other.mapTo(canvas, other.rect().topLeft()), other.size())
+                    assert not rect.intersects(other_rect), (name, other.objectName())
+    page.close()
 
 
 def test_fullscreen_fits_actual_offscreen_geometry(qapp, settings):
@@ -282,7 +290,7 @@ def test_application_window_switches_pages_without_hardware(qapp, settings, monk
     import sys
     from types import ModuleType
     from unittest.mock import MagicMock
-    from PyQt5.QtWidgets import QPushButton
+    from PyQt5.QtWidgets import QMainWindow, QPushButton, QScrollArea, QScrollBar
 
     for module_name, names in (
         ("calibration_thread", ("CalibrationThread", "CalibrationConfig")),
@@ -308,9 +316,16 @@ def test_application_window_switches_pages_without_hardware(qapp, settings, monk
     assert window.isFullScreen()
     assert window.geometry() == window.screen().geometry()
     main = window.stackedWidget.widget(0)
-    main.findChild(QPushButton, "P82832W040Pbutton").click()
-    assert window.stackedWidget.currentIndex() == 6
-    assert window.inspection_thread.inspection_config.widget == 6
+    assert isinstance(main, QMainWindow)
+    assert not main.findChildren(QScrollBar)
+    assert window.settings_widget_index == 50
+    for index in range(1, 50):
+        assert isinstance(window.stackedWidget.widget(index), QScrollArea)
+    for name, index in STANDARD_MENU_BUTTONS.items():
+        window.stackedWidget.setCurrentIndex(0)
+        main.findChild(QPushButton, name).click()
+        assert window.stackedWidget.currentIndex() == index
+        assert window.inspection_thread.inspection_config.widget == index
     window.stackedWidget.setCurrentIndex(0)
     main.findChild(QPushButton, "camcalibrationbutton1").click()
     assert window.stackedWidget.currentIndex() == 1
@@ -321,6 +336,7 @@ def test_application_window_switches_pages_without_hardware(qapp, settings, monk
     for index in (0, 1, 6, 17, 49, window.settings_widget_index):
         window.stackedWidget.setCurrentIndex(index)
         qapp.processEvents()
+        assert window.isFullScreen()
         assert window.geometry() == window.screen().geometry()
         assert window.stackedWidget.size() == window.size()
     window.close()

@@ -42,5 +42,16 @@ migration is to be enabled.
   1362×1006. The hub scrolls internally rather than propagating that camera
   page minimum to the window.
 
-Next: B, restore the controls within the 1920×1080 unscrolled menu. Physical
-machine qualification is **NOT TESTED**.
+### B — Main menu (software PASS)
+
+- Page 0 is hosted directly; pages 1–49 retain their scroll viewports,
+  and Settings remains at index 50. Startup fullscreen is unchanged.
+- Designer canvas is 1920×1080. The four standard 220×70 controls now sit
+  at x=50, 280, 510 and 740, y=984. Qt verifies containment, no overlaps
+  with existing controls, original navigation targets, Settings access,
+  no main menu scrollbars, and fullscreen at the actual offscreen size.
+- Targeted Settings/Qt suite: 50 passed. Full suite: 135 passed,
+  0 failed, 0 skipped. `compileall` passed. No production config edits.
+
+Next: C, separate display placeholders from camera acquisition. Physical
+machine qualification remains **NOT TESTED**.

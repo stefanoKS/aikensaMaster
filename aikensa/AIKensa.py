@@ -250,9 +250,9 @@ class AIKensa(QMainWindow):
 
         self.stackedWidget = QStackedWidget()
 
-        for ui in UI_FILES:
+        for page_index, ui in enumerate(UI_FILES):
             widget = self._load_ui(ui)
-            self.stackedWidget.addWidget(legacy_page_viewport(widget))
+            self.stackedWidget.addWidget(widget if page_index == 0 else legacy_page_viewport(widget))
 
         self.stackedWidget.setCurrentIndex(0)
 
