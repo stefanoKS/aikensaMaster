@@ -148,6 +148,11 @@ QHeaderView::section { background-color: #30363c; color: #f1f3f5; padding: 4px; 
        </item>
        <item>
         <property name="text">
+         <string>日常点検設定</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
          <string>設定履歴</string>
         </property>
        </item>

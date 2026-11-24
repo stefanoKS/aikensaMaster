@@ -435,6 +435,7 @@ def worker_modules(monkeypatch):
     prediction.get_sliced_prediction = Mock()
     mysql = ModuleType("mysql")
     mysql.connector = ModuleType("mysql.connector")
+    mysql.connector.Error = type("FakeMySQLError", (Exception,), {})
     mysql.connector.connect = Mock(side_effect=RuntimeError("No MySQL in software tests"))
     for name, module in (
         ("ultralytics", yolo), ("sahi", sahi), ("sahi.predict", prediction),
@@ -712,3 +713,133 @@ def test_workers_build_maps_at_each_source_frame_size(
     assert [size for _, size in calls[:2]] == list(sizes)
     for (actual, _), expected in zip(calls, matrices):
         np.testing.assert_array_equal(actual, expected)
+
+
+def test_daily_settings_change_drives_real_worker_and_rolls_back(
+    qapp, settings, monkeypatch, tmp_path, worker_modules, camera_geometry,
+):
+    from shutil import copyfile
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+    import sqlite3
+
+    from PyQt5.QtCore import QThread
+    from aikensa.core.settings.service import SettingsService
+    from aikensa.gui.settings_pages import SettingsController
+    from aikensa.gui.settings_pages import daily_inspection_settings_page
+    from tests.conftest import REPO_ROOT
+
+    service, _, _ = camera_geometry
+    _, module = worker_modules
+    config_dir = settings.paths.root / "aikensa/core/config"
+    for name in ("part_registry.yaml", "parts_specifications.yaml", "models.yaml"):
+        copyfile(REPO_ROOT / "aikensa/core/config" / name, config_dir / name)
+
+    worker = module.InspectionThread.__new__(module.InspectionThread)
+    QThread.__init__(worker)
+    worker.inspection_config = module.InspectionConfig(widget=22, doInspection=True)
+    worker.inspection_config.current_numofPart[17] = [7, 2]
+    worker.settings = settings
+    worker.camera_service = service
+    worker.camera_stream = CameraStream(service, CameraRole.INSPECTION)
+    worker._camera_diagnostic = ("", ())
+    worker.running = True
+    worker._last_color_debug_ts = float("inf")
+    worker._color_debug_interval_sec = 1
+    worker.scaled_width, worker.scaled_height = 80, 60
+    worker.scale_factor = 5
+    worker.wide_planarize = (50, 6550)
+    worker.widget_crop_points = {
+        position: [0, 0, 6528, 0, 6528, 50, 0, 50] for position in (21, 22, 23)
+    }
+    worker.widget_h2_offsets = {}
+    worker.widget_dir_map = {}
+    worker.inspection_widget_indices = [21, 22, 23]
+    worker.inspection_widget_katabu = []
+    worker.initialize_model = Mock()
+    worker._check_date_rollover = Mock()
+    worker.InspectionTimeStart = 0
+    worker.InspectionWaitTime = 0
+    worker.bool_keep_measurement = False
+    worker._emit_kensa_status = Mock()
+    worker.msleep = lambda _: setattr(worker, "running", False)
+    for name in ("mysqlHost", "mysqlID", "mysqlPassword", "mysqlHostPort"):
+        setattr(worker, name, None)
+
+    def infer(*, source, conf, imgsz, verbose):
+        assert source.shape == (50, 1890, 3)
+        assert (conf, imgsz, verbose) == (0.4, 1980, False)
+        worker.inspection_config.widget = 23
+        return [SimpleNamespace(keypoints=SimpleNamespace(xy=np.array([[[0, 1], [632, 4]]])))]
+
+    worker.NICHIJOU_TENKEN_Model = infer
+    signals = []
+
+    def on_result(widget, _session, image, status):
+        signals.append((widget, image, status))
+        if status != "点検中":
+            worker.running = False
+
+    worker.dailyResultSignal.connect(on_result)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(module.cv2, "imread", lambda _: np.zeros((50, 6550, 3), np.uint8))
+    monkeypatch.setattr(module, "NICHIJOU_TENKEN_debug_images_enabled", lambda: False)
+    monkeypatch.setattr(module, "draw_daily_status", lambda image, *_: image)
+    monkeypatch.setattr(module, "play_ok_sound", Mock())
+    monkeypatch.setattr(module, "play_ng_sound", Mock())
+    monkeypatch.setattr(module.time, "sleep", lambda _: None)
+
+    def run_cycle(widget, expected_status, expected_revision):
+        worker.inspection_config.widget = widget
+        worker.inspection_config.doInspection = True
+        worker.InspectionTimeStart = 0
+        worker.running = True
+        signals.clear()
+        worker.run()
+        worker.conn.close()
+        assert worker.inspection_config.current_numofPart[17] == [7, 2]
+        assert len(signals) == 2
+        assert signals[0][0] == signals[1][0] == widget
+        assert signals[1][1].width() == 1791 and signals[1][2].startswith(f"{expected_status} /")
+        root = tmp_path / "aikensa/inspection_results"
+        con = sqlite3.connect(root / "database_results.db")
+        try:
+            row = con.execute("""
+                SELECT i.partName, i.detected_pitch, i.status, m.profile_id, m.revision_id, m.actual_mm,
+                       m.raw_path, m.result_path
+                FROM inspection_results i JOIN daily_inspection_metadata m ON i.id = m.result_id
+                ORDER BY i.id DESC LIMIT 1
+            """).fetchone()
+        finally:
+            con.close()
+        profile = f"dailyTenken_0{widget - 20}"
+        assert row[:6] == (profile, "[101.4]", expected_status, profile, expected_revision, 101.4)
+        for name in row[6:]:
+            path = tmp_path / "aikensa/inspection_results" / name
+            assert path.is_file() and path.parts[-5] == profile
+
+    run_cycle(22, "NG", "shared-defaults")
+    monkeypatch.setattr(daily_inspection_settings_page, "confirm_change", lambda *_: True)
+    controller = SettingsController(settings)
+    controller.select_page(6)
+    page = controller.daily_page
+    assert controller.settingsNavList.currentItem().text() == "日常点検設定"
+    page.dailyPositionCombo.setCurrentIndex(1)
+    page.dailyToleranceEdit.setText("2.0")
+    page.dailyValidateButton.click()
+    assert "下書きは有効" in page.dailyDraftLabel.text()
+    run_cycle(22, "NG", "shared-defaults")
+    page.dailySaveButton.click()
+    revision_id = settings.load_daily_configuration().revision_id
+    assert revision_id != "shared-defaults" and revision_id in page.dailyRevisionLabel.text()
+
+    for widget, expected in ((21, "NG"), (22, "OK"), (23, "NG")):
+        run_cycle(widget, expected, revision_id)
+    worker.settings = SettingsService(settings.paths)
+    run_cycle(22, "OK", revision_id)
+    page.dailyHistoryCombo.setCurrentIndex(0)
+    page.dailyRollbackButton.click()
+    reverted = worker.settings.load_daily_configuration().revision_id
+    assert reverted != revision_id
+    run_cycle(22, "NG", reverted)
+    assert module.play_ok_sound.call_count == 2 and module.play_ng_sound.call_count == 5

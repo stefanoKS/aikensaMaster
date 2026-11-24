@@ -37,6 +37,11 @@ from aikensa.core.inspection import (
     P808387UA1AStrategy, load_profiles,
 )
 from pathlib import Path
+from uuid import uuid4
+
+from aikensa.core.inspection.daily import DailyFailure, DailyInspectionError, DailyInspectionStrategy
+from aikensa.core.inspection.daily_recording import DailyCycle, legacy_row, write_daily_result
+from aikensa.core.settings.revisions import RevisionError
 
 # LEGACY: Keep old imports for backward compatibility during transition
 from aikensa.core.config.parts.MMC.M_5A45.P828XXW0X0P_CTRPLR import partcheck as P828XXW0X0P_check
@@ -53,6 +58,7 @@ from aikensa.core.config.parts.NICHIJOU_TENKEN import debug_images_enabled as NI
 from aikensa.core.config.parts.P658207LE0A import debug_images_enabled as P658207LE0A_debug_images_enabled
 from aikensa.core.config.parts.P658207LE0A import partcheck as P658207LE0A_check
 from aikensa.core.config.parts.NICHIJOU_TENKEN import partcheck as dailyTenken
+from aikensa.core.config.parts.NICHIJOU_TENKEN import draw_status_text_PIL as draw_daily_status
 
 from PIL import ImageFont, ImageDraw, Image
 
@@ -69,6 +75,7 @@ class InspectionConfig:
     map2_downscaled: list = field(default_factory=lambda: [None]*30) #for 30 cameras
 
     doInspection: bool = False
+    daily_session_id: str = ""
     button_sensor: int = 0
 
     kensainNumber: str = None
@@ -137,6 +144,8 @@ class InspectionThread(QThread):
 
     # Emitted when the configured cameras cannot provide a production image source.
     cameraErrorSignal = pyqtSignal(str)
+    dailyResultSignal = pyqtSignal(int, str, QImage, str)
+    dailyPreviewSignal = pyqtSignal(int, QImage)
 
     pickingOrderSignal = pyqtSignal(list)
 
@@ -247,7 +256,7 @@ class InspectionThread(QThread):
                 self._camera_diagnostic = (message, missing)
                 self.cameraErrorSignal.emit(message)
                 preview = np.hstack([make_camera_placeholder(i, 690, 120) for i in missing])
-                self.partCam.emit(self.convertQImage(preview).copy())
+                self._emit_live_preview(self.inspection_config.widget, preview, copy=True)
             return False
         if self._camera_diagnostic[1]:
             self.inspection_config.doInspection = False
@@ -295,6 +304,7 @@ class InspectionThread(QThread):
             self.release_all_camera()
 
     def _run_inspection(self):
+        self._daily_session_id = uuid4().hex
         #initialize the database
         if not os.path.exists("./aikensa/inspection_results"):
             os.makedirs("./aikensa/inspection_results")
@@ -434,6 +444,7 @@ class InspectionThread(QThread):
                     continue
 
                 if all(self.inspection_config.mapCalculated[:2]):
+                    preview_widget = self.inspection_config.widget
 
                     has_downscaled_maps = all(v is not None for v in [
                         self.inspection_config.map1_downscaled[0],
@@ -458,7 +469,7 @@ class InspectionThread(QThread):
                             borderMode=cv2.BORDER_CONSTANT,
                         )
 
-                    if self.inspection_config.widget in self.inspection_widget_indices: # no need to emit katabu
+                    if preview_widget in self.inspection_widget_indices:
                         if not all(is_valid_homography(matrix) for matrix in (self.H1_scaled, self.H2_scaled)):
                             # Uncalibrated machine: report it instead of warping with
                             # placeholder geometry (which used to crash in OpenCV).
@@ -474,12 +485,12 @@ class InspectionThread(QThread):
                             self.cameraErrorSignal.emit("")
                         h2_scaled_for_widget = self._get_cam2_homography_with_widget_offset(
                             self.H2_scaled,
-                            widget_id=self.inspection_config.widget,
+                            widget_id=preview_widget,
                             scaled=True,
                         )
                         self.combinedImage_scaled = warpTwoImages_template(self.homography_blank_canvas_scaled, self.mergeframe1_scaled, self.H1_scaled)
                         self.combinedImage_scaled = warpTwoImages_template(self.combinedImage_scaled, self.mergeframe2_scaled, h2_scaled_for_widget)
-                        crop_points_scaled = self._get_crop_points_for_widget(self.inspection_config.widget, scaled=True)
+                        crop_points_scaled = self._get_crop_points_for_widget(preview_widget, scaled=True)
                         self.combinedImage_scaled = self._crop_image_by_4points(self.combinedImage_scaled, crop_points_scaled)
                        
                         if self.inspection_config.widget in self.inspection_widget_katabu: # emit katabu
@@ -515,7 +526,7 @@ class InspectionThread(QThread):
                             height=preview_height,
                         )
 
-                    self.partCam.emit(self.convertQImage(self.combinedImage_scaled))
+                    self._emit_live_preview(preview_widget, self.combinedImage_scaled)
         
                     self.P82833W050P_InspectionResult_PitchMeasured.emit(self.InspectionResult_PitchMeasured, self.InspectionResult_PitchResult)
                     self.P82832W040P_InspectionResult_PitchMeasured.emit(self.InspectionResult_PitchMeasured, self.InspectionResult_PitchResult)
@@ -2133,81 +2144,11 @@ class InspectionThread(QThread):
                             time.sleep(1.5)
 
             #for daily inspection
-            if self.inspection_config.widget in [21, 22, 23]:
-
-                if self._begin_inspection_cycle(print_start=True):
-
-                    if self.InspectionTimeStart is not None:
-
-                        if time.time() - self.InspectionTimeStart > self.InspectionWaitTime:
-                            print("Inspection Time is over")
-                            self.InspectionTimeStart = time.time()
-                            self._prepare_wide_inspection_images(status_text="校正確認中", x_offset=-280, y_offset=-100, h2=self.H2)
-
-                            keypoint_model_imgsz = 1980
-                            if self.part_registry:
-                                try:
-                                    part_cfg = self.part_registry.get_part_by_widget(self.inspection_config.widget)
-                                    keypoint_model_imgsz = int(part_cfg.keypoint_model_imgsz) if part_cfg and part_cfg.keypoint_model_imgsz else 1280
-                                except Exception:
-                                    keypoint_model_imgsz = 1980
-
-                            for i in range(len(self.InspectionImages)):
-                                crop_image, crop_offset = self._crop_daily_tenken_inference_image(self.InspectionImages[i])
-
-                                if NICHIJOU_TENKEN_debug_images_enabled():
-                                    self.save_debug_image(
-                                        crop_image,
-                                        "dailytenken_inference_crop",
-                                        suffix=f"widget{self.inspection_config.widget}_idx{i}",
-                                    )
-
-                                if not self._check_model_available('NICHIJOU_TENKEN_Model'):
-                                    self.InspectionResult_keypoint_Left[i] = None
-                                else:
-                                    try:
-                                        self.InspectionResult_keypoint_Left[i] = self.NICHIJOU_TENKEN_Model(
-                                            source=crop_image,
-                                            conf=0.4,
-                                            imgsz=keypoint_model_imgsz,
-                                            verbose=False,
-                                        )
-                                    except Exception as e:
-                                        print(f"[Inference Error] NICHIJOU_TENKEN_Model: {e}")
-                                        self.InspectionResult_keypoint_Left[i] = None
-
-                                self.InspectionImages[i], self.InspectionResult_PitchMeasured[i], self.InspectionResult_PitchResult[i], self.InspectionResult_DetectionID[i], self.InspectionResult_Status[i], self.InspectionResult_NGReason[i] = dailyTenken(
-                                    self.InspectionImages[i],
-                                    self.InspectionResult_keypoint_Left[i],
-                                    crop_offset=crop_offset,
-                                )
-
-                                if self.InspectionResult_Status[i] == "OK":
-                                    play_ok_sound()
-                                elif self.InspectionResult_Status[i] == "NG":
-                                    play_ng_sound()
-
-                            self.save_image_result(self.combinedImage, self.InspectionImages[0], self.InspectionResult_Status[0])
-
-                            self.save_result_database(partname = self.widget_dir_map[self.inspection_config.widget],
-                                    numofPart = self.inspection_config.today_numofPart[self.inspection_config.widget], 
-                                    currentnumofPart = self.inspection_config.current_numofPart[self.inspection_config.widget],
-                                    deltaTime = 0.0,
-                                    kensainName = self.inspection_config.kensainNumber, 
-                                    detected_pitch_str = self.InspectionResult_PitchMeasured[0], 
-                                    delta_pitch_str = self.InspectionResult_DeltaPitch[0], 
-                                    total_length=0,
-                                    resultPitch = self.InspectionResult_PitchResult[0], 
-                                    status = self.InspectionResult_Status[0], 
-                                    NGreason = self.InspectionResult_NGReason[0],
-                                    PPMS="Null")
-
-
-                            self.InspectionImages[0] = self.downSampling(self.InspectionImages[0], width=1791, height=131)
-
-                            self.partCam.emit(self.convertQImage(self.InspectionImages[0]))
-
-                            time.sleep(1.5)
+            daily_widget = self.inspection_config.widget
+            if daily_widget in (21, 22, 23) and self._begin_inspection_cycle(print_start=True):
+                self.InspectionTimeStart = time.time()
+                if self._run_daily_cycle(daily_widget):
+                    time.sleep(1.5)
 
             self.today_numofPart_signal.emit(self.inspection_config.today_numofPart)
             self.current_numofPart_signal.emit(self.inspection_config.current_numofPart)
@@ -2219,6 +2160,77 @@ class InspectionThread(QThread):
     # =========================
     # Supporting methods
     # =========================
+
+    def _emit_live_preview(self, widget, image, *, copy=False):
+        if widget in (21, 22, 23):
+            self.dailyPreviewSignal.emit(widget, self.convertQImage(image).copy())
+        else:
+            preview = self.convertQImage(image)
+            self.partCam.emit(preview.copy() if copy else preview)
+
+    def _run_daily_cycle(self, widget):
+        config = self.inspection_config
+        operator = str(config.kensainNumber)
+        current_counts = tuple(config.current_numofPart[widget])
+        today_counts = tuple(config.today_numofPart[widget])
+        session_id = config.daily_session_id or self._daily_session_id
+        self.dailyResultSignal.emit(widget, session_id, QImage(), "点検中")
+        try:
+            active = self.settings.load_daily_configuration()
+            profile = active.profile_for_widget(widget)
+            cycle = DailyCycle.begin(
+                profile, active.revision_id, session_id, operator, current_counts, today_counts,
+            )
+            raw, _ = self._build_inspection_image(
+                planarize_transform=self.planarizeTransform_wide,
+                planarize_size=self.wide_planarize,
+                h1=self.H1, h2=self.H2, blank_canvas=self.homography_blank_canvas,
+                widget_id=widget, strict=True,
+            )
+            result = DailyInspectionStrategy().inspect(
+                raw, profile.reference, profile.roi, profile.inference, getattr(self, profile.model_key, None),
+            )
+        except (DailyInspectionError, UncalibratedError, RevisionError, OSError, yaml.YAMLError, ValueError) as exc:
+            category = (
+                exc.category.value if isinstance(exc, DailyInspectionError)
+                else ("CALIBRATION_ERROR" if isinstance(exc, UncalibratedError) else "CONFIGURATION_ERROR")
+            )
+            self.dailyResultSignal.emit(widget, session_id, QImage(), f"設備異常 ({category}): {exc}")
+            return False
+
+        if NICHIJOU_TENKEN_debug_images_enabled():
+            try:
+                self.save_debug_image(profile.roi.crop(raw), "dailytenken_inference_crop", suffix=f"widget{widget}_idx0")
+            except (OSError, cv2.error):
+                logging.getLogger(__name__).exception("Could not save daily diagnostic image")
+
+        measurement = "基準点検出不良" if result.actual_mm is None else f"実測値: {result.actual_mm:.1f} mm"
+        details = f"点検位置{widget - 20} / {measurement} / 基準 {profile.reference.nominal_mm:g} ± {profile.reference.tolerance_mm:g} mm"
+        if result.difference_mm is not None:
+            details += f" / 差 {result.difference_mm:+.1f} mm"
+        annotated = raw.copy()
+        color = (0, 210, 60) if result.status == "OK" else (10, 10, 255)
+        if len(result.endpoints) == 2:
+            left, right = result.endpoints
+            cv2.line(annotated, left, right, color, 8)
+            for point in result.endpoints:
+                cv2.circle(annotated, point, 18, color, 4)
+        annotated = draw_daily_status(annotated, result.status, measurement)
+        status = f"{result.status} / {details} / {cycle.timestamp:%H:%M:%S}"
+        fresh_record = False
+        try:
+            fresh_record = write_daily_result(self.conn, Path("aikensa/inspection_results"), cycle, result, raw, annotated)
+            if fresh_record:
+                self._mirror_result_to_mysql(legacy_row(cycle, result), report_failure=True)
+        except (OSError, sqlite3.Error, cv2.error, mysql.connector.Error) as exc:
+            logging.getLogger(__name__).exception("Daily result recording failed: %s", cycle.cycle_id)
+            status = f"記録失敗: {exc} / {status}"
+        preview = self.downSampling(annotated, width=1791, height=131)
+        preview = cv2.cvtColor(preview, cv2.COLOR_BGR2RGB)
+        self.dailyResultSignal.emit(widget, session_id, self.convertQImage(preview).copy(), status)
+        if fresh_record and status.startswith(("OK /", "NG /")):
+            (play_ok_sound if result.status == "OK" else play_ng_sound)()
+        return True
 
     def _begin_inspection_cycle(self, require_keep_measurement_false=False, print_start=False):
         """
@@ -2361,15 +2373,24 @@ class InspectionThread(QThread):
         for key, value in self.widget_dir_map.items():
             self.inspection_config.today_numofPart[key] = self.get_last_entry_total_numofPart(value)
 
+        self._mirror_result_to_mysql((
+            partname, numofPart, currentnumofPart, timestamp_hour, timestamp_date,
+            deltaTime, kensainName, detected_pitch_str, delta_pitch_str, total_length,
+            resultPitch, status, NGreason, PPMS,
+        ))
+
+    def _mirror_result_to_mysql(self, row, *, report_failure=False):
         if getattr(self, "mysql_conn", None) is not None and hasattr(self, "mysql_cursor"):
             try:
                 # Also save to MySQL cursor when available.
                 self.mysql_cursor.execute('''
                 INSERT INTO inspection_results (partName, numofPart, currentnumofPart, timestampHour, timestampDate, deltaTime, kensainName, detected_pitch, delta_pitch, total_length, resultpitch, status, NGreason, PPMS)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                ''', (partname, numofPart, currentnumofPart, timestamp_hour, timestamp_date, deltaTime, kensainName, detected_pitch_str, delta_pitch_str, total_length, resultPitch, status, NGreason, PPMS))
+                ''', row)
                 self.mysql_conn.commit()
             except Exception as e:
+                if report_failure:
+                    raise
                 print(f"Error saving to MySQL database: {str(e)}")
 
     def get_last_entry_currentnumofPart(self, part_name):
@@ -3731,7 +3752,10 @@ class InspectionThread(QThread):
             h1=None,
             h2=None,
             blank_canvas=None,
-            rotate_code=cv2.ROTATE_180
+            rotate_code=cv2.ROTATE_180,
+            *,
+            widget_id=None,
+            strict=False,
         ):
         """
         Build combined image from mergeframe1/2 using:
@@ -3745,9 +3769,10 @@ class InspectionThread(QThread):
 
         # Build a safe blank fallback to avoid hard crashes when state is not initialized yet.
         # Keep fallback as pure NumPy to avoid entering OpenCV native calls in this stage.
-        fallback_bgr = np.zeros((ph, pw, 3), dtype=np.uint8)
-
         def _fallback():
+            if strict:
+                raise UncalibratedError("全解像度の結合画像・切り出し範囲")
+            fallback_bgr = np.zeros((ph, pw, 3), dtype=np.uint8)
             fallback_rgb_local = cv2.cvtColor(fallback_bgr, cv2.COLOR_BGR2RGB)
             return fallback_bgr, fallback_rgb_local
 
@@ -3768,9 +3793,10 @@ class InspectionThread(QThread):
             )
 
         # Apply per-part cam2 translation offset while preserving cam1 as anchor.
+        widget_id = self.inspection_config.widget if widget_id is None else widget_id
         h2 = self._get_cam2_homography_with_widget_offset(
             h2,
-            widget_id=self.inspection_config.widget,
+            widget_id=widget_id,
             scaled=False,
         )
 
@@ -3790,7 +3816,9 @@ class InspectionThread(QThread):
             print("[_build_inspection_image] invalid merge frame shape; using fallback")
             return _fallback()
 
-        if not _valid_h(h1) or not _valid_h(h2):
+        if not _valid_h(h1) or not _valid_h(h2) or (
+            strict and not all(is_valid_homography(matrix) for matrix in (h1, h2))
+        ):
             print("[_build_inspection_image] invalid homography matrix; using fallback")
             return _fallback()
 
@@ -3861,7 +3889,14 @@ class InspectionThread(QThread):
             return _fallback()
 
         # ---- 4-point crop (replacement for planarize warpPerspective) ----
-        crop_points = self._get_crop_points_for_widget(self.inspection_config.widget, scaled=False)
+        crop_points = self._get_crop_points_for_widget(widget_id, scaled=False)
+        if strict:
+            if not crop_points or len(crop_points) != 8:
+                return _fallback()
+            xs, ys = crop_points[::2], crop_points[1::2]
+            height, width = combined.shape[:2]
+            if not (0 <= min(xs) < max(xs) <= width and 0 <= min(ys) < max(ys) <= height):
+                return _fallback()
         combined = self._crop_image_by_4points(combined, crop_points)
 
         # Keep native cropped resolution for all widgets (no padding, no forced resize).

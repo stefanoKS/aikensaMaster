@@ -9,6 +9,7 @@ import faulthandler
 import threading
 from enum import Enum
 import time
+from uuid import uuid4
 import datetime
 from typing import List
 
@@ -359,6 +360,7 @@ class AIKensa(QMainWindow):
                 button.clicked.connect(lambda: self.inspection_thread.start() if not self.inspection_thread.isRunning() else None)
                 button.clicked.connect(self.calibration_thread.stop)
 
+        dailytenken01_button.clicked.connect(self._reset_daily_status)
         dailytenken01_button.clicked.connect(lambda: self.stackedWidget.setCurrentIndex(21))
         dailytenken01_button.clicked.connect(lambda: self._set_inspection_params(self.inspection_thread, 'widget', 21))
         dailytenken01_button.clicked.connect(lambda: self.inspection_thread.start() if not self.inspection_thread.isRunning() else None)
@@ -464,6 +466,51 @@ class AIKensa(QMainWindow):
 
         # Keep the camera preview out of production when the machine is not ready.
         self.inspection_thread.cameraErrorSignal.connect(self._show_camera_error)
+        self._daily_status = {}
+        self._daily_session_id = ""
+        self.inspection_thread.dailyResultSignal.connect(self._show_daily_result)
+        self.inspection_thread.dailyPreviewSignal.connect(self._show_daily_preview)
+
+    def _reset_daily_status(self):
+        self._daily_status.clear()
+        self._daily_session_id = uuid4().hex
+        self.inspection_thread.inspection_config.daily_session_id = self._daily_session_id
+        for index in (21, 22, 23):
+            page = self.stackedWidget.widget(index)
+            page.statusBar().showMessage(f"点検位置{index - 20}: 未点検")
+            label = page.findChild(QLabel, "framePart")
+            if label:
+                label.clear()
+
+    def _show_daily_result(self, index, session_id, image, status):
+        if index not in (21, 22, 23) or session_id != self._daily_session_id:
+            return
+        if status != "点検中":
+            self._daily_status[index] = status
+        summary = " / ".join(
+            f"{position - 20}: {self._daily_status.get(position, '未点検').partition(' / ')[0].partition(':')[0]}"
+            for position in (21, 22, 23)
+        )
+        completed = [message for message in self._daily_status.values() if message.startswith(("OK /", "NG /"))]
+        if len(completed) == 3:
+            session_status = "全位置OK" if all(message.startswith("OK /") for message in completed) else "全位置実施・NGあり"
+        elif self._daily_status:
+            session_status = "一部実施・NGあり" if any(message.startswith("NG /") for message in completed) else "一部実施"
+        else:
+            session_status = "未完了"
+        page = self.stackedWidget.widget(index)
+        for position in (21, 22, 23):
+            message = status if position == index else self._daily_status.get(position, "未点検")
+            self.stackedWidget.widget(position).statusBar().showMessage(f"{message}    ({session_status} / {summary})")
+        label = page.findChild(QLabel, "framePart")
+        if label and not image.isNull():
+            display_image(label, image)
+
+    def _show_daily_preview(self, index, image):
+        if index == self.stackedWidget.currentIndex():
+            label = self.stackedWidget.widget(index).findChild(QLabel, "framePart")
+            if label:
+                display_image(label, image)
 
     def _show_camera_error(self, message):
         index = self.stackedWidget.currentIndex()
@@ -489,6 +536,8 @@ class AIKensa(QMainWindow):
             self.calibration_thread.start()
 
     def _on_machine_settings_changed(self, what: str = ""):
+        if what == "daily_inspection":
+            return
         if hasattr(self, "inspection_thread") and self.inspection_thread is not None:
             reload_adjustments = getattr(self.inspection_thread, "reload_adjustments", None)
             if callable(reload_adjustments):
@@ -1506,6 +1555,8 @@ class AIKensa(QMainWindow):
 
     def _setPartFrame(self, image):
         for i in self.inspectionWidget_indices:
+            if i in (21, 22, 23):
+                continue
             widget = self.stackedWidget.widget(i)
             label = widget.findChild(QLabel, "framePart")
             if label:
@@ -1574,6 +1625,8 @@ class AIKensa(QMainWindow):
         setattr(thread.calib_config, key, value)
 
     def _set_inspection_params(self, thread, key, value):
+        if key == "widget" and (value in (21, 22, 23) or thread.inspection_config.widget in (21, 22, 23)):
+            thread.inspection_config.doInspection = False
         setattr(thread.inspection_config, key, value)
         if key == "doInspection" and value is True and hasattr(thread, "InspectionWaitTime"):
             thread.InspectionTimeStart = time.time() - thread.InspectionWaitTime

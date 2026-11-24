@@ -25,6 +25,7 @@ from aikensa.core.settings.service import SettingsService
 from aikensa.gui.settings_pages.calibration_settings_page import CalibrationSettingsPage
 from aikensa.gui.settings_pages.camera_settings_page import CameraSettingsPage
 from aikensa.gui.settings_pages.common import load_settings_ui, show_error
+from aikensa.gui.settings_pages.daily_inspection_settings_page import DailyInspectionSettingsPage
 from aikensa.gui.settings_pages.fine_adjustment_page import FineAdjustmentPage
 from aikensa.gui.settings_pages.history_page import SettingsHistoryPage
 from aikensa.gui.settings_pages.inspection_settings_page import InspectionSettingsPage
@@ -59,7 +60,7 @@ class SettingsController(QWidget):
         self._nav_pages = [self.settingsNavList.item(index) for index in range(len(self._pages))]
         for index, item in enumerate(self._nav_pages):
             item.setData(Qt.UserRole, index)
-        for index, title in reversed(((0, "設備・カメラ"), (3, "検査条件"), (6, "管理"))):
+        for index, title in reversed(((0, "設備・カメラ"), (3, "検査条件"), (7, "管理"))):
             heading = QListWidgetItem(title)
             heading.setFlags(Qt.NoItemFlags)
             heading.setForeground(QColor("#aab3bc"))
@@ -84,6 +85,7 @@ class SettingsController(QWidget):
         self.widget_page = WidgetAdjustmentPage(self.settings, saved, self)
         self.inspection_page = InspectionSettingsPage(self.settings, self)
         self.model_page = ModelSettingsPage(self.settings, self)
+        self.daily_page = DailyInspectionSettingsPage(self.settings, saved, self)
         self.history_page = SettingsHistoryPage(self.settings, saved, self)
 
         stack = self.settingsContentStack
@@ -100,6 +102,7 @@ class SettingsController(QWidget):
             self.widget_page,
             self.inspection_page,
             self.model_page,
+            self.daily_page,
             self.history_page,
         ):
             scroll = QScrollArea()

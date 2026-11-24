@@ -3,6 +3,7 @@
 from types import SimpleNamespace
 from dataclasses import FrozenInstanceError
 import shutil
+import sqlite3
 
 import numpy as np
 import pytest
@@ -80,6 +81,7 @@ def broken_model(**_):
     [(None, DailyROI(0, 0, 10, 10), DailyFailure.MODEL_ERROR),
      (broken_model, DailyROI(0, 0, 10, 10), DailyFailure.INFERENCE_ERROR),
      (lambda **_: [object()], DailyROI(0, 0, 10, 10), DailyFailure.INFERENCE_ERROR),
+     (lambda **_: pose((0, 0), (500, 0)), DailyROI(0, 0, 10, 10), DailyFailure.INFERENCE_ERROR),
      (None, DailyROI(12, 0, 10, 10, True), DailyFailure.CALIBRATION_ERROR),
      (None, DailyROI(0, 9, 10, 10, True), DailyFailure.CALIBRATION_ERROR)],
 )
@@ -154,3 +156,37 @@ def test_invalid_or_failed_activation_leaves_previous_revision(daily_settings, m
         )
     assert SettingsService(settings.paths).load_daily_configuration() == previous
     assert len(settings.daily_revisions.list_revisions()) == 1
+
+
+def test_daily_recording_is_idempotent_and_failed_images_do_not_create_a_result(
+    daily_settings, tmp_path, monkeypatch,
+):
+    from aikensa.core.inspection import daily_recording as recording
+    from aikensa.core.inspection.daily import measure_reference
+
+    config = daily_settings.load_daily_configuration()
+    profile = config.profile_for_widget(22)
+
+    def cycle():
+        return recording.DailyCycle.begin(profile, config.revision_id, "session", "", (0, 0), (0, 0))
+
+    root = tmp_path / "results"
+    image = np.zeros((40, 700, 3), np.uint8)
+    sample = measure_reference(((0, 0), (627, 2)), profile.reference)
+    con = sqlite3.connect(":memory:")
+    try:
+        con.execute(f"CREATE TABLE inspection_results (id INTEGER PRIMARY KEY, {recording._RESULT_FIELDS})")
+        first = cycle()
+        assert recording.write_daily_result(con, root, first, sample, image, image)
+        assert not recording.write_daily_result(con, root, first, sample, image, image)
+        failed = cycle()
+        write = recording.cv2.imwrite
+        # Write the first image for real so cleanup is exercised when the second fails.
+        monkeypatch.setattr(recording.cv2, "imwrite", lambda path, array: write(path, array) if "nama" in path else False)
+        with pytest.raises(OSError):
+            recording.write_daily_result(con, root, failed, sample, image, image)
+        assert con.execute("SELECT count(*) FROM inspection_results").fetchone() == (1,)
+        assert con.execute("SELECT cycle_id FROM daily_inspection_metadata").fetchall() == [(first.cycle_id,)]
+        assert len(list(root.rglob("*.png"))) == 2
+    finally:
+        con.close()

@@ -42,9 +42,34 @@ alter camera or alignment settings. The active revision is loaded separately
 from production adjustment revisions; Settings does not yet show daily
 history or expose the editor. A shared YAML deployment remains separate from
 machine-local override history. Software regression: 202 passed, no failures
-or skips. Next: capture the daily configuration at an
-accepted trigger and route geometry, inference, presentation and recording
-using that frozen identity.
+or skips.
+
+The worker now uses the shared strategy and strict geometry for widgets
+21–23. Each accepted cycle freezes operator, position, session, and
+configuration revision. SQLite retains the legacy fields and records the
+extra metadata in `daily_inspection_metadata`. Saved PNGs preserve the
+original directory structure; failed writes do not create a successful local
+record, and the cycle ID prevents duplicate local inserts. The optional
+legacy MySQL mirror remains; its physical deployment and failure recovery
+are NOT TESTED. Widget 36's product-specific daily mode is unchanged.
+
+`設備設定 → 日常点検設定` edits baseline length, tolerance and pixel conversion
+per position, with validation, confirmation, history, and rollback. The
+synthetic controller/worker regression used the same 101.4 mm input:
+Position 2 was NG at 1.0 mm (including with an unsaved 2.0 mm draft),
+OK at 2.0 mm after approval and after reloading the worker's Settings
+service, and NG after rollback. Positions 1 and 3 remained NG. The test
+checked SQLite metadata, images, frozen identity during a page change and
+an unchanged production counter. Separate Qt coverage checks daily
+navigation and position-specific presentation. `compileall` passed; the
+full suite had 209 passes, no failures or skips.
+
+Next: qualify real camera orientation, daily targets, inference, MySQL and
+display; finish the remaining production geometry failure paths. Gate 5
+still needs editable ROI/inference controls, reference preview and a
+side-effect-free test measurement using the existing model owner. Gates
+6–8 (production migration, editable production settings, preview benchmark)
+are not started.
 
 ## Prior evidence
 

@@ -20,6 +20,7 @@ EXPECTED_UI = {
     "widget_adjustment.ui": "WidgetAdjustmentPage",
     "inspection_settings.ui": "InspectionSettingsPage",
     "model_settings.ui": "ModelSettingsPage",
+    "daily_inspection_settings.ui": "DailyInspectionSettingsPage",
     "settings_history.ui": "SettingsHistoryPage",
 }
 
@@ -39,6 +40,10 @@ ACTIVE_MENU_ROUTES = {
 }
 
 REQUIRED_OBJECTS = {
+    "daily_inspection_settings.ui": [
+        "dailyPositionCombo", "dailyNominalEdit", "dailyToleranceEdit", "dailyScaleEdit",
+        "dailyValidateButton", "dailySaveButton", "dailyHistoryCombo", "dailyRollbackButton",
+    ],
     "settings_main.ui": ["settingsNavList", "settingsContentStack", "backToMainButton"],
     "camera_settings.ui": [
         "camera0SerialComboBox",
@@ -180,14 +185,14 @@ def test_settings_controller_navigation(qapp, settings):
 
     controller = SettingsController(settings=settings)
     stack = controller.settingsContentStack
-    assert stack.count() == 7
+    assert stack.count() == 8
 
     controller.select_page(3)
     assert stack.currentIndex() == 3
 
     controller.select_page(0)
     assert stack.currentIndex() == 0
-    headings = [controller.settingsNavList.item(row) for row in (0, 4, 8)]
+    headings = [controller.settingsNavList.item(row) for row in (0, 4, 9)]
     assert [item.text() for item in headings] == ["設備・カメラ", "検査条件", "管理"]
     for item in headings:
         assert not item.flags() & Qt.ItemIsSelectable
@@ -211,7 +216,7 @@ def test_settings_scroll_without_expanding_window(qapp, settings, size):
     qapp.processEvents()
 
     assert controller.minimumSizeHint().height() < 720
-    for index in range(7):
+    for index in range(controller.settingsContentStack.count()):
         controller.select_page(index)
         qapp.processEvents()
         assert window.size() == QSize(*size)
@@ -288,6 +293,8 @@ def application_window(qapp, settings, monkeypatch):
     class Worker(QObject):
         cameraErrorSignal = pyqtSignal(str)
         modelErrorSignal = pyqtSignal(str)
+        dailyResultSignal = pyqtSignal(int, str, object, str)
+        dailyPreviewSignal = pyqtSignal(int, object)
 
         def __init__(self, config):
             super().__init__()
@@ -409,6 +416,22 @@ def test_small_window_clips_fixed_pages_without_resizing(qapp, application_windo
     window.stackedWidget.setCurrentIndex(17)
     button = window.stackedWidget.currentWidget().findChild(QPushButton, "InspectButton")
     assert button.geometry().bottom() >= window.height()
+
+
+def test_daily_result_from_previous_position_is_not_rendered_on_active_position(application_window):
+    from PyQt5.QtGui import QColor, QImage
+    from PyQt5.QtWidgets import QLabel
+
+    window = application_window
+    window.stackedWidget.setCurrentIndex(22)
+    result = QImage(64, 32, QImage.Format_RGB888)
+    result.fill(QColor("green"))
+    window.inspection_thread.dailyResultSignal.emit(21, window._daily_session_id, result, "OK / 実測値: 100.6 mm")
+    first = window.stackedWidget.widget(21)
+    second = window.stackedWidget.widget(22)
+    assert not first.findChild(QLabel, "framePart").pixmap().isNull()
+    assert "100.6" in first.statusBar().currentMessage()
+    assert "100.6" not in second.statusBar().currentMessage()
 
 
 def test_camera_and_model_signals_reach_visible_page_diagnostics(application_window):

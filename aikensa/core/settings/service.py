@@ -103,6 +103,9 @@ class SettingsService:
         revision_id = self.daily_revisions.active_revision_id(strict=True)
         return self._load_daily_revision(revision_id or DAILY_DEFAULT_REVISION)
 
+    def load_daily_defaults(self) -> DailyConfiguration:
+        return self._load_daily_revision(DAILY_DEFAULT_REVISION)
+
     def _load_daily_revision(self, revision_id: str) -> DailyConfiguration:
         if revision_id == DAILY_DEFAULT_REVISION:
             payload = {"schema_version": 1, "positions": {}}

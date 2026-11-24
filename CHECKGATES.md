@@ -84,9 +84,8 @@ machine PASS.
 - `tests/test_daily_inspection.py` tests horizontal measurement, rounding before
   judgment, all three ROI offsets, valid detection NG, and configuration,
   model and inference failures with synthetic poses.
-- The legacy daily renderer uses the shared measurement kernel without
-  replacing passing measurements with the nominal value. The strict strategy
-  is not yet active in the worker; these tests are not end-to-end evidence.
+- Widgets 21–23 use the strict shared strategy. The legacy compatibility
+  wrapper also preserves measured values instead of substituting the nominal.
 
 ## Daily configuration revisions (CG-P2-20, partial)
 
@@ -94,7 +93,18 @@ machine PASS.
   configuration, approval changes only Position 2, the revision persists on
   restart, and rollback restores the previous values.
 - Validation and activation failure leave the previous active snapshot intact.
-  This is service-level evidence, not a Settings or worker integration test.
+
+## Daily application and Settings (CG-P2-40/50, partial)
+
+- `test_daily_settings_change_drives_real_worker_and_rolls_back` runs the
+  actual Settings controller and worker with fake camera/model inputs and
+  isolated SQLite and PNG output. Position 2 changes NG → OK → NG across
+  approval and rollback without changing the 101.4 mm measurement; the
+  approved value also survives recreating the Settings service.
+- Check deduplication, failed writes and position-specific Qt presentation
+  in `tests/test_daily_inspection.py` and `tests/test_settings_ui.py`.
+- ROI/model/debug settings are not editable. A Settings reference preview,
+  dry-run measurement, widget-36 parity and machine qualification are open.
 
 ## Commands
 

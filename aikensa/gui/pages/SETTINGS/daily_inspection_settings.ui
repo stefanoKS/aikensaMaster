@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DailyInspectionSettingsPage</class>
+ <widget class="QWidget" name="DailyInspectionSettingsPage">
+  <layout class="QVBoxLayout" name="dailySettingsLayout">
+   <item><widget class="QLabel" name="dailyTitleLabel"><property name="text"><string>日常点検設定</string></property></widget></item>
+   <item><widget class="QLabel" name="dailyRevisionLabel"><property name="wordWrap"><bool>true</bool></property></widget></item>
+   <item>
+    <layout class="QFormLayout" name="dailyReferenceForm">
+     <item row="0" column="0"><widget class="QLabel" name="dailyPositionLabel"><property name="text"><string>点検位置</string></property></widget></item>
+     <item row="0" column="1"><widget class="QComboBox" name="dailyPositionCombo"/></item>
+     <item row="1" column="0"><widget class="QLabel" name="dailyNominalLabel"><property name="text"><string>基準寸法 [mm]</string></property></widget></item>
+     <item row="1" column="1"><widget class="QLineEdit" name="dailyNominalEdit"/></item>
+     <item row="2" column="0"><widget class="QLabel" name="dailyToleranceLabel"><property name="text"><string>許容差 [mm]</string></property></widget></item>
+     <item row="2" column="1"><widget class="QLineEdit" name="dailyToleranceEdit"/></item>
+     <item row="3" column="0"><widget class="QLabel" name="dailyScaleLabel"><property name="text"><string>画素換算係数 [mm/px]</string></property></widget></item>
+     <item row="3" column="1"><widget class="QLineEdit" name="dailyScaleEdit"/></item>
+     <item row="4" column="0"><widget class="QLabel" name="dailyOperatorLabel"><property name="text"><string>変更作業者</string></property></widget></item>
+     <item row="4" column="1"><widget class="QLineEdit" name="dailyOperatorEdit"/></item>
+    </layout>
+   </item>
+   <item><widget class="QLabel" name="dailyProfileDetailsLabel"><property name="wordWrap"><bool>true</bool></property></widget></item>
+   <item><widget class="QLabel" name="dailyDraftLabel"><property name="wordWrap"><bool>true</bool></property></widget></item>
+   <item>
+    <layout class="QHBoxLayout" name="dailyActions">
+     <item><widget class="QPushButton" name="dailyValidateButton"><property name="text"><string>入力を検証</string></property></widget></item>
+     <item><widget class="QPushButton" name="dailySaveButton"><property name="text"><string>承認して保存</string></property></widget></item>
+     <item><widget class="QPushButton" name="dailyInheritButton"><property name="text"><string>共通値を使用</string></property></widget></item>
+     <item><widget class="QPushButton" name="dailyDiscardButton"><property name="text"><string>下書きを破棄</string></property></widget></item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="dailyHistoryLayout">
+     <item><widget class="QLabel" name="dailyHistoryLabel"><property name="text"><string>日常点検の設定履歴</string></property></widget></item>
+     <item><widget class="QComboBox" name="dailyHistoryCombo"/></item>
+     <item><widget class="QPushButton" name="dailyRollbackButton"><property name="text"><string>選択した版に戻す</string></property></widget></item>
+    </layout>
+   </item>
+   <item><spacer name="dailySettingsSpacer"><property name="orientation"><enum>Qt::Vertical</enum></property><property name="sizeHint"><size><width>20</width><height>40</height></size></property></spacer></item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

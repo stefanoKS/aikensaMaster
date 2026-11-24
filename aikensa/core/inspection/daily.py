@@ -98,7 +98,9 @@ class DailyMeasurement:
         return None if self.actual_mm is None else self.actual_mm - self.reference.nominal_mm
 
 
-def find_reference_points(output, offset: tuple[int, int]) -> tuple[tuple[int, int], ...]:
+def find_reference_points(
+    output, offset: tuple[int, int], crop_size: tuple[int, int],
+) -> tuple[tuple[int, int], ...]:
     if not isinstance(output, (list, tuple)) or not output:
         raise DailyInspectionError(DailyFailure.INFERENCE_ERROR, "日常点検の推論結果が不正です。")
     points: list[tuple[int, int]] = []
@@ -119,6 +121,8 @@ def find_reference_points(output, offset: tuple[int, int]) -> tuple[tuple[int, i
             raise DailyInspectionError(DailyFailure.INFERENCE_ERROR, "キーポイントの座標形式が不正です。")
         for x, y in xy.reshape(-1, 2):
             if math.isfinite(x) and math.isfinite(y):
+                if not (0 <= x <= crop_size[0] and 0 <= y <= crop_size[1]):
+                    raise DailyInspectionError(DailyFailure.INFERENCE_ERROR, "キーポイントが検出範囲外です。")
                 points.append((round(offset[0] + float(x)), round(offset[1] + float(y))))
     points.sort(key=lambda point: point[0])
     return (points[0], points[-1]) if len(points) >= 2 else tuple(points)
@@ -156,4 +160,5 @@ class DailyInspectionStrategy:
             output = model(source=crop, conf=inference.confidence, imgsz=inference.image_size, verbose=False)
         except Exception as exc:
             raise DailyInspectionError(DailyFailure.INFERENCE_ERROR, "日常点検のAI推論に失敗しました。") from exc
-        return measure_reference(find_reference_points(output, (roi.x, roi.y)), reference)
+        points = find_reference_points(output, (roi.x, roi.y), (crop.shape[1], crop.shape[0]))
+        return measure_reference(points, reference)

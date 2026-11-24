@@ -8,8 +8,9 @@
    production crop/high-homography fail-closed coverage remains open.
 3. CG-P2-20 through CG-P2-50: typed configuration, daily strategy, three-position
    workflow, and editable Settings with restart and rollback evidence. Typed
-   daily measurements, standalone strategy, and per-position approved
-   revisions implemented; worker/Settings integration remains open.
+   daily strategy, per-position approved revisions, worker/recording, and
+   editing the reference/tolerance/scale are software verified in the
+   synthetic workflow. Advanced draft preview and machine checks remain open.
 4. CG-P2-60 through CG-P2-80: production migration and preview work, after the
    daily workflow passes.
 
