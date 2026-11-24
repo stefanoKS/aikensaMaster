@@ -15,6 +15,9 @@ def legacy_page_viewport(page: QWidget) -> QScrollArea:
 
 
 def display_image(label: QLabel, image: QImage) -> None:
+    if image.isNull():
+        label.clear()
+        return
     label.setPixmap(
         QPixmap.fromImage(image).scaled(
             label.contentsRect().size(), Qt.KeepAspectRatio, Qt.SmoothTransformation

@@ -198,6 +198,7 @@ class AIKensa(QMainWindow):
         self.calibration_thread.CamMerge1.connect(self._setMergeFrame1)
         self.calibration_thread.CamMerge2.connect(self._setMergeFrame2)
         self.calibration_thread.CamMergeAll.connect(self._setMergeFrameAll)
+        self.calibration_thread.cameraErrorSignal.connect(self._show_camera_error)
 
         self.inspection_thread.partCam.connect(self._setPartFrame)
         self.inspection_thread.partKatabuL.connect(self._setFrameKatabuL)
@@ -467,7 +468,17 @@ class AIKensa(QMainWindow):
             settings_button.clicked.connect(self._open_settings_page)
 
         # Keep the camera preview out of production when the machine is not ready.
-        self.inspection_thread.cameraErrorSignal.connect(self._handleModelError)
+        self.inspection_thread.cameraErrorSignal.connect(self._show_camera_error)
+
+    def _show_camera_error(self, message):
+        index = self.stackedWidget.currentIndex()
+        if index not in (1, 2, 3) and index not in self.inspectionWidget_indices:
+            return
+        from_calibration = self.sender() is self.calibration_thread
+        if from_calibration != (index in (1, 2, 3)):
+            return
+        page = self.stackedWidget.widget(index).widget()
+        page.statusBar().showMessage(message)
 
     def _open_settings_page(self):
         self.settings_controller.refresh_all()
@@ -1473,11 +1484,10 @@ class AIKensa(QMainWindow):
             color = colorOK if pitch_value else colorNG
             labels[i].setStyleSheet(f"QLabel {{ background-color: {color}; }}")
 
-    def _setCalibFrame(self, image):
-        for i in [1, 2 ]:
-            widget = self.stackedWidget.widget(i)
-            label = widget.findChild(QLabel, "camFrame")
-            display_image(label, image)
+    def _setCalibFrame(self, camera_index, image):
+        widget = self.stackedWidget.widget(camera_index + 1)
+        label = widget.findChild(QLabel, "camFrame")
+        display_image(label, image)
 
     def _setMergeFrame1(self, image):
         widget = self.stackedWidget.widget(3)
@@ -1502,7 +1512,8 @@ class AIKensa(QMainWindow):
         for i in self.inspectionWidget_indices:
             widget = self.stackedWidget.widget(i)
             label = widget.findChild(QLabel, "framePart")
-            display_image(label, image)
+            if label:
+                display_image(label, image)
 
     def _setFrameKatabuL(self, image):
         for i in self.inspectionWidget_withKatabu:

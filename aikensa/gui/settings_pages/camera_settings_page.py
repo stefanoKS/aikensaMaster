@@ -9,7 +9,8 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import QWidget
 
-from aikensa.core.camera.camera_service import CameraBusyError, CameraRole, CameraUnavailableError
+from aikensa.core.camera.camera_service import CameraRole, CameraUnavailableError
+from aikensa.core.camera.placeholder import make_camera_placeholder
 from aikensa.core.camera.registry import get_camera_service
 from aikensa.core.settings.repository import SettingsRepository
 from aikensa.core.settings.schema import (
@@ -100,6 +101,8 @@ class CameraSettingsPage(QWidget):
                 status.setText("設定済み (未接続確認)")
             else:
                 status.setText("未設定")
+            self._ctrl(index, "ReadbackLabel").clear()
+            self._show_placeholder(index)
 
         self._set_validation_text(issues)
 
@@ -215,21 +218,24 @@ class CameraSettingsPage(QWidget):
         """Open the camera once through the shared service and read a frame."""
 
         service = get_camera_service(self.settings)
+        self._ctrl(index, "ReadbackLabel").clear()
         try:
             handle = service.acquire(index, CameraRole.CAMERA_PREVIEW)
-        except (CameraUnavailableError, CameraBusyError) as exc:
+        except CameraUnavailableError as exc:
             self._ctrl(index, "StatusLabel").setText(exc.reason_ja)
+            self._show_placeholder(index)
             return
 
         try:
-            ok, frame = service.read_frame(index, CameraRole.CAMERA_PREVIEW)
-            if ok and isinstance(frame, np.ndarray):
-                self._ctrl(index, "StatusLabel").setText(
-                    f"接続OK ({frame.shape[1]}x{frame.shape[0]})"
-                )
-                self._show_preview(index, frame)
-            else:
-                self._ctrl(index, "StatusLabel").setText("接続できましたが画像を取得できません")
+            frame = service.read_real_frame(index, CameraRole.CAMERA_PREVIEW)
+            if frame is None:
+                status = "カメラ未接続" if handle.is_placeholder else "画像取得エラー"
+                self._ctrl(index, "StatusLabel").setText(f"{status}。接続・電源を確認してください。")
+                self._show_placeholder(index)
+                return
+            image = frame.image
+            self._ctrl(index, "StatusLabel").setText(f"接続OK ({image.shape[1]}x{image.shape[0]})")
+            self._show_preview(index, image)
             readback = handle.readback or {}
             self._ctrl(index, "ReadbackLabel").setText(
                 "解像度 {width}x{height} / FPS {fps} / 露光 {exposure_us} μs / "
@@ -245,9 +251,14 @@ class CameraSettingsPage(QWidget):
         finally:
             service.release(index, CameraRole.CAMERA_PREVIEW)
 
+    def _show_placeholder(self, index: int) -> None:
+        width, height = self._ctrl(index, "ResolutionComboBox").currentData()
+        scale = min(1.0, 640 / width, 480 / height)
+        self._show_preview(index, make_camera_placeholder(index, round(width * scale), round(height * scale)))
+
     def _show_preview(self, index: int, frame: np.ndarray) -> None:
         label = self._ctrl(index, "PreviewLabel")
-        rgb = frame[:, :, ::-1] if frame.ndim == 3 else frame
+        rgb = np.ascontiguousarray(frame[:, :, ::-1])
         height, width = rgb.shape[:2]
         image = QImage(rgb.data, width, height, rgb.strides[0], QImage.Format_RGB888)
         pixmap = QPixmap.fromImage(image.copy()).scaled(

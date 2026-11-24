@@ -37,7 +37,7 @@ def test_no_hardcoded_camera_serials_in_threads(name):
 def test_threads_resolve_cameras_through_the_shared_service(name):
     source = THREADS[name].read_text(encoding="utf-8")
     assert "get_camera_service" in source
-    assert "camera_service.acquire" in source
+    assert "CameraStream(self.camera_service" in source
 
 
 def test_generic_inspector_never_returns_ok_for_unimplemented_logic(qapp):
@@ -120,12 +120,6 @@ def test_inspection_blocks_uncalibrated_merge():
     source = THREADS["inspection"].read_text(encoding="utf-8")
     assert "self.H1_scaled is None or self.H2_scaled is None" in source
     assert "ホモグラフィが未計算" in source
-
-
-def test_inspection_refuses_placeholder_frames():
-    source = THREADS["inspection"].read_text(encoding="utf-8")
-    assert "is_production_source" in source
-    assert "if not self.camera_ready" in source
 
 
 def test_warp_template_mask_is_built_in_source_coordinates():

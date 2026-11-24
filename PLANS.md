@@ -53,5 +53,22 @@ migration is to be enabled.
 - Targeted Settings/Qt suite: 50 passed. Full suite: 135 passed,
   0 failed, 0 skipped. `compileall` passed. No production config edits.
 
-Next: C, separate display placeholders from camera acquisition. Physical
-machine qualification remains **NOT TESTED**.
+### C — Camera placeholders and safety (software PASS)
+
+- A shared font-independent BGR renderer draws `cam 1 placeholder` or
+  `cam 2 placeholder`. Settings, IC4 fallback, and calibration/inspection
+  displays use it. Settings reports connection OK only after a valid real
+  snapshot and does not take an active inspection lease.
+- Worker loops consume fresh validated BGR snapshots only. Failed reads clear
+  stale frames and discard pending inspection/calibration actions. Reopening
+  a failed camera is rate-limited to one attempt per two seconds. A recovered
+  pair reloads calibration; no parameters or production configuration changed.
+- Targeted camera/inspection/Qt suite: 88 passed. Full suite: 149 passed,
+  0 failed, 0 skipped. Tests include a simulated disconnect during a widget-17
+  trigger (no model execution, counter update or SQLite result) and failed
+  single/dual calibration runs (no detection or save). `compileall` passed.
+- The receive-time skew check uses the IC4 fresh-snapshot contract; physical
+  frame timing, reconnect behavior, calibration, and production I/O remain
+  **NOT TESTED**.
+
+Next: D, improve the Settings layout and draft previews.

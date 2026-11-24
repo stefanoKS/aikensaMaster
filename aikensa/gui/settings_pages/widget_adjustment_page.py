@@ -248,6 +248,9 @@ class WidgetAdjustmentPage(QWidget):
         """Supply the merged image straight from a thread signal (QImage)."""
 
         if image is None or image.isNull():
+            self._reference = self._reference_pixmap = None
+            self.widgetFullPreviewLabel.clear()
+            self.widgetCropPreviewLabel.clear()
             return
         self._reference = None
         self._reference_pixmap = QPixmap.fromImage(image)

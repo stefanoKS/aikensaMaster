@@ -8,12 +8,12 @@ import yaml
 import time
 import logging
 
-from PyQt5.QtCore import QThread, pyqtSignal, Qt, QTimer
+from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot, Qt, QTimer
 from PyQt5.QtGui import QImage, QPixmap
 
 from aikensa.core.scripts.cam_init.cam_init import initialize_camera
-from aikensa.core.scripts.cam_init.cam_init_ic4 import open_ic4_camera_or_placeholder, DummyCapture
-from aikensa.core.camera.camera_service import CameraRole, CameraUnavailableError, CameraBusyError
+from aikensa.core.camera.camera_service import CameraRole, CameraStream
+from aikensa.core.camera.placeholder import make_camera_placeholder
 from aikensa.core.camera.registry import get_camera_service
 from aikensa.core.settings.service import SettingsService
 from aikensa.core.scripts.img_processing.cameracalibrate import detectCharucoBoard, detectCharucoBoard_scaledImage, calculatecameramatrix, calculatecameramatrix_scaledImage, warpTwoImages, calculateHomography_template, warpTwoImages_template
@@ -63,10 +63,11 @@ class CalibrationConfig:
 
 class CalibrationThread(QThread):
 
-    CalibCamStream = pyqtSignal(QImage)
+    CalibCamStream = pyqtSignal(int, QImage)
     CamMerge1 = pyqtSignal(QImage)
     CamMerge2 = pyqtSignal(QImage)
     CamMergeAll = pyqtSignal(QImage)
+    cameraErrorSignal = pyqtSignal(str)
 
     def __init__(self, calib_config: CalibrationConfig = None):
         super(CalibrationThread, self).__init__()
@@ -84,14 +85,10 @@ class CalibrationThread(QThread):
 
         self.cameraMatrix = None
         self.kanjiFontPath = "aikensa/gui/resources/font/NotoSansJP-ExtraBold.ttf"
-        self.cap_cam = None
         self.frame  = None
         self.frame_downsampled = None
         self.frame_scaled = None
 
-        self.multiCam_stream = False
-        self.cap_cam1 = None
-        self.cap_cam2 = None
 
         self.mergeframe1 = None
         self.mergeframe2 = None
@@ -163,10 +160,6 @@ class CalibrationThread(QThread):
         self.planarizeTransform_high_wide = None
         self.planarizeTransform_high_wide_scaled = None
 
-        self.cap_cam_ic4_1 = None
-        self.cap_cam_ic4_2 = None
-
-
         this_dir = os.path.dirname(__file__)
         cam_config_path = os.path.abspath(os.path.join(this_dir, '..', 'config', 'cam'))
 
@@ -180,67 +173,78 @@ class CalibrationThread(QThread):
         # specific and must never come from hardcoded literals.
         self.settings = SettingsService()
         self.camera_service = get_camera_service(self.settings)
-        self.camera_error = {0: None, 1: None}
-
-    def _open_configured_camera(self, camera_index: int):
-        """Open *camera_index* through the shared camera service.
-
-        Returns ``None`` when the camera cannot be opened (unassigned serial,
-        hardware missing, or another owner).  The reason is stored in
-        ``self.camera_error`` so the UI can explain it in Japanese.
-        """
-
-        try:
-            handle = self.camera_service.acquire(camera_index, CameraRole.CALIBRATION)
-        except (CameraUnavailableError, CameraBusyError) as exc:
-            self.camera_error[camera_index] = exc.reason_ja
-            print(f"[Calibration] camera {camera_index}: {exc.reason_ja}")
-            return None
-
-        self.camera_error[camera_index] = None
-        cameras, _issues = self.settings.repository.load_camera_settings()
-        self.ic4_rotate_180 = cameras.rotate_180_global
-        cam_type = "Placeholder" if handle.is_placeholder else "Real"
-        print(f"Initialized Camera {camera_index + 1} (serial {handle.serial}): {cam_type}")
-        return handle.capture
-
-    def initialize_single_camera(self, widgetID: int):
-
-        if self.cap_cam is not None:
-            self.camera_service.release_all(CameraRole.CALIBRATION)
-            self.cap_cam = None
-            print(f"Camera {self.calib_config.cameraID} released.")
-
-        # widget 1 == logical camera index 0 (Calibration_camera_0.yaml)
-        camera_index = widgetID - 1
-        self.cap_cam = self._open_configured_camera(camera_index)
+        self.camera_stream = CameraStream(self.camera_service, CameraRole.CALIBRATION)
+        self._camera_diagnostic = ""
 
     def release_all_camera(self):
-        self.camera_service.release_all(CameraRole.CALIBRATION)
-        self.cap_cam_ic4_1 = None
-        self.cap_cam_ic4_2 = None
-        self.cap_cam1 = None
-        self.cap_cam2 = None
-        self.cap_cam = None
+        self.camera_stream.close()
 
-    def initialize_all_camera(self):
-        """Initialize both cameras through the shared camera service."""
+    def _report_camera_status(self, message):
+        if message != self._camera_diagnostic:
+            if not message:
+                self._load_calibration_data_from_settings()
+                for index in range(2):
+                    self.calib_config.mapCalculated[index] = False
+            self._camera_diagnostic = message
+            self.cameraErrorSignal.emit(message)
 
-        self.cap_cam_ic4_1 = self._open_configured_camera(0)
-        self.cap_cam_ic4_2 = self._open_configured_camera(1)
+    def _capture_single_calibration_frame(self, camera_index):
+        frame = self.camera_stream.read(camera_index)
+        if frame is None:
+            self.frame = self.frame_scaled = self.frame_downsampled = None
+            self.calib_config.calculateSingeFrameMatrix = False
+            self.calib_config.calculateCamMatrix = False
+            if self._camera_diagnostic != self.camera_stream.errors[camera_index]:
+                self.CalibCamStream.emit(camera_index, self._placeholder_preview(camera_index, 614, 409))
+            self._report_camera_status(self.camera_stream.errors[camera_index])
+            return False
+        self._report_camera_status("")
+        self.frame = frame.image if self.ic4_rotate_180 else cv2.rotate(frame.image, cv2.ROTATE_180)
+        self.frame_scaled = self.downSampling(self.frame, self.scaled_width, self.scaled_height)
+        return True
 
-        # Keep legacy aliases in sync for code paths that still reference cap_cam1/2
-        self.cap_cam1 = self.cap_cam_ic4_1
-        self.cap_cam2 = self.cap_cam_ic4_2
+    def _capture_merge_calibration_frames(self):
+        first, second = self.camera_stream.read_pair()
+        if first is not None and second is not None:
+            self._report_camera_status("")
+            self.mergeframe1, self.mergeframe2 = first.image, second.image
+            return True
+        self.mergeframe1 = self.mergeframe2 = None
+        self.mergeframe1_scaled = self.mergeframe2_scaled = None
+        self.combinedImage_scaled = self.combinedImage_high_scaled = None
+        for flag in (
+            "calculateHomo_cam1", "calculateHomo_cam2", "calculateHomo_cam1_high",
+            "calculateHomo_cam2_high", "savePlanarize", "savePlanarizeHigh",
+        ):
+            setattr(self.calib_config, flag, False)
+        for index, frame, signal in ((0, first, self.CamMerge1), (1, second, self.CamMerge2)):
+            preview = (
+                self._placeholder_preview(index, 246, 163) if frame is None
+                else self.convertQImage(self.downSampling(frame.image, 246, 163)).copy()
+            )
+            signal.emit(preview)
+        self.CamMergeAll.emit(QImage())  # Clear the old merge (including Fine Adjustment).
+        self._report_camera_status(" / ".join(self.camera_stream.errors.values()))
+        return False
 
-    def read_camera_frame(self, camera_index: int):
-        """Read one frame while the camera lock is held by the service."""
+    def _placeholder_preview(self, index, width, height):
+        return self.convertQImage(make_camera_placeholder(index, width, height)).copy()
 
-        return self.camera_service.read_frame(camera_index, CameraRole.CALIBRATION)
+    @pyqtSlot()
+    def start(self, priority=QThread.InheritPriority):
+        if not self.isRunning():
+            self.running = True
+            super().start(priority)
 
     def run(self):
+        try:
+            self._run_calibration()
+        finally:
+            self.release_all_camera()
 
-        self.current_cameraID = -1
+    def _run_calibration(self):
+
+        active_page = None
         #print thread started
         print("Calibration Thread Started")
 
@@ -266,51 +270,26 @@ class CalibrationThread(QThread):
 
 
         while self.running:
-
-            if self.calib_config.widget == 0:
+            page = self.calib_config.widget
+            if page != active_page:
+                self.release_all_camera()
+                active_page = page
+                self._camera_diagnostic = ""
+                cameras, _issues = self.settings.repository.load_camera_settings()
+                self.ic4_rotate_180 = cameras.rotate_180_global
+            if page not in (1, 2, 3):
                 self.calib_config.cameraID = -1
+                self.msleep(50)
+                continue
 
-            if self.calib_config.widget in [1, 2]:
-                # Leaving merge mode: release merge cameras so single-camera open does not collide.
-                if self.multiCam_stream:
-                    self.camera_service.release_all(CameraRole.CALIBRATION)
-                    self.cap_cam_ic4_1 = None
-                    self.cap_cam_ic4_2 = None
-                    self.cap_cam1 = None
-                    self.cap_cam2 = None
-                    self.multiCam_stream = False
-                
-                if self.calib_config.cameraID != self.current_cameraID:
-                    # Camera ID has changed, reinitialize the camera
-                    if self.current_cameraID != -1:
-                        self.camera_service.release_all(CameraRole.CALIBRATION)
-                        print(f"Camera {self.current_cameraID} released.")
-                    self.current_cameraID = self.calib_config.cameraID
-                    # self.initialize_single_camera(self.current_cameraID)
-                    if self.calib_config.widget == 1:
-                        self.initialize_single_camera(self.calib_config.widget)
-                        print("Initializing Camera 0")
-                    if self.calib_config.widget == 2:
-                        self.initialize_single_camera(self.calib_config.widget)
-                        print("Initializing Camera 1")
-                  
-                if self.cap_cam is not None:
-                    try:
-                        camera_index = max(self.calib_config.widget - 1, 0)
-                        ret, self.frame = self.read_camera_frame(camera_index)
-                        if not ret or self.frame is None:
-                            print("Failed to capture frame")
-                            self.frame = None
-                            continue
-                        # self.frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
-                        if not self.ic4_rotate_180:
-                            self.frame = cv2.rotate(self.frame, cv2.ROTATE_180)
-
-                        self.frame_scaled = cv2.resize(self.frame, (self.scaled_width, self.scaled_height), interpolation=cv2.INTER_LINEAR)
-                    except cv2.error as e:
-                        print("An error occurred while reading frames from the cameras:", str(e))
-
-                self.calib_config.cameraID = self.calib_config.widget - 1 #Don't forget to clean this up in deployment !!
+            if page in (1, 2):
+                camera_index = page - 1
+                self.calib_config.cameraID = camera_index
+                if not self._capture_single_calibration_frame(camera_index):
+                    self.msleep(100)
+                    continue
+                if not self.running or page != self.calib_config.widget:
+                    continue
             
                 if self.calib_config.calculateSingeFrameMatrix:
                     self.frame, _, _ = detectCharucoBoard(self.frame)
@@ -327,7 +306,6 @@ class CalibrationThread(QThread):
 
                     # A failed calculation must never overwrite the previous valid
                     # calibration: the repository validates before writing.
-                    camera_index = max(self.calib_config.widget - 1, 0)
                     for matrix, scaled in (
                         (self.calib_config.calibrationMatrix, False),
                         (self.calib_config.calibrationMatrix_scaled, True),
@@ -358,37 +336,14 @@ class CalibrationThread(QThread):
                     self.frame_downsampled = self.downSampling(self.frame, 1229, 819)
 
                 if self.frame is not None:
-                    self.CalibCamStream.emit(self.convertQImage(self.frame_downsampled))
+                    self.CalibCamStream.emit(camera_index, self.convertQImage(self.frame_downsampled).copy())
             
-            if self.calib_config.widget == 3:
-                if self.multiCam_stream is False:
-                    self.multiCam_stream = True
-
-                    # Leaving single-camera mode: release currently opened single camera first.
-                    if self.cap_cam is not None:
-                        self.camera_service.release_all(CameraRole.CALIBRATION)
-                        self.cap_cam = None
-                        self.current_cameraID = -1
-
-                    self.initialize_all_camera()
-
-                # Ensure merge camera handles exist, then read from the IC4 handles.
-                if self.cap_cam_ic4_1 is None or self.cap_cam_ic4_2 is None:
-                    self.initialize_all_camera()
-
-                ok1, mergeframe1 = self.read_camera_frame(0)
-                ok2, mergeframe2 = self.read_camera_frame(1)
-                if not (ok1 and isinstance(mergeframe1, np.ndarray)) or not (
-                    ok2 and isinstance(mergeframe2, np.ndarray)
-                ):
-                    # One or both cameras are unavailable; keep the previous frame
-                    # instead of feeding None into the geometry pipeline.
-                    if self.mergeframe1 is None or self.mergeframe2 is None:
-                        self.msleep(50)
-                        continue
-                else:
-                    self.mergeframe1 = mergeframe1
-                    self.mergeframe2 = mergeframe2
+            if page == 3:
+                if not self._capture_merge_calibration_frames():
+                    self.msleep(100)
+                    continue
+                if not self.running or page != self.calib_config.widget:
+                    continue
 
                 #Calculate all map from calibration matrix for 5 cameras, thus i in range(1, 6)
                 for i in range(0, 2):
@@ -519,6 +474,9 @@ class CalibrationThread(QThread):
 
                 if self.calib_config.savePlanarize is True:
                     self.calib_config.savePlanarize = False
+                    if any(matrix is None for matrix in (self.H1, self.H2, self.H1_scaled, self.H2_scaled)):
+                        self.cameraErrorSignal.emit("ホモグラフィが未計算です。先にカメラマージ校正を実行してください。")
+                        continue
                     print("Saving planarize")
                     # self.combinedImage_narrow, self.planarizeTransform_narrow = planarize_image_narrow(self.combinedImage, 
                     #                                                               target_width=self.narrow_planarize[1], target_height=self.narrow_planarize[0], 
@@ -556,6 +514,9 @@ class CalibrationThread(QThread):
 
                 if self.calib_config.savePlanarizeHigh is True:
                     self.calib_config.savePlanarizeHigh = False
+                    if any(matrix is None for matrix in (self.H1_high, self.H2_high, self.H1_high_scaled, self.H2_high_scaled)):
+                        self.cameraErrorSignal.emit("高位置のホモグラフィが未計算です。先にカメラマージ校正を実行してください。")
+                        continue
                     print("Saving planarize high")
                     self.combinedImage_high_narrow, self.planarizeTransform_high_narrow = planarize_image_narrow(self.combinedImage_high,
                                                                                                     target_width=self.narrow_planarize[1], target_height=self.narrow_planarize[0],
@@ -685,13 +646,6 @@ class CalibrationThread(QThread):
             matrix, _state = repository.load_planarize_transform(name)
             setattr(self, attr, matrix)
 
-    def create_placeholder_image(self):
-        # Create a small black image with a white dot in the center
-        size = 100
-        placeholder = np.zeros((size, size, 3), dtype=np.uint8)
-        cv2.circle(placeholder, (size // 2, size // 2), 10, (255, 255, 255), -1)
-        return placeholder
-
     def convertQImage(self, image):
         # Convert resized cv2 image to QImage
         h, w, ch = image.shape
@@ -707,7 +661,6 @@ class CalibrationThread(QThread):
 
     def stop(self):
         self.running = False
-        self.release_all_camera()
         print("Calibration thread stopped.")
     
     def downSampling(self, image, width=384, height=256):

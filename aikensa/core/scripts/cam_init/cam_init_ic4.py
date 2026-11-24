@@ -1,9 +1,12 @@
 import atexit
+import logging
 from typing import Union, Tuple, Optional, Iterable
 import numpy as np
 import cv2
-from PIL import Image, ImageDraw, ImageFont
 import imagingcontrol4 as ic4
+from aikensa.core.camera.placeholder import make_camera_placeholder
+
+LOGGER = logging.getLogger(__name__)
 
 # ---- one-time SDK context ----
 _IC4_CTX = None
@@ -25,16 +28,14 @@ def _find_device(index_or_serial: Union[int, str]) -> Optional[ic4.DeviceInfo]:
     try:
         devs = ic4.DeviceEnum.devices()
     except Exception as e:
-        print(f"Warning: Failed to enumerate devices: {e}")
+        LOGGER.debug("Failed to enumerate IC4 devices: %s", e)
         return None
     
     if not devs:
-        print("Warning: No Imaging Source cameras found.")
         return None
     
     if isinstance(index_or_serial, int):
         if not (0 <= index_or_serial < len(devs)):
-            print(f"Warning: Camera index {index_or_serial} out of range (0..{len(devs)-1})")
             return None
         return devs[index_or_serial]
     
@@ -42,11 +43,6 @@ def _find_device(index_or_serial: Union[int, str]) -> Optional[ic4.DeviceInfo]:
         if d.serial == index_or_serial:
             return d
     
-    for d in devs:
-        if (index_or_serial or "").lower() in (d.model_name or "").lower():
-            return d
-    
-    print(f"Warning: No camera matched '{index_or_serial}'")
     return None
 
 # handy helpers for tolerant property IO
@@ -206,70 +202,14 @@ class DummyCapture:
     Placeholder camera that provides black images with text overlay.
     Used when no physical camera is connected.
     """
+    is_placeholder = True
+
     def __init__(self, width: int = 3072, height: int = 2048,
-                 camera_name: str = "Camera", font_path: str = None,
-                 rotate_180: bool = False):
+                 *, camera_index: int = 0):
         self._width = width
         self._height = height
-        self._camera_name = camera_name
-        self._font_path = font_path or "aikensa/gui/resources/font/NotoSansJP-ExtraBold.ttf"
-        self._rotate_180 = bool(rotate_180)
+        self._camera_index = camera_index
         self._open = True
-        self._placeholder_image = self._create_placeholder_image()
-    
-    def _create_placeholder_image(self) -> np.ndarray:
-        """Create a black image with 'No Camera Connected' text"""
-        # Create black image
-        img = np.zeros((self._height, self._width, 3), dtype=np.uint8)
-        
-        # Convert to PIL for better text rendering
-        pil_img = Image.fromarray(img)
-        draw = ImageDraw.Draw(pil_img)
-        
-        # Try to load custom font, fallback to default
-        try:
-            font_size = int(self._height / 10)  # Dynamic font size
-            font = ImageFont.truetype(self._font_path, font_size)
-        except Exception:
-            font = ImageFont.load_default()
-        
-        # Draw main text
-        main_text = "カメラ未接続"  # "No Camera Connected" in Japanese
-        sub_text = f"({self._camera_name})"
-        
-        # Get text bounding box for centering
-        try:
-            bbox = draw.textbbox((0, 0), main_text, font=font)
-            text_width = bbox[2] - bbox[0]
-            text_height = bbox[3] - bbox[1]
-        except:
-            text_width, text_height = 500, 100  # Fallback dimensions
-        
-        # Calculate center position
-        x = (self._width - text_width) // 2
-        y = (self._height - text_height) // 2 - 50
-        
-        # Draw text with white color
-        draw.text((x, y), main_text, fill=(255, 255, 255), font=font)
-        
-        # Draw subtitle
-        try:
-            small_font = ImageFont.truetype(self._font_path, int(font_size * 0.4))
-        except:
-            small_font = font
-        
-        try:
-            bbox2 = draw.textbbox((0, 0), sub_text, font=small_font)
-            sub_width = bbox2[2] - bbox2[0]
-        except:
-            sub_width = 200
-        
-        sub_x = (self._width - sub_width) // 2
-        sub_y = y + text_height + 20
-        draw.text((sub_x, sub_y), sub_text, fill=(180, 180, 180), font=small_font)
-        
-        # Convert back to OpenCV format
-        return cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
     
     def isOpened(self) -> bool:
         return self._open
@@ -281,10 +221,7 @@ class DummyCapture:
         """Return the placeholder image"""
         if not self._open:
             return False, None
-        frame = self._placeholder_image.copy()
-        if self._rotate_180:
-            frame = cv2.rotate(frame, cv2.ROTATE_180)
-        return True, frame
+        return True, make_camera_placeholder(self._camera_index, self._width, self._height)
     
     def get(self, prop_id: int) -> float:
         """Return camera properties"""
@@ -478,7 +415,8 @@ def initialize_camera_ic4(cam_id_or_serial: Union[int, str],
                           auto_exposure: bool = False,
                           auto_gain: bool = False,
                           auto_wb: bool = False,
-                          rotate_180: bool = False) -> Union[IC4Capture, DummyCapture]:
+                          rotate_180: bool = False,
+                          *, camera_index: int = 0) -> Union[IC4Capture, DummyCapture]:
     """
     Initialize IC4 camera. Returns DummyCapture if camera is not found.
     This allows graceful fallback when no camera is connected.
@@ -518,11 +456,9 @@ def initialize_camera_ic4(cam_id_or_serial: Union[int, str],
 
         print(f"✓ Camera '{cam_id_or_serial}' initialized successfully")
         return cam
-    except (RuntimeError, Exception) as e:
-        print(f"⚠ Camera '{cam_id_or_serial}' not available: {e}")
-        print(f"  → Using placeholder image instead")
-        camera_name = f"Camera {cam_id_or_serial}"
-        return DummyCapture(width, height, camera_name, rotate_180=rotate_180)
+    except (RuntimeError, ic4.IC4Exception, OSError) as e:
+        LOGGER.debug("IC4 camera %s is unavailable: %s", cam_id_or_serial, e)
+        return DummyCapture(width, height, camera_index=camera_index)
 
 
 def open_ic4_camera_or_placeholder(ic4id,
@@ -539,7 +475,8 @@ def open_ic4_camera_or_placeholder(ic4id,
                                    wb_ratio_b: float = 2.2,
                                    auto_exposure: bool = False,
                                    auto_gain: bool = False,
-                                   auto_wb: bool = False) -> Union[IC4Capture, DummyCapture]:
+                                   auto_wb: bool = False,
+                                   *, camera_index: int = 0) -> Union[IC4Capture, DummyCapture]:
     """Shared helper for opening an IC4 camera with placeholder fallback."""
     return initialize_camera_ic4(
         ic4id,
@@ -557,4 +494,5 @@ def open_ic4_camera_or_placeholder(ic4id,
         auto_gain=auto_gain,
         auto_wb=auto_wb,
         rotate_180=rotate_180,
+        camera_index=camera_index,
     )

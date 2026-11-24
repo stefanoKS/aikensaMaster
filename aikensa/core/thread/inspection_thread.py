@@ -16,8 +16,8 @@ from sahi.predict import get_prediction, get_sliced_prediction, predict
 from PyQt5.QtCore import QThread, pyqtSignal, Qt, QTimer
 from PyQt5.QtGui import QImage, QPixmap
 
-from aikensa.core.scripts.cam_init.cam_init_ic4 import open_ic4_camera_or_placeholder, DummyCapture
-from aikensa.core.camera.camera_service import CameraRole, CameraUnavailableError, CameraBusyError
+from aikensa.core.camera.camera_service import CameraRole, CameraStream
+from aikensa.core.camera.placeholder import make_camera_placeholder
 from aikensa.core.camera.registry import get_camera_service
 from aikensa.core.settings.service import SettingsService
 from aikensa.core.scripts.img_processing.cameracalibrate import warpTwoImages_template
@@ -163,15 +163,14 @@ class InspectionThread(QThread):
         # Created early: widget offsets and calibration data are resolved through it.
         self.settings = SettingsService()
         self.camera_service = get_camera_service(self.settings)
-        self.camera_error = {0: None, 1: None}
+        self.camera_stream = CameraStream(self.camera_service, CameraRole.INSPECTION)
         self.camera_ready = False
-        self._last_camera_attempt_ts = 0.0
+        self._camera_diagnostic = ("", ())
         self.global_alignment = None
 
         # ---- Simple constants / defaults ----
         self.kanjiFontPath = "aikensa/gui/resources/font/NotoSansJP-ExtraBold.ttf"
         self._today_str = datetime.now().strftime("%Y%m%d")
-        self.multiCam_stream = False
         self._last_color_debug_ts = 0.0
         self._color_debug_interval_sec = 5.0
 
@@ -186,10 +185,8 @@ class InspectionThread(QThread):
         self._inspection_start_image = None
 
         self._init_geometry_defaults()
-        self._init_placeholders()
 
         # ---- Core state groups ----
-        self._init_cameras()
         self._init_frames()
         self._init_homography()
         self._init_planarize()
@@ -229,60 +226,47 @@ class InspectionThread(QThread):
 
 
     def release_all_camera(self):
-        self.camera_service.release_all(CameraRole.INSPECTION)
-        self.cap_cam_ic4_1 = None
-        self.cap_cam_ic4_2 = None
+        self.camera_stream.close()
         self.camera_ready = False
+        self._camera_diagnostic = ("", ())
 
-    def initialize_all_camera(self):
-        """Open both cameras through the shared camera service.
-
-        The serial numbers come exclusively from the machine-specific
-        ``cam_id.yaml``; there is no hardcoded fallback.
-        """
-
-        self.cap_cam_ic4_1 = None
-        self.cap_cam_ic4_2 = None
-        self.camera_ready = False
-
-        for camera_index in (0, 1):
-            try:
-                handle = self.camera_service.acquire(camera_index, CameraRole.INSPECTION)
-            except (CameraUnavailableError, CameraBusyError) as exc:
-                self.camera_error[camera_index] = exc.reason_ja
-                print(f"[Inspection] camera {camera_index}: {exc.reason_ja}")
-                continue
-            self.camera_error[camera_index] = None
-            capture = handle.capture
-            if camera_index == 0:
-                self.cap_cam_ic4_1 = capture
-            else:
-                self.cap_cam_ic4_2 = capture
-
-        self.camera_ready = (
-            self.cap_cam_ic4_1 is not None
-            and self.cap_cam_ic4_2 is not None
-            and self.camera_service.is_production_source(0)
-            and self.camera_service.is_production_source(1)
-        )
-
+    def _capture_inspection_frames(self):
+        first, second = self.camera_stream.read_pair()
+        self.camera_ready = first is not None and second is not None
         if not self.camera_ready:
-            reasons = [msg for msg in self.camera_error.values() if msg]
-            message = " / ".join(reasons) if reasons else "カメラを初期化できませんでした。"
-            print(f"[Inspection] production inspection disabled: {message}")
-            self.cameraErrorSignal.emit(message)
-
-        cam1_type = "Real" if not isinstance(self.cap_cam_ic4_1, DummyCapture) and self.cap_cam_ic4_1 is not None else "Placeholder"
-        cam2_type = "Real" if not isinstance(self.cap_cam_ic4_2, DummyCapture) and self.cap_cam_ic4_2 is not None else "Placeholder"
-        print(f"Camera 1: {cam1_type}")
-        print(f"Camera 2: {cam2_type}")
-
-    def read_camera_frame(self, camera_index: int):
-        """Read one frame while the camera lock is held by the service."""
-
-        return self.camera_service.read_frame(camera_index, CameraRole.INSPECTION)
+            self.mergeframe1 = self.mergeframe2 = None
+            self.mergeframe1_scaled = self.mergeframe2_scaled = None
+            # Never replay a trigger received while either camera was offline.
+            self.inspection_config.doInspection = False
+            self.bool_keep_measurement = False
+            self._inspection_start_image = None
+            missing = tuple(i for i, frame in enumerate((first, second)) if frame is None)
+            message = " / ".join(self.camera_stream.errors[i] for i in missing)
+            if (message, missing) != self._camera_diagnostic:
+                self._camera_diagnostic = (message, missing)
+                self.cameraErrorSignal.emit(message)
+                preview = np.hstack([make_camera_placeholder(i, 690, 120) for i in missing])
+                self.partCam.emit(self.convertQImage(preview).copy())
+            return False
+        if self._camera_diagnostic[1]:
+            self.inspection_config.doInspection = False
+            for i in range(2):
+                self.inspection_config.mapCalculated[i] = False
+                self.inspection_config.map1_downscaled[i] = None
+                self.inspection_config.map2_downscaled[i] = None
+            self._load_geometry_from_settings()
+            self._camera_diagnostic = ("", ())
+            self.cameraErrorSignal.emit("")
+        self.mergeframe1, self.mergeframe2 = first.image, second.image
+        return True
 
     def run(self):
+        try:
+            self._run_inspection()
+        finally:
+            self.release_all_camera()
+
+    def _run_inspection(self):
         #initialize the database
         if not os.path.exists("./aikensa/inspection_results"):
             os.makedirs("./aikensa/inspection_results")
@@ -396,32 +380,19 @@ class InspectionThread(QThread):
 
             if self.inspection_config.widget > 0:
 
-                if self.multiCam_stream is False:
-                    self.multiCam_stream = True
-                    self.initialize_all_camera()
-                    # print("initialize all camera")    
-
-                if not self.camera_ready:
-                    # A placeholder image must never be treated as a production
-                    # source: without real cameras no inspection result is produced.
-                    now_ready_check = time.time()
-                    if now_ready_check - self._last_camera_attempt_ts >= 2.0:
-                        self._last_camera_attempt_ts = now_ready_check
-                        self.initialize_all_camera()
+                if not self._capture_inspection_frames():
                     self.msleep(100)
                     continue
-
-                ret1, frame1 = self.read_camera_frame(0)
-                ret2, frame2 = self.read_camera_frame(1)
-
-                self.mergeframe1 = frame1 if ret1 and isinstance(frame1, np.ndarray) else self._placeholder_cam1.copy()
-                self.mergeframe2 = frame2 if ret2 and isinstance(frame2, np.ndarray) else self._placeholder_cam2.copy()
+                if not self.running:
+                    break
 
                 # Periodically log color channel and camera setting values for quick tint diagnosis.
                 now_ts = time.time()
                 if now_ts - self._last_color_debug_ts >= self._color_debug_interval_sec:
-                    self._log_camera_color_debug(self.mergeframe1, self.cap_cam_ic4_1, "Cam1")
-                    self._log_camera_color_debug(self.mergeframe2, self.cap_cam_ic4_2, "Cam2")
+                    for index, frame in enumerate((self.mergeframe1, self.mergeframe2)):
+                        handle = self.camera_service.handle(index)
+                        if handle is not None:
+                            self._log_camera_color_debug(frame, handle.capture, f"Cam{index + 1}")
                     self._last_color_debug_ts = now_ts
 
                 #debug save image
@@ -483,11 +454,16 @@ class InspectionThread(QThread):
                         if self.H1_scaled is None or self.H2_scaled is None:
                             # Uncalibrated machine: report it instead of warping with
                             # placeholder geometry (which used to crash in OpenCV).
-                            self.cameraErrorSignal.emit(
-                                "ホモグラフィが未計算です。校正を実行してください。"
-                            )
+                            message = "ホモグラフィが未計算です。校正を実行してください。"
+                            if self._camera_diagnostic[0] != message:
+                                self._camera_diagnostic = (message, ())
+                                self.cameraErrorSignal.emit(message)
+                            self.inspection_config.doInspection = False
                             self.msleep(100)
                             continue
+                        if self._camera_diagnostic[0]:
+                            self._camera_diagnostic = ("", ())
+                            self.cameraErrorSignal.emit("")
                         h2_scaled_for_widget = self._get_cam2_homography_with_widget_offset(
                             self.H2_scaled,
                             widget_id=self.inspection_config.widget,
@@ -2241,6 +2217,9 @@ class InspectionThread(QThread):
         Shared gate for all inspection branches.
         Keeps the legacy behavior while removing repeated boilerplate.
         """
+        if not self.camera_ready:
+            self.inspection_config.doInspection = False
+            return False
         if self.InspectionTimeStart is None:
             self.InspectionTimeStart = time.time()
 
@@ -2886,7 +2865,6 @@ class InspectionThread(QThread):
         print("Inspection thread stopped.")
         self.inspection_config.widget = -1
         self.running = False
-        self.release_all_camera()
 
     def add_columns(self, cursor, table_name, columns):
         for column_name, column_type in columns:
@@ -2960,19 +2938,6 @@ class InspectionThread(QThread):
     # =========================
     # Init helper methods
     # =========================
-
-    def _init_cameras(self):
-        # Use your known camera resolution
-        w = getattr(self, "frame_width", 3072)
-        h = getattr(self, "frame_height", 2048)
-
-        self._placeholder_cam1 = make_camera_placeholder(w, h, 1)
-        self._placeholder_cam2 = make_camera_placeholder(w, h, 2)
-
-        # Start as DummyCapture so read() is always valid
-        self.cap_cam = DummyCapture(make_camera_placeholder(w, h, 0))
-        self.cap_cam_ic4_1 = DummyCapture(self._placeholder_cam1)
-        self.cap_cam_ic4_2 = DummyCapture(self._placeholder_cam2)
 
     def _init_frames(self):
         self.mergeframe1 = None
@@ -3631,17 +3596,6 @@ class InspectionThread(QThread):
 
         return image[y_min:y_max, x_min:x_max].copy()
 
-    def _init_placeholders(self):
-        w = getattr(self, "frame_width", 3072)
-        h = getattr(self, "frame_height", 2048)
-
-        self._placeholder_cam1 = make_camera_placeholder(w, h, 1)
-        self._placeholder_cam2 = make_camera_placeholder(w, h, 2)
-
-    # def _init_cameras(self):
-    #     self.cap_cam_ic4_1 = DummyCapture(self._placeholder_cam1)
-    #     self.cap_cam_ic4_2 = DummyCapture(self._placeholder_cam2)
-
     def _get_partcam_preview_size(self, widget_id=None):
         widget_id = self.inspection_config.widget if widget_id is None else widget_id
 
@@ -4133,37 +4087,3 @@ class InspectionThread(QThread):
 
         except (KeyError, IndexError, TypeError) as e:
             print(f"[count] failed to update counts for widget={widget}, status={st}: {e}")
-
-class DummyCapture:
-    """Fallback camera-like object that always returns a placeholder frame."""
-    def __init__(self, frame: np.ndarray):
-        self._frame = frame
-
-    def read(self):
-        # mimic cv2.VideoCapture.read() signature
-        return True, self._frame.copy()
-
-    def isOpened(self):
-        return True
-
-    def release(self):
-        pass
-
-
-def make_camera_placeholder(width: int, height: int, cam_id: int):
-    img = np.zeros((height, width, 3), dtype=np.uint8)
-
-    # Simple message. You can add your logo later.
-    text1 = "CAMERA OFFLINE"
-    text2 = f"ID: {cam_id}"
-    text3 = time.strftime("%Y-%m-%d %H:%M:%S")
-
-    # Big readable text
-    cv2.putText(img, text1, (60, int(height * 0.45)),
-                cv2.FONT_HERSHEY_SIMPLEX, 2.0, (0, 0, 255), 4, cv2.LINE_AA)
-    cv2.putText(img, text2, (60, int(height * 0.55)),
-                cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 255), 3, cv2.LINE_AA)
-    cv2.putText(img, text3, (60, int(height * 0.65)),
-                cv2.FONT_HERSHEY_SIMPLEX, 1.0, (200, 200, 200), 2, cv2.LINE_AA)
-
-    return img

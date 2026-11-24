@@ -165,6 +165,10 @@ class SettingsController(QWidget):
         The guard keeps a 15 fps signal from repainting hidden pages.
         """
 
+        if image is None or image.isNull():
+            self.fine_page.set_reference_qimage(image)
+            self.widget_page.set_reference_qimage(image)
+            return
         if not self.isVisible():
             return
         if self.settingsContentStack.currentIndex() not in (2, 3):
