@@ -34,6 +34,18 @@ exposing editable Settings. Do not activate the strict path in isolation.
 Software regression at this milestone: 22 daily strategy cases, 200 full
 suite passes, no failures or skips.
 
+The daily configuration service now resolves the three registered profiles
+from shared YAML and applies validated per-position reference, tolerance
+and scale overrides. `RevisionManager` stores daily overrides as an immutable
+scoped snapshot selected by one atomic pointer. Daily rollback does not
+alter camera or alignment settings. The active revision is loaded separately
+from production adjustment revisions; Settings does not yet show daily
+history or expose the editor. A shared YAML deployment remains separate from
+machine-local override history. Software regression: 202 passed, no failures
+or skips. Next: capture the daily configuration at an
+accepted trigger and route geometry, inference, presentation and recording
+using that frozen identity.
+
 ## Prior evidence
 
 Starting head: `7f031789e8a4b11b9ddd61e14737b4177a4b41eb` on `main`;

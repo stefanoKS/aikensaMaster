@@ -66,9 +66,13 @@ def machine_id() -> str:
 class RevisionManager:
     """Stage / activate / roll back machine-local settings revisions."""
 
-    def __init__(self, paths: AppPaths):
+    def __init__(self, paths: AppPaths, *, snapshot_scope: Optional[str] = None):
         self.paths = paths
-        self.history_dir = paths.runtime_history_dir
+        self.snapshot_only = snapshot_scope is not None
+        self.history_dir = (
+            paths.runtime_history_dir if snapshot_scope is None
+            else paths.runtime_history_dir / snapshot_scope
+        )
 
     # ---- staging -----------------------------------------------------------
     def stage(
@@ -150,6 +154,10 @@ class RevisionManager:
             if _sha256(stored) != entry["sha256"]:
                 raise RevisionError(f"staged file corrupted: {stored}")
 
+        if self.snapshot_only:
+            self._mark_active(revision_id)
+            return self._to_revision(manifest)
+
         backups: Dict[Path, Optional[bytes]] = {}
         replaced: List[Path] = []
         try:
@@ -159,6 +167,7 @@ class RevisionManager:
                 backups[target] = target.read_bytes() if target.is_file() else None
                 self._replace_atomically(target, stored.read_bytes())
                 replaced.append(target)
+            self._mark_active(revision_id)
         except BaseException:
             for target in reversed(replaced):
                 previous = backups.get(target)
@@ -171,23 +180,30 @@ class RevisionManager:
                     pass
             raise
 
+        return self._to_revision(manifest)
+
+    def _mark_active(self, revision_id: str) -> None:
         self._write_json(
             self.history_dir / _ACTIVE_NAME,
             {"revision_id": revision_id, "activated_at": datetime.now().isoformat(timespec="seconds")},
         )
-        return self._to_revision(manifest)
-
     def rollback(self, revision_id: str) -> SettingsRevision:
         return self.activate(revision_id)
 
     # ---- querying ----------------------------------------------------------
-    def active_revision_id(self) -> Optional[str]:
+    def active_revision_id(self, *, strict: bool = False) -> Optional[str]:
         record = self.history_dir / _ACTIVE_NAME
         if not record.is_file():
             return None
         try:
-            return json.loads(record.read_text(encoding="utf-8")).get("revision_id")
-        except (OSError, ValueError):
+            revision_id = json.loads(record.read_text(encoding="utf-8"))["revision_id"]
+            if (not isinstance(revision_id, str) or not revision_id
+                    or revision_id in (".", "..") or "/" in revision_id or "\\" in revision_id):
+                raise ValueError("invalid revision id")
+            return revision_id
+        except (KeyError, OSError, TypeError, ValueError) as exc:
+            if strict:
+                raise RevisionError("invalid active revision") from exc
             return None
 
     def list_revisions(self) -> List[SettingsRevision]:
@@ -222,6 +238,8 @@ class RevisionManager:
         result: Dict[str, object] = {}
         for entry in manifest["files"]:
             stored = revision_dir / "files" / entry["stored"]
+            if not stored.is_file() or _sha256(stored) != entry["sha256"]:
+                raise RevisionError(f"staged file missing or corrupted: {stored}")
             result[entry["target"]] = yaml.safe_load(stored.read_text(encoding="utf-8"))
         return result
 
@@ -244,10 +262,9 @@ class RevisionManager:
 
     @staticmethod
     def _write_json(path: Path, payload: Mapping) -> None:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix(path.suffix + ".tmp")
-        tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-        os.replace(tmp, path)
+        RevisionManager._replace_atomically(
+            path, json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
+        )
 
     @staticmethod
     def _to_revision(manifest: Mapping) -> SettingsRevision:

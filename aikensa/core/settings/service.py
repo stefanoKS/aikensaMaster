@@ -21,9 +21,14 @@ from typing import Callable, Dict, List, Mapping, Optional, Tuple
 
 import numpy as np
 
+from aikensa.core.settings.daily_config import (
+    DAILY_DEFAULT_REVISION,
+    DailyConfiguration,
+    resolve_daily_config,
+)
 from aikensa.core.settings.paths import AppPaths
 from aikensa.core.settings.repository import SettingsRepository
-from aikensa.core.settings.revisions import RevisionManager
+from aikensa.core.settings.revisions import RevisionError, RevisionManager
 from aikensa.core.settings.schema import (
     CalibrationState,
     CameraSettings,
@@ -65,6 +70,7 @@ class SettingsService:
         self.paths = paths or AppPaths.discover()
         self.repository = repository or SettingsRepository(self.paths)
         self.revisions = revisions or RevisionManager(self.paths)
+        self.daily_revisions = RevisionManager(self.paths, snapshot_scope="daily_inspection")
         self._listeners: List[Listener] = []
         self._bootstrapped = False
 
@@ -90,6 +96,61 @@ class SettingsService:
                 listener(what)
             except Exception:  # pragma: no cover - listener bugs must not break saving
                 LOGGER.exception("settings listener failed for %s", what)
+
+    # Judgment-only edits use an immutable snapshot and a single active pointer.
+    # They do not reopen cameras or reload models and take effect on the next cycle.
+    def load_daily_configuration(self) -> DailyConfiguration:
+        revision_id = self.daily_revisions.active_revision_id(strict=True)
+        return self._load_daily_revision(revision_id or DAILY_DEFAULT_REVISION)
+
+    def _load_daily_revision(self, revision_id: str) -> DailyConfiguration:
+        if revision_id == DAILY_DEFAULT_REVISION:
+            payload = {"schema_version": 1, "positions": {}}
+        else:
+            if not revision_id.split("-")[-1].isalnum() or "/" in revision_id or "\\" in revision_id:
+                raise RevisionError("日常点検の設定版が不正です。")
+            staged = self.daily_revisions.staged_data(revision_id)
+            if set(staged) != {str(self._daily_payload_path)}:
+                raise RevisionError("日常点検の設定スナップショットが不正です。")
+            payload = staged[str(self._daily_payload_path)]
+        return resolve_daily_config(self.paths.root / "aikensa/core/config", revision_id, payload)
+
+    @property
+    def _daily_payload_path(self) -> Path:
+        return Path("daily_inspection.yaml")
+
+    def save_daily_configuration(
+        self, overrides: Mapping, *, expected_revision: str, operator: str = "",
+    ) -> SettingsRevision:
+        current = self.load_daily_configuration()
+        if current.revision_id != expected_revision:
+            raise RevisionError("日常点検の設定が更新されました。読み込み直してください。")
+        payload = {"schema_version": 1, "positions": dict(overrides)}
+        candidate = resolve_daily_config(self.paths.root / "aikensa/core/config", "", payload)
+        if candidate.overrides == current.overrides:
+            raise RevisionError("日常点検の設定に変更がありません。")
+        changed = [
+            new.profile_id for old, new in zip(current.profiles, candidate.profiles)
+            if old.reference != new.reference
+            or dict(current.overrides).get(old.profile_id) != dict(candidate.overrides).get(new.profile_id)
+        ]
+        revision_id = self.daily_revisions.stage(
+            {self._daily_payload_path: payload}, operator=operator, changes=changed
+        )
+        revision = self.daily_revisions.activate(revision_id)
+        self._notify("daily_inspection")
+        return revision
+
+    def rollback_daily_configuration(self, revision_id: str, *, operator: str = "") -> SettingsRevision:
+        self._load_daily_revision(revision_id)
+        if revision_id == DAILY_DEFAULT_REVISION:
+            revision_id = self.daily_revisions.stage(
+                {self._daily_payload_path: {"schema_version": 1, "positions": {}}},
+                operator=operator, changes=("共通の初期設定に復元",),
+            )
+        revision = self.daily_revisions.rollback(revision_id)
+        self._notify("daily_inspection")
+        return revision
 
     # ------------------------------------------------------------------
     # Snapshot

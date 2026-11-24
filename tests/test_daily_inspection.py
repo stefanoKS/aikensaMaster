@@ -1,6 +1,8 @@
 """Daily measurement behavior with synthetic points and no device dependencies."""
 
 from types import SimpleNamespace
+from dataclasses import FrozenInstanceError
+import shutil
 
 import numpy as np
 import pytest
@@ -13,6 +15,9 @@ from aikensa.core.inspection.daily import (
     DailyROI,
     DailyReferenceSpec,
 )
+from aikensa.core.settings.revisions import RevisionError
+from aikensa.core.settings.service import SettingsService
+from tests.conftest import REPO_ROOT
 
 
 def pose(*points):
@@ -92,3 +97,60 @@ def test_invalid_reference_spec_rejected(values):
     with pytest.raises(DailyInspectionError) as caught:
         DailyReferenceSpec(*values)
     assert caught.value.category is DailyFailure.CONFIGURATION_ERROR
+
+
+@pytest.fixture()
+def daily_settings(settings):
+    target = settings.paths.root / "aikensa/core/config"
+    source = REPO_ROOT / "aikensa/core/config"
+    for name in ("part_registry.yaml", "parts_specifications.yaml", "models.yaml"):
+        shutil.copyfile(source / name, target / name)
+    return settings
+
+
+def test_daily_approval_persists_and_rolls_back_without_changing_other_positions(daily_settings):
+    settings = daily_settings
+    original = settings.load_daily_configuration()
+    original_adjustments = settings.revisions.active_revision_id()
+    draft = original.editable_values()
+    draft[original.profile_for_widget(22).profile_id] = {"tolerance_mm": 2.0}
+    assert settings.load_daily_configuration() == original
+    approved = settings.save_daily_configuration(draft, expected_revision=original.revision_id)
+    restarted = SettingsService(settings.paths)
+    updated = restarted.load_daily_configuration()
+    assert updated.revision_id == approved.revision_id
+    assert updated.profile_for_widget(22).reference.tolerance_mm == 2.0
+    for widget in (21, 23):
+        assert updated.profile_for_widget(widget) == original.profile_for_widget(widget)
+    assert original.profile_for_widget(22).reference.tolerance_mm == 1.0
+    with pytest.raises(FrozenInstanceError):
+        updated.profile_for_widget(22).reference.tolerance_mm = 9.0
+    assert restarted.revisions.active_revision_id() == original_adjustments
+    restarted.rollback_daily_configuration(original.revision_id)
+    assert restarted.load_daily_configuration().profiles == original.profiles
+    restarted.rollback_daily_configuration(approved.revision_id)
+    assert restarted.load_daily_configuration() == updated
+
+
+def test_invalid_or_failed_activation_leaves_previous_revision(daily_settings, monkeypatch):
+    settings = daily_settings
+    previous = settings.load_daily_configuration()
+    with pytest.raises(DailyInspectionError):
+        settings.save_daily_configuration(
+            {"dailyTenken_02": {"tolerance_mm": -1}}, expected_revision=previous.revision_id,
+        )
+    with pytest.raises(RevisionError):
+        settings.save_daily_configuration(
+            {"dailyTenken_02": {"tolerance_mm": 2}}, expected_revision="stale",
+        )
+
+    def fail_pointer(_revision_id):
+        raise OSError("write failure")
+
+    monkeypatch.setattr(settings.daily_revisions, "_mark_active", fail_pointer)
+    with pytest.raises(OSError):
+        settings.save_daily_configuration(
+            {"dailyTenken_02": {"tolerance_mm": 2}}, expected_revision=previous.revision_id,
+        )
+    assert SettingsService(settings.paths).load_daily_configuration() == previous
+    assert len(settings.daily_revisions.list_revisions()) == 1

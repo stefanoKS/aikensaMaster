@@ -88,6 +88,14 @@ machine PASS.
   replacing passing measurements with the nominal value. The strict strategy
   is not yet active in the worker; these tests are not end-to-end evidence.
 
+## Daily configuration revisions (CG-P2-20, partial)
+
+- Software tests prove that a Position 2 draft does not change the active
+  configuration, approval changes only Position 2, the revision persists on
+  restart, and rollback restores the previous values.
+- Validation and activation failure leave the previous active snapshot intact.
+  This is service-level evidence, not a Settings or worker integration test.
+
 ## Commands
 
 ```sh
