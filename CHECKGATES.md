@@ -76,6 +76,17 @@ machine PASS.
   Completed historical data and the legacy product interlock policy are
   unchanged; equipment diagnostics take priority over daily judgments.
 
+## Production geometry boundary (CG-P3-30, partial)
+
+- Widgets 17–18 reject late full-resolution preparation failures instead of
+  allowing a blank buffer to enter inference. Worker tests inject an empty
+  crop and OpenCV remap/warp failures and assert recovery with no judgment,
+  counter change or result row. Marker tests preserve the existing native
+  crop, camera-2 offset, rotation order and channel ordering.
+- Other legacy branches have not migrated to this boundary. In particular,
+  30–34 reference a separate high-position Camera 2 homography and must not
+  silently use the normal homography as a substitute.
+
 ## IC4 camera configuration (CG-20)
 
 - With no injected capture factory, `CameraService.acquire()` forwards the

@@ -31,6 +31,18 @@ retry, reconciliation and live equipment timing still require later gates.
 Software regression: 221 passed, including 28 daily checkgate tests, no
 failures or skips.
 
+CG-P3-30 partial: widgets 17 and 18 use strict full-resolution preparation
+at their cycle boundary; missing/invalid geometry cannot reach the model or
+finalizer, and the worker resumes preview without replaying the trigger.
+The KENGEN and clip insertion families (9–16) still call the legacy wide
+helper. Historical 30–34 pass `H2_high`; do not guess a substitute. Other
+legacy direct preparations (35–43, 48–49), including the widget-36 special
+daily mode and additional Katabu crops, still need path-specific regression
+tests before removing their black-image fallback. Both calibration and
+preview use separate stages and are not production inference callers.
+Software regression: 229 passed, including 59 camera checks and 14
+production strategy checks; zero failures or skips.
+
 ## Phase 2
 
 Local and remote `main` started at `c8d486874a8ff633135a4c54a48b1cf179be588b`

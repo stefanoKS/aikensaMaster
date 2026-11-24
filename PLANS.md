@@ -4,7 +4,8 @@
 
 1. Baseline and equipment preview across navigation: software PASS.
 2. Type daily session state, reinspection and result identity.
-3. Harden production geometry and effective configuration revisions.
+3. Harden production geometry (strict preparation verified for widgets
+   17–18; other legacy families pending) and effective configuration revisions.
 4. Complete daily Settings and recording before production migration.
 
 ## Phase 2 (historical)

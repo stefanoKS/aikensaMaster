@@ -723,6 +723,139 @@ def test_workers_build_maps_at_each_source_frame_size(
         np.testing.assert_array_equal(actual, expected)
 
 
+@pytest.mark.parametrize("widget", [17, 18])
+@pytest.mark.parametrize("problem", ["crop", "remap", "warp"])
+def test_production_geometry_failure_skips_cycle_and_worker_recovers(
+    qapp, settings, monkeypatch, tmp_path, worker_modules, camera_geometry, widget, problem,
+):
+    from unittest.mock import Mock
+    from PyQt5.QtCore import QThread
+    from aikensa.core.camera.preview_state import PreviewReadiness
+
+    _, module = worker_modules
+    service, _, _ = camera_geometry
+    worker = module.InspectionThread.__new__(module.InspectionThread)
+    QThread.__init__(worker)
+    worker.inspection_config = module.InspectionConfig(
+        widget=widget, doInspection=True, preview_target=(widget, 1),
+    )
+    worker.inspection_config.current_numofPart[widget] = [7, 2]
+    worker.settings = settings
+    worker.camera_service = service
+    worker.camera_stream = CameraStream(service, CameraRole.INSPECTION)
+    worker._camera_diagnostic = ("", ())
+    worker.running = True
+    worker._last_color_debug_ts = float("inf")
+    worker._color_debug_interval_sec = 1
+    worker.scaled_width, worker.scaled_height = 80, 60
+    worker.scale_factor = 5
+    worker.wide_planarize = (40, 640)
+    worker.widget_h2_offsets = {}
+    worker.widget_dir_map = {}
+    worker.inspection_widget_indices = [widget]
+    worker.inspection_widget_katabu = []
+    worker.narrow_height_widget = [17, 18]
+    worker.InspectionImages, worker.InspectionImages_bgr = [None], [None]
+    worker.InspectionTimeStart = 0
+    worker.InspectionWaitTime = 0
+    worker.bool_keep_measurement = False
+    for name in ("mysqlHost", "mysqlID", "mysqlPassword", "mysqlHostPort"):
+        setattr(worker, name, None)
+    for name in ("initialize_model", "_check_date_rollover", "_handle_manual_adjustment_and_reset",
+                 "_emit_kensa_status", "_finalize_inspection_common", "_check_model_available",
+                 "inspection_coordinator"):
+        setattr(worker, name, Mock())
+    crop = [0, 0, 640, 0, 640, 40, 0, 40]
+    worker.widget_crop_points = {widget: [0] * 8 if problem == "crop" else crop}
+    failures = []
+
+    def on_equipment(_sequence, state):
+        if state.readiness is PreviewReadiness.GEOMETRY_ERROR:
+            failures.append(state.message)
+            worker.widget_crop_points[widget] = crop
+        elif state.readiness is PreviewReadiness.READY and failures:
+            worker.running = False
+
+    worker.equipmentPreviewSignal.connect(on_equipment)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(module.cv2, "imread", lambda _: np.zeros((40, 640, 3), np.uint8))
+    monkeypatch.setattr(module.time, "sleep", lambda _: None)
+    if problem == "remap":
+        remap = module.cv2.remap
+
+        def fail_full_remap(image, *args, **kwargs):
+            if image.shape[0] > 60 and not failures:
+                raise module.cv2.error("injected full-resolution remap failure")
+            return remap(image, *args, **kwargs)
+
+        monkeypatch.setattr(module.cv2, "remap", fail_full_remap)
+    elif problem == "warp":
+        warp = module.warpTwoImages_template
+
+        def fail_full_warp(canvas, *args, **kwargs):
+            if canvas.shape[1] == 640 and not failures:
+                raise module.cv2.error("injected full-resolution warp failure")
+            return warp(canvas, *args, **kwargs)
+
+        monkeypatch.setattr(module, "warpTwoImages_template", fail_full_warp)
+
+    def count_loop():
+        assert count_loop.calls < 3, "worker did not recover after failed preparation"
+        count_loop.calls += 1
+
+    count_loop.calls = 0
+    worker._check_date_rollover = count_loop
+    worker.run()
+    try:
+        assert len(failures) == 1 and "全解像度" in failures[0]
+        assert worker.inspection_config.current_numofPart[widget] == [7, 2]
+        assert not worker.inspection_config.doInspection
+        worker.inspection_coordinator.inspect.assert_not_called()
+        worker._check_model_available.assert_not_called()
+        worker._finalize_inspection_common.assert_not_called()
+        assert worker.conn.execute("SELECT count(*) FROM inspection_results").fetchone() == (0,)
+    finally:
+        worker.conn.close()
+
+
+@pytest.mark.parametrize("hardware_rotation", [False, True])
+def test_strict_production_geometry_preserves_native_pixels_and_color_order(
+    qapp, worker_modules, hardware_rotation,
+):
+    from PyQt5.QtCore import QThread
+
+    _, module = worker_modules
+    worker = module.InspectionThread.__new__(module.InspectionThread)
+    QThread.__init__(worker)
+    worker.inspection_config = module.InspectionConfig(widget=17)
+    worker.InspectionImages, worker.InspectionImages_bgr = [None], [None]
+    worker.ic4_rotate_180 = hardware_rotation
+    worker.wide_planarize = (6, 10)
+    worker.planarizeTransform_wide = None
+    worker.mergeframe1 = np.zeros((4, 5, 3), np.uint8)
+    worker.mergeframe2 = np.zeros((4, 5, 3), np.uint8)
+    worker.mergeframe1[1, 1] = (10, 20, 30)
+    worker.mergeframe2[1, 1] = (40, 50, 60)
+    worker.H1 = np.eye(3)
+    worker.H2 = np.eye(3)
+    worker.widget_h2_offsets = {17: (5, 0)}
+    worker.widget_crop_points = {17: [0, 0, 10, 0, 10, 4, 0, 4]}
+    worker.homography_blank_canvas = np.zeros((6, 10, 3), np.uint8)
+    y, x = np.indices((4, 5), dtype=np.float32)
+    for index in (0, 1):
+        worker.inspection_config.map1[index], worker.inspection_config.map2[index] = module.cv2.convertMaps(
+            x, y, module.cv2.CV_16SC2
+        )
+
+    assert worker._prepare_production_image(17)
+    expected = np.zeros((4, 10, 3), np.uint8)
+    marker_y, marker_x = (1, 1) if hardware_rotation else (2, 3)
+    expected[marker_y, marker_x] = (10, 20, 30)
+    expected[marker_y, marker_x + 5] = (40, 50, 60)
+    np.testing.assert_array_equal(worker.InspectionImages[0], expected)
+    np.testing.assert_array_equal(worker.InspectionImages_bgr[0], expected[:, :, ::-1])
+
+
 def test_daily_settings_change_drives_real_worker_and_rolls_back(
     qapp, settings, monkeypatch, tmp_path, worker_modules, camera_geometry,
 ):

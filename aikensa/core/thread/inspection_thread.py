@@ -856,18 +856,10 @@ class InspectionThread(QThread):
                             self.emit = self.combinedImage_scaled
                             self._emit_kensa_status(x_offset=-200, y_offset=-90)
 
-                            self._inspection_start_image = None
-                            self.InspectionImages[0], self.InspectionImages_bgr[0] = self._build_inspection_image(
-                                                                                    planarize_transform=self.planarizeTransform_wide,
-                                                                                    planarize_size=self.wide_planarize,
-                                                                                    h1=self.H1,
-                                                                                    h2=self.H2,
-                                                                                    blank_canvas=self.homography_blank_canvas
-                                                                                )
+                            if not self._prepare_production_image(17):
+                                continue
 
                             try:
-                                if self._inspection_start_image is None:
-                                    raise InspectionError("full-resolution image preparation failed")
                                 profile = self.strategy_profiles_by_widget.get(self.inspection_config.widget)
                                 if profile is None:
                                     raise InspectionError("no inspection profile for widget")
@@ -922,14 +914,8 @@ class InspectionThread(QThread):
                             self.emit = self.combinedImage_scaled
                             self._emit_kensa_status(x_offset=-200, y_offset=-90)
 
-                            self.InspectionImages[0], self.InspectionImages_bgr[0] = self._build_inspection_image(
-                                                                                    planarize_transform=self.planarizeTransform_wide,
-                                                                                    planarize_size=self.wide_planarize,
-                                                                                    h1=self.H1,
-                                                                                    h2=self.H2,
-                                                                                    blank_canvas=self.homography_blank_canvas
-                                                                                )
-
+                            if not self._prepare_production_image(18):
+                                continue
                             for i in range(len(self.InspectionImages_bgr)):
                                 # Check if CLIP model is available
                                 if not self._check_model_available('P828447UA0A_CLIP_Model'):
@@ -3770,6 +3756,25 @@ class InspectionThread(QThread):
         }
         return signal_map.get(widget_id)
 
+    def _prepare_production_image(self, widget):
+        self._inspection_start_image = None
+        try:
+            bgr, rgb = self._build_inspection_image(
+                planarize_transform=self.planarizeTransform_wide,
+                planarize_size=self.wide_planarize,
+                h1=self.H1, h2=self.H2, blank_canvas=self.homography_blank_canvas,
+                widget_id=widget, strict=True,
+            )
+        except (UncalibratedError, cv2.error) as exc:
+            self.InspectionImages[0] = self.InspectionImages_bgr[0] = None
+            self.inspection_config.doInspection = False
+            self.bool_keep_measurement = False
+            message = str(exc)
+            self._publish_equipment_preview(EquipmentPreview(PreviewReadiness.GEOMETRY_ERROR, message=message))
+            return False
+        self.InspectionImages[0], self.InspectionImages_bgr[0] = bgr, rgb
+        return True
+
     def _prepare_wide_inspection_images(self, status_text="検査中", x_offset=-200, y_offset=-100, h2=None):
         """
         Shared setup for wide widgets:
@@ -3869,7 +3874,12 @@ class InspectionThread(QThread):
         ]):
             return _fallback()
 
-        if not _valid_img(self.mergeframe1) or not _valid_img(self.mergeframe2):
+        if not _valid_img(self.mergeframe1) or not _valid_img(self.mergeframe2) or (
+            strict and not all(
+                image.dtype == np.uint8 and image.shape[2] == 3
+                for image in (self.mergeframe1, self.mergeframe2)
+            )
+        ):
             print("[_build_inspection_image] invalid merge frame shape; using fallback")
             return _fallback()
 
@@ -3906,6 +3916,8 @@ class InspectionThread(QThread):
         local_blank_canvas = blank_canvas
         if isinstance(local_blank_canvas, np.ndarray):
             local_blank_canvas = np.ascontiguousarray(local_blank_canvas.copy())
+        elif strict:
+            return _fallback()
         else:
             local_blank_canvas = np.zeros((frame1.shape[0], frame1.shape[1], 3), dtype=np.uint8)
 
