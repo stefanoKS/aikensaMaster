@@ -71,6 +71,12 @@ side-effect-free test measurement using the existing model owner. Gates
 6–8 (production migration, editable production settings, preview benchmark)
 are not started.
 
+Executable software checkgates: `tools/checkgates.py` and the Windows CMD
+wrapper. Baseline compilation, camera (47), geometry (35), configuration
+(38), daily (27), widget-17 parity (14), Settings/Qt (64), local recording
+(1), and full regression (212) passed. The groups overlap, and none of
+their elapsed times is an inspection performance benchmark.
+
 ## Prior evidence
 
 Starting head: `7f031789e8a4b11b9ddd61e14737b4177a4b41eb` on `main`;

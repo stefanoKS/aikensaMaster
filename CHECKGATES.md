@@ -108,6 +108,14 @@ machine PASS.
 
 ## Commands
 
+`python tools/checkgates.py CG-BASELINE CG-DAILY CG-REGRESSION`
+runs executable software checks and reports command, duration, exit status
+and pytest counts for each. Windows CMD: `tools\checkgates.cmd` with the
+same gate arguments. The default is `CG-BASELINE CG-REGRESSION`; see
+`--help` for focused gates. A failure or a required skipped test returns
+nonzero. A PASS only covers the commands run, not all phase acceptance
+criteria. The performance gate is explicitly NOT TESTED.
+
 ```sh
 python -m compileall -q aikensa tests
 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 QT_QPA_PLATFORM=offscreen python -m pytest -q

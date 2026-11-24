@@ -13,6 +13,8 @@
    synthetic workflow. Advanced draft preview and machine checks remain open.
 4. CG-P2-60 through CG-P2-80: production migration and preview work, after the
    daily workflow passes.
+5. The executable software checkgates in [CHECKGATES.md](./CHECKGATES.md)
+   track the verified subset; physical qualification remains separate.
 
 The sections below are historical evidence, not a competing work order.
 
